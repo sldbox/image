@@ -70,6 +70,16 @@ const unitGradeMap = {
     ]
 };
 
+// [데이터와 파싱 로직 분리 모듈화] - 특수/예외 코스트 키워드 매핑 테이블
+const specialKeywordMap = [
+    { keys: ["자동포탑"], atom: "자동포탑" },
+    { keys: ["지뢰", "시체매"], atom: "땅거미지뢰", divider: 12 },
+    { keys: ["우르사돈[암]", "우르사돈암"], atom: "우르사돈[암]" },
+    { keys: ["우르사돈[수]", "우르사돈수"], atom: "우르사돈[수]" },
+    { keys: ["메시브", "디제스터"], atom: "갓오타/메시브", subKey: "메시브" },
+    { keys: ["갓오브타임", "갓오타"], atom: "갓오타/메시브", subKey: "갓오타" }
+];
+
 // [4. 매직코스트 대시보드 표시 순서 및 클래스 설정]
 const dashboardAtoms = [
     { name: "전쟁광", class: "r-t1" }, 
@@ -91,7 +101,7 @@ const dashboardAtoms = [
     { name: "자동포탑", class: "r-special" }, 
     { name: "우르사돈[암]", class: "r-special" }, 
     { name: "우르사돈[수]", class: "r-special" }, 
-    { name: "갓오브타임/메시브", class: "r-special" }
+    { name: "갓오타/메시브", class: "r-special" }
 ];
 
 // [5. 유닛 조합 데이터 (메인 데이터베이스)]
