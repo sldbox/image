@@ -3,234 +3,375 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>개복디 종합툴</title>
-    <!-- data.js 연결 -->
+    <title>개복디 넥서스 V2.0</title>
     <script src="data.js"></script>
     <style>
-        /* 기본 테마 및 레이아웃 */
+        /* =========================================
+           [1] 올블랙 디자인 시스템 (CSS 변수)
+           ========================================= */
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        :root {
+            --bg-base: #000000;       
+            --bg-panel: #0A0A0A;      
+            --bg-panel-hover: #141414;
+            --accent: #38BDF8;        
+            --accent-glow: rgba(56, 189, 248, 0.3); 
+            --text-main: #F8FAFC;     
+            --text-sub: #94A3B8;      
+            --text-muted: #52525B;    
+            --border-light: rgba(255, 255, 255, 0.12);
+            --border-focus: rgba(56, 189, 248, 0.5);
+            --tree-line: #27272A;
+            --font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        /* =========================================
+           [2] 글로벌 스타일 설정
+           ========================================= */
         body { 
-            background-color: #05080a; 
-            background-image: radial-gradient(circle at 50% 0%, #0d1b26 0%, #05080a 70%); 
-            color: #d4d4d4; 
-            font-family: 'Malgun Gothic', sans-serif; 
+            background-color: var(--bg-base);
+            color: var(--text-main); 
+            font-family: var(--font-family); 
             margin: 0; padding: 0; 
             -webkit-user-select: none; user-select: none; 
             display: flex; flex-direction: column; align-items: center; 
             height: 100vh; overflow: hidden; 
+            letter-spacing: -0.02em;
         }
-        .container { width: 100%; max-width: 1700px; padding: 0 20px; box-sizing: border-box; display: flex; flex-direction: column; height: 100%; }
-        
-        /* 상단 헤더 영역 */
-        .header-container { 
-            display: flex; align-items: center; justify-content: space-between; 
-            padding: 15px 25px; margin-bottom: 15px;
-            border-bottom: 1px solid rgba(0, 191, 255, 0.3); 
-            background: rgba(5, 8, 10, 0.85); 
-            backdrop-filter: blur(12px); 
-            border-radius: 0 0 12px 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            flex-shrink: 0; gap: 20px;
-        }
-        
-        .title-group { display: flex; flex-direction: column; gap: 6px; flex: 1; max-width: 350px; }
-        .main-title { color: #00bfff; margin: 0; font-size: 1.6rem; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 10px rgba(0, 191, 255, 0.6); }
-        .creator-info { font-size: 0.9rem; color: #888; font-weight: bold; margin: 0; }
-        
-        .view-toggles { flex: 2; display: flex; justify-content: center; align-items: center; gap: 15px; }
-        .btn-view { 
-            background: #112d3b; border: 1px solid #1a3644; color: #aaa; 
-            padding: 12px 35px; 
-            font-size: 1.2rem; 
-            border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; 
-        }
-        .btn-view:hover { background: rgba(0, 191, 255, 0.2); }
-        .btn-view.active { background: #00bfff; color: #000; box-shadow: 0 0 15px rgba(0,191,255,0.5); border-color:#00bfff; }
-        
-        .btn-guide {
-            background: #f39c12; color: #000; border: 1px solid #e67e22; 
-            border-radius: 8px; padding: 10px 20px; font-size: 1rem; font-weight: bold; 
-            cursor: pointer; box-shadow: 0 0 10px rgba(243, 156, 18, 0.4); 
-            transition: 0.2s; display: none; align-items: center; justify-content: center;
-        }
-        .btn-guide:hover { background: #f1c40f; box-shadow: 0 0 15px rgba(243, 156, 18, 0.6); transform: translateY(-2px); }
 
-        .header-dummy { flex: 1; max-width: 350px; }
-
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.7); z-index: 1000;
-            display: none; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px);
+        /* 풀 와이드 적용 */
+        .container { 
+            width: 100%; max-width: 100%; 
+            padding: 20px 40px; box-sizing: border-box; 
+            display: flex; flex-direction: column; height: 100%; 
         }
-        .modal-content {
-            background: #0a0f14; border: 2px solid #00bfff; border-radius: 12px;
-            width: 90%; max-width: 500px; padding: 25px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 20px rgba(0, 191, 255, 0.1);
-            color: #d4d4d4; position: relative; animation: popIn 0.3s ease-out;
-        }
-        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #1a3644; padding-bottom: 10px; }
-        .modal-header h2 { margin: 0; color: #00bfff; font-size: 1.3rem; font-weight: bold; }
-        .modal-close { font-size: 2rem; color: #888; cursor: pointer; line-height: 1; transition: 0.2s; }
-        .modal-close:hover { color: #f39c12; }
-        .modal-body p { margin: 10px 0; line-height: 1.6; font-size: 1.05rem; }
-        .modal-body strong { color: #ffd700; }
-
-        /* 검색창 영역 */
-        .search-panel { 
-            width: 100%; display: flex; gap: 10px; align-items: center; justify-content: center; 
-            margin-bottom: 20px; flex-shrink: 0;
-        }
-        .search-panel .input-container { position: relative; flex: 1; max-width: 1200px; height: 50px; }
-        .search-panel .input-overlay-box { 
-            width: 100%; height: 100%; box-sizing: border-box; font-size: 1.2rem; font-weight: bold; 
-            padding: 0 25px; line-height: 48px; white-space: pre; overflow-x: auto; overflow-y: hidden; 
-            border-radius: 8px; scrollbar-width: none; 
-        }
-        .search-panel .input-overlay-box::-webkit-scrollbar { display: none; }
-        #highlightLayer { position: absolute; top: 0; left: 0; z-index: 1; background-color: rgba(0, 0, 0, 0.5); border: 1px solid #1a3644; color: #d4d4d4; pointer-events: none; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
-        #comboInput { position: absolute; top: 0; left: 0; z-index: 2; background: transparent; border: 1px solid transparent; color: transparent; caret-color: #00bfff; outline: none; }
-        #comboInput::placeholder { color: rgba(255, 255, 255, 0.3); }
-        .search-panel .btn-reset { height: 50px; background: linear-gradient(135deg, #1f3b4d, #112d3b); color: #00bfff; border: 1px solid #1a3644; border-radius: 8px; padding: 0 30px; font-size: 1.1rem; cursor: pointer; font-weight: bold; flex-shrink: 0;}
-
-        /* View 섹션 제어 */
-        .view-section { display: none; width: 100%; flex: 1; min-height: 0; margin-bottom: 20px; }
-        .view-section.active { display: flex; gap: 20px; }
-
-        .left-panel { width: 50%; display: flex; flex-direction: column; height: 100%; }
-        .right-panel { width: 50%; display: flex; flex-direction: column; height: 100%; }
-        /* 매직코스트 5x4 배열 적용 */
-        .magic-dashboard { flex-shrink: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; background: rgba(10, 15, 20, 0.7); border: 1px solid rgba(0, 191, 255, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
-        .cost-slot { background: #080c10; border: 1px solid #1a3644; border-radius: 6px; padding: 5px; text-align: center; display: flex; flex-direction: column; height: 60px; justify-content: center; }
-        .cost-slot.active { border-color: #00bfff; background: rgba(0, 30, 50, 0.6); }
-        .slot-val { font-size: 1.2rem; font-weight: 900; color: #fff; display: flex; flex-direction: column; justify-content: center; height: 100%; } 
-        .slot-name { font-size: 0.8rem; color: #bbb; margin-top: 2px; } 
-        #searchResultList { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; min-height: 32px; }
-        .result-item { background: linear-gradient(180deg, #152f40 0%, #0d1b26 100%); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; border: 1px solid #1a3644; font-weight: bold; }
-        #tablesContainer { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .tabs-wrapper { display: flex; gap: 8px; margin-bottom: 10px; flex-shrink: 0; } 
-        .tab-btn { flex: 1; background: rgba(11, 26, 36, 0.6); border: 1px solid #1a3644; border-radius: 6px; padding: 12px 5px; color: #dcdcaa; font-weight: bold; cursor: pointer; }
-        .tab-btn.active { background: #00bfff; color: #000; border-color: #00bfff; }
-        .tab-btn .unit-count { display: block; font-size: 0.8rem; margin-top: 4px; } 
-        .tab-content-area { flex: 1; overflow-y: auto; background: #080c10; border-radius: 8px; border: 1px solid #1a3644; }
-        table { width: 100%; border-collapse: collapse; }
-        td { border-bottom: 1px solid rgba(26, 54, 68, 0.4); padding: 12px 15px; font-size: 0.9rem; }
-        #treeView { flex: 1; overflow-y: auto; padding-right: 10px; }
-        .analysis-card { background: #080c10; border: 1px solid #1a3644; border-radius: 8px; padding: 12px; margin-bottom: 12px; border-top: 3px solid #ffd700; }
-        .analysis-card h3 { margin: 0 0 8px 0; color: #fff; border-bottom: 1px solid rgba(26, 54, 68, 0.6); padding-bottom: 8px; font-size: 1.05rem; display: flex; justify-content: space-between; }
-        .tree-btn { background: #112d3b; color: #00bfff; border: 1px solid #1a3644; border-radius: 5px; padding: 4px 12px; font-size: 0.75rem; cursor: pointer; font-weight: bold; }
-        .tree-btn.active-state { background: #00bfff; color: #000; }
-        .tree-ul { list-style: none; padding-left: 15px; margin: 5px 0 0 5px; border-left: 1px dashed rgba(74, 90, 106, 0.5); }
-        .tree-ul.root-ul { border-left: none; margin-left: 0; padding-left: 0; }
-        .tree-li { position: relative; margin: 6px 0 0 0; }
-        .tree-li::before { content: ""; position: absolute; top: 13px; left: -16px; width: 12px; height: 1px; background-color: rgba(74, 90, 106, 0.5); }
-        .unit-badge { display: inline-flex; align-items: center; background-color: #0b1a24; border: 1px solid #1a3644; border-radius: 4px; padding: 5px 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
-        .toggle-mark { margin-left: auto; font-size: 0.6rem; color: #aaa; padding-left: 8px; }
-        
-        .bullet-recipe { color: #888; font-size: 0.75rem; margin: 4px 0 0 5px; padding-left: 12px; }
-        .bullet-cost { color: #4ea8de; font-size: 0.75rem; margin: 2px 0 0 5px; padding-left: 12px; font-weight: bold; }
-
-        /* 일일정수 (View 2) 전용 스타일 */
-        #view-essence { flex-direction: column; overflow-y: auto; padding-right: 10px; }
-        .essence-header-panel { background: rgba(10, 15, 20, 0.8); border: 1px solid rgba(0, 191, 255, 0.3); border-radius: 10px; padding: 25px; text-align: center; margin-bottom: 20px; flex-shrink: 0; }
-        #essence-total-val { font-size: 5rem; color: #ffd700; font-weight: 900; line-height: 1; display: block; margin-bottom: 20px; text-shadow: 0 0 25px rgba(255, 215, 0, 0.4); }
-        .essence-cards { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
-        .essence-card { flex: 1; min-width: 200px; max-width: 350px; background: #080c10; border: 1px solid #1a3644; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .essence-card.coral { border-top: 3px solid #4ea8de; }
-        .essence-card.aiur { border-top: 3px solid #f4d03f; }
-        .essence-card.zerus { border-top: 3px solid #af7ac5; }
-        .essence-card-title { font-size: 1.1rem; color: #ccc; font-weight: bold; margin-bottom: 5px; }
-        .essence-card-val { font-size: 2rem; font-weight: 900; color: #fff; }
-        .essence-card-max { font-size: 1.1rem; color: #888; }
-        .essence-groups-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
-        .essence-group-box { background: rgba(11, 26, 36, 0.4); border: 1px solid #1a3644; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
-        .essence-group-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(26, 54, 68, 0.8); padding-bottom: 8px; margin-bottom: 8px; }
-        .essence-group-title { font-size: 1.1rem; font-weight: bold; color: #00bfff; margin: 0; }
-        .btn-select-all { background: #112d3b; color: #00bfff; border: 1px solid #1a3644; border-radius: 5px; padding: 5px 12px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.2s; }
-        .btn-select-all:hover { background: #00bfff; color: #000; box-shadow: 0 0 8px rgba(0,191,255,0.5); }
-        .essence-sub-category { font-size: 0.95rem; font-weight: bold; color: #dcdcaa; margin: 12px 0 6px 0; padding-left: 8px; border-left: 3px solid #1a3644; }
-        .essence-unit-grid { display: flex; flex-direction: column; gap: 6px; }
-        .essence-unit-btn { 
-            background: #0b1a24; border: 1px solid #1a3644; 
-            padding: 10px 12px; border-radius: 5px; cursor: pointer; 
-            font-size: 0.95rem; font-weight: bold; user-select: none; transition: 0.2s; 
-            text-align: left; 
-        }
-        .essence-unit-btn.active { background: #00bfff !important; color: #000 !important; border-color: #00bfff; box-shadow: 0 0 10px rgba(0,191,255,0.4); text-shadow: none !important; }
 
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #05080a; }
-        ::-webkit-scrollbar-thumb { background: #1a3644; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00bfff; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* =========================================
+           [3] 최상단 헤더
+           ========================================= */
+        .glass-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 30px;
+            background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(16px);
+            border: 1px solid var(--border-light); border-bottom: 1px solid rgba(0,0,0,0.8);    
+            border-radius: 100px; padding: 10px 15px 10px 30px; margin: 0 auto 30px auto; width: fit-content;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8); z-index: 1000;
+        }
+
+        .header-brand { display: flex; flex-direction: column; }
+        .main-title { 
+            color: transparent; background: linear-gradient(90deg, #fff, var(--accent)); 
+            -webkit-background-clip: text; background-clip: text;
+            margin: 0; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; 
+        }
+        .creator-info { font-size: 0.8rem; color: var(--text-sub); font-weight: 500; margin: 2px 0 0 0; }
+        
+        .btn-toggle-view { 
+            background: linear-gradient(180deg, var(--accent), #0284C7); color: #fff; border: none; border-radius: 50px;
+            padding: 10px 24px; font-size: 0.95rem; cursor: pointer; font-weight: 700; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.3); font-family: var(--font-family);
+        }
+        .btn-toggle-view:hover { 
+            transform: translateY(-2px); box-shadow: 0 6px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.4); 
+            background: linear-gradient(180deg, #7DD3FC, var(--accent)); 
+        }
+        .btn-toggle-view:active { transform: translateY(1px); box-shadow: 0 2px 10px var(--accent-glow); }
+
+        /* =========================================
+           [4] 메인 레이아웃 및 공통 패널 
+           ========================================= */
+        .view-section { display: none; width: 100%; flex: 1; min-height: 0; animation: fadeIn 0.4s ease forwards; height: 100%; }
+        /* 양옆 패널 비율 확대 */
+        .view-section.active { display: grid; grid-template-columns: 1.1fr 1.3fr 1.1fr; gap: 20px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .panel-col { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 20px; }
+        
+        .card-panel {
+            background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 20px; padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; overflow: hidden; 
+            height: 100%; min-height: 0; 
+        }
+
+        /* =========================================
+           [5] 뷰 1: 히든조합
+           ========================================= */
+        .search-container { position: relative; width: 100%; display: flex; gap: 15px; flex-shrink: 0; }
+        .input-wrapper { position: relative; flex: 1; border-radius: 16px; background: var(--bg-base); border: 1px solid var(--border-light); transition: 0.3s; }
+        .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        
+        .input-overlay-box { 
+            width: 100%; height: 70px; box-sizing: border-box; font-size: 1.4rem; font-weight: 700; 
+            padding: 0 25px; line-height: 70px; white-space: pre; overflow-x: auto; overflow-y: hidden; 
+            border: none; background: transparent; scrollbar-width: none; color: var(--text-main); font-family: var(--font-family);
+        }
+        #highlightLayer { position: absolute; top: 0; left: 0; z-index: 1; color: var(--text-main); pointer-events: none; }
+        #comboInput { position: absolute; top: 0; left: 0; z-index: 2; color: transparent; caret-color: var(--accent); outline: none; }
+        #comboInput::placeholder { color: var(--text-muted); font-weight: 600; }
+        
+        .btn-reset { 
+            background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-light); 
+            border-radius: 16px; padding: 0 30px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: 0.2s; height: 70px;
+        }
+        .btn-reset:hover { background: rgba(255, 99, 132, 0.1); color: #FF6B6B; border-color: #FF6B6B; }
+
+        .magic-dashboard-container { margin-top: 15px; }
+        .magic-dashboard { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; flex-shrink: 0; }
+        .cost-slot { 
+            background: var(--bg-base); border: 1px solid var(--border-light); border-radius: 16px; 
+            text-align: center; height: 90px; display: flex; flex-direction: column; justify-content: center; transition: all 0.3s ease; 
+        }
+        .cost-slot.active { background: rgba(56, 189, 248, 0.05); border-color: var(--accent); box-shadow: inset 0 0 20px var(--accent-glow); }
+        .cost-slot.active .slot-val { color: var(--accent); text-shadow: 0 0 10px var(--accent-glow); }
+        .slot-val { font-size: 1.8rem; font-weight: 900; color: var(--text-sub); line-height: 1.1; transition: color 0.3s; } 
+        .slot-name { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; } 
+
+        #searchResultList { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; min-height: 32px; }
+        .result-item { 
+            background: var(--bg-panel-hover); border: 1px solid var(--border-light); border-radius: 8px;
+            padding: 8px 16px; cursor: pointer; font-size: 0.95rem; font-weight: 700; transition: 0.2s;
+        }
+        .result-item:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+
+        .quick-tools-panel { margin-top: 15px; border-top: 1px solid var(--border-light); padding-top: 15px; flex-shrink: 0; }
+        .quick-tools-header { font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-bottom: 10px; }
+        .grade-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .grade-btn {
+            background: var(--bg-base); border: 1px solid var(--border-light); border-radius: 8px;
+            color: var(--text-sub); font-size: 0.85rem; font-weight: bold; padding: 10px 0; cursor: pointer;
+            transition: 0.2s; text-align: center;
+        }
+        .grade-btn:hover { background: var(--bg-panel-hover); color: var(--text-main); }
+
+        #treeView { flex: 1; overflow-y: auto; height: 0; padding-right: 5px; }
+        
+        .analysis-card { background: var(--bg-base); border: 1px solid var(--border-light); border-radius: 16px; padding: 15px 20px; margin-bottom: 15px; }
+        .analysis-card h3 { margin: 0 0 15px 0; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 10px;}
+        .tree-btn { background: transparent; color: var(--text-sub); border: 1px solid var(--border-light); border-radius: 6px; padding: 4px 12px; font-size: 0.8rem; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .tree-btn:hover { background: var(--text-sub); color: var(--bg-base); }
+        
+        .tree-ul { list-style: none; padding-left: 20px; margin: 8px 0 0 0; border-left: 2px solid var(--tree-line); }
+        .tree-ul.root-ul { border-left: none; margin-left: 0; padding-left: 0; }
+        .tree-li { position: relative; margin: 10px 0 0 0; }
+        .tree-li::before { content: ""; position: absolute; top: 14px; left: -22px; width: 16px; height: 2px; background-color: var(--tree-line); border-radius: 2px; }
+        
+        .unit-badge { 
+            display: inline-flex; align-items: center; background: var(--bg-panel-hover); 
+            border: 1px solid var(--border-light); border-radius: 8px; padding: 6px 12px; 
+            font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .unit-badge:hover { filter: brightness(1.2); transform: translateX(2px); }
+        .toggle-mark { margin-left: 10px; font-size: 0.65rem; color: var(--text-muted); }
+        .bullet-recipe { color: var(--text-sub); font-size: 0.85rem; margin: 6px 0 0 5px; padding-left: 10px; font-weight: 500;}
+        .bullet-cost { color: var(--accent); font-size: 0.85rem; margin: 4px 0 0 5px; padding-left: 10px; font-weight: 700; }
+
+        #tablesContainer { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        .tabs-wrapper { display: flex; background: var(--bg-base); border: 1px solid var(--border-light); border-radius: 12px; padding: 4px; margin-bottom: 15px; flex-shrink: 0; } 
+        .tab-btn { 
+            flex: 1; background: transparent; border: none; border-radius: 8px; padding: 8px 0; 
+            color: var(--text-muted); font-weight: 700; cursor: pointer; font-size: 0.95rem; transition: 0.3s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .tab-btn.active { background: var(--bg-panel); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.5); border: 1px solid var(--border-light); }
+        .tab-btn .unit-count { font-size: 0.75rem; font-weight: 500; opacity: 0.8; margin-top: 2px;} 
+        
+        .tab-content-area { flex: 1; overflow-y: auto; height: 0; padding-right: 5px; } 
+        table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+        tr { background: var(--bg-base); transition: 0.2s; }
+        tr:hover { background: var(--bg-panel-hover); transform: scale(1.01); }
+        td { padding: 12px 15px; font-size: 0.9rem; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); }
+        td:first-child { border-left: 1px solid var(--border-light); border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 800; width: 35%;}
+        td:last-child { border-right: 1px solid var(--border-light); border-top-right-radius: 8px; border-bottom-right-radius: 8px; color: var(--text-sub); }
+
+        /* =========================================
+           [6] 뷰 2: 일일정수
+           ========================================= */
+        #view-essence { flex-direction: column; overflow-y: auto; display: none; gap: 20px; }
+        #view-essence.active { display: flex; }
+        
+        .essence-top-banner { 
+            background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 20px; padding: 35px 30px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        
+        .essence-score-master { display: flex; align-items: center; justify-content: center; gap: 40px; flex-wrap: wrap; width: 100%; }
+
+        .score-circle { 
+            width: 130px; height: 130px; border-radius: 50%; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            border: 2px dashed var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 0 25px var(--accent-glow);
+        }
+        .score-circle span { font-size: 3.5rem; font-weight: 900; color: var(--text-main); line-height: 1; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+        .score-circle label { font-size: 0.85rem; color: var(--accent); font-weight: 700; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .essence-sub-scores { display: flex; gap: 20px; }
+        .sub-score-card { background: var(--bg-base); border: 1px solid var(--border-light); border-radius: 16px; padding: 15px 25px; min-width: 130px; text-align: center; }
+        .sub-score-card .title { font-size: 0.9rem; color: var(--text-sub); font-weight: 700; margin-bottom: 5px; }
+        .sub-score-card .value { font-size: 2rem; font-weight: 900; color: var(--text-main); }
+        .sub-score-card .max { font-size: 1rem; color: var(--text-muted); font-weight: 500; }
+
+        .btn-reset-essence { 
+            background: rgba(255, 99, 132, 0.1); color: #FF6B6B; border: 1px solid rgba(255, 99, 132, 0.3); 
+            border-radius: 12px; padding: 15px 25px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: 0.2s; height: fit-content;
+        }
+        .btn-reset-essence:hover { background: rgba(255, 99, 132, 0.2); box-shadow: 0 4px 15px rgba(255, 99, 132, 0.2); }
+
+        .essence-guide-text { 
+            font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; text-align: center; 
+            border-top: 1px solid var(--border-light); padding-top: 20px; width: 100%; max-width: 800px; 
+        }
+        .essence-guide-text strong { color: var(--accent); }
+
+        .essence-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .essence-group { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 20px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .essence-group-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 15px; }
+        .essence-group-title { font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin: 0; }
+        .btn-select-all { background: transparent; color: var(--text-sub); border: 1px solid var(--border-light); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.85rem; font-weight: 700; transition: 0.2s; }
+        .btn-select-all:hover { color: var(--text-main); background: var(--bg-panel-hover); }
+        
+        .cat-title { font-size: 0.85rem; color: var(--accent); font-weight: 800; margin: 15px 0 8px 0; text-transform: uppercase; letter-spacing: 1px; }
+        .unit-check-list { display: flex; flex-direction: column; gap: 8px; }
+        .unit-check-btn { 
+            background: var(--bg-base); border: 1px solid var(--border-light); border-radius: 10px; 
+            padding: 10px 14px; cursor: pointer; font-size: 0.95rem; font-weight: 600; 
+            color: var(--text-sub); transition: all 0.2s; display: flex; align-items: center; gap: 12px;
+        }
+        .unit-check-btn::before {
+            content: ''; display: block; width: 16px; height: 16px; border-radius: 4px; 
+            border: 2px solid var(--text-muted); transition: 0.2s; background: var(--bg-panel);
+        }
+        .unit-check-btn:hover { background: var(--bg-panel-hover); color: var(--text-main); }
+        .unit-check-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--text-main); }
+        .unit-check-btn.active::before { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--bg-panel); }
+
+        /* =========================================
+           [7] 모바일/태블릿 반응형
+           ========================================= */
+        @media (max-width: 1200px) {
+            body { height: auto; overflow: visible; }
+            .container { padding: 15px; height: auto; }
+            .glass-header { width: 100%; border-radius: 20px; box-sizing: border-box; }
+            
+            .view-section.active { display: flex; flex-direction: column; gap: 20px; height: auto; }
+            
+            #view-combo > .panel-col { order: 1; height: auto; flex: none; }
+            #view-combo > .card-panel:nth-child(3) { order: 2; height: 600px; flex: none; } 
+            #view-combo > .card-panel:nth-child(2) { order: 3; min-height: 500px; height: auto; flex: none; }
+            
+            .magic-dashboard { grid-template-columns: repeat(5, 1fr) !important; gap: 6px; }
+            .cost-slot { height: 65px; }
+            .slot-val { font-size: 1.3rem; }
+            .slot-name { font-size: 0.7rem; margin-top: 2px; }
+            
+            .essence-grid { grid-template-columns: 1fr !important; gap: 15px; }
+            
+            .input-overlay-box { height: 60px; font-size: 1.2rem; line-height: 60px; }
+            .btn-reset { height: 60px; font-size: 1rem; }
+        }
+
+        /* 600px 이하 추가 모바일 조정: 일일정수 스코어 1열 3칸 고정 */
+        @media (max-width: 600px) {
+            .glass-header { flex-direction: column; padding: 15px 20px; gap: 15px; border-radius: 20px; }
+            
+            .essence-score-master { flex-direction: column; gap: 20px; width: 100%; }
+            .essence-sub-scores {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                width: 100%;
+            }
+            .sub-score-card {
+                min-width: 0; 
+                padding: 10px 5px; 
+            }
+            .sub-score-card .title { font-size: 0.75rem; letter-spacing: -0.5px; }
+            .sub-score-card .value { font-size: 1.4rem; }
+            .sub-score-card .max { font-size: 0.8rem; }
+            
+            .score-circle { width: 110px; height: 110px; }
+            .score-circle span { font-size: 2.8rem; }
+        }
     </style>
 </head>
 <body oncontextmenu="return false">
 
-<div id="guideModal" class="modal-overlay" onclick="closeGuideModal()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h2>📢 일일정수 사용법</h2>
-            <span class="modal-close" onclick="closeGuideModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p>코랄, 아이어, 제루스의 하위유닛은 1회 조합 시 <strong>+1 정수</strong>가 합산됩니다.</p>
-            <p>혼종 유닛의 경우 3회 조합 시 코랄/아이어/제루스 3개 정수 전체에 <strong>+1 정수</strong>가 동시 합산됩니다.</p>
-        </div>
-    </div>
-</div>
-
 <div class="container">
-    <div class="header-container">
-        <div class="title-group">
-            <h1 class="main-title">개복디 종합툴</h1>
+    <div class="glass-header">
+        <div class="header-brand">
+            <h1 class="main-title">개복디 넥서스 V2.0</h1>
             <p class="creator-info">제작자 회장 | 핸들값 3-S2-1-2461127</p>
         </div>
-        <div class="view-toggles">
-            <button id="btn-view1" class="btn-view active" onclick="switchView(1)">히든조합</button>
-            <button id="btn-view2" class="btn-view" onclick="switchView(2)">일일정수</button>
-            <button id="btn-guide" class="btn-guide" onclick="openGuideModal()">사용법</button>
-        </div>
-        <div class="header-dummy"></div>
-    </div>
-
-    <div class="search-panel" id="searchWrapper">
-        <div class="input-container">
-            <input type="text" id="comboInput" class="input-overlay-box" placeholder="유닛명*수량 (예: 타이커스*8)" autocomplete="off" spellcheck="false">
-            <div id="highlightLayer" class="input-overlay-box"></div>
-        </div>
-        <button class="btn-reset" onclick="resetCombo()">초기화</button>
+        <button id="btn-toggle-view" class="btn-toggle-view" onclick="toggleMainView()">일일정수 전환</button>
     </div>
 
     <div id="view-combo" class="view-section active">
-        <div class="left-panel">
-            <div id="searchResultList"></div>
-            <div class="magic-dashboard" id="magicDashboard"></div>
-            <div id="tablesContainer"></div>
+        <div class="panel-col">
+            <div class="card-panel" style="flex:none; height:auto;">
+                <div class="search-container">
+                    <div class="input-wrapper">
+                        <input type="text" id="comboInput" class="input-overlay-box" placeholder="유닛명*수량 (예: 타이커스*8)" autocomplete="off" spellcheck="false">
+                        <div id="highlightLayer" class="input-overlay-box"></div>
+                    </div>
+                    <button class="btn-reset" onclick="resetCombo()">초기화</button>
+                </div>
+                
+                <div class="magic-dashboard-container">
+                    <div class="magic-dashboard" id="magicDashboard"></div>
+                    <div id="searchResultList"></div>
+                </div>
+
+                <div class="quick-tools-panel">
+                    <div class="quick-tools-header">빠른 등급 검색 필터</div>
+                    <div class="grade-buttons" id="quickGradeButtons"></div>
+                </div>
+            </div>
         </div>
-        <div class="right-panel">
+
+        <div class="card-panel">
             <div id="treeView"></div>
+        </div>
+
+        <div class="card-panel">
+            <div id="tablesContainer"></div>
         </div>
     </div>
 
     <div id="view-essence" class="view-section">
-        <div class="essence-header-panel">
-            <span id="essence-total-val">0</span>
-            <div class="essence-cards">
-                <div class="essence-card coral">
-                    <div class="essence-card-title">코랄의 정수</div>
-                    <div><span class="essence-card-val" id="val-coral">0</span><span class="essence-card-max" id="max-coral"> / 0</span></div>
+        <div class="essence-top-banner">
+            <div class="essence-score-master">
+                <div class="score-circle">
+                    <span id="essence-total-val">0</span>
+                    <label>Total</label>
                 </div>
-                <div class="essence-card aiur">
-                    <div class="essence-card-title">아이어의 정수</div>
-                    <div><span class="essence-card-val" id="val-aiur">0</span><span class="essence-card-max" id="max-aiur"> / 0</span></div>
+                <div class="essence-sub-scores">
+                    <div class="sub-score-card">
+                        <div class="title">코랄의 정수</div>
+                        <div><span class="value" id="val-coral">0</span><span class="max" id="max-coral">/0</span></div>
+                    </div>
+                    <div class="sub-score-card">
+                        <div class="title">아이어의 정수</div>
+                        <div><span class="value" id="val-aiur">0</span><span class="max" id="max-aiur">/0</span></div>
+                    </div>
+                    <div class="sub-score-card">
+                        <div class="title">제루스의 정수</div>
+                        <div><span class="value" id="val-zerus">0</span><span class="max" id="max-zerus">/0</span></div>
+                    </div>
                 </div>
-                <div class="essence-card zerus">
-                    <div class="essence-card-title">제루스의 정수</div>
-                    <div><span class="essence-card-val" id="val-zerus">0</span><span class="essence-card-max" id="max-zerus"> / 0</span></div>
-                </div>
+                <button class="btn-reset-essence" onclick="resetAllEssence()">초기화 (전체선택 해제)</button>
+            </div>
+            
+            <div class="essence-guide-text">
+                코랄, 아이어, 제루스의 하위유닛은 1회 조합 시 <strong>+1 정수</strong>가 합산됩니다.<br>
+                혼종 유닛의 경우 3회 조합 시 3개 정수 전체에 <strong>+1 정수</strong>가 동시 합산됩니다.
             </div>
         </div>
-        <div class="essence-groups-container" id="essenceGroupsContainer"></div>
+
+        <div class="essence-grid" id="essenceGroupsContainer"></div>
     </div>
 </div>
 
@@ -241,6 +382,7 @@ const clean = (s) => s ? s.replace(/\s+/g, '').toLowerCase() : '';
 const essenceMax = { coral: 0, aiur: 0, zerus: 0 };
 const essenceUnitsMap = { coral: [], aiur: [], zerus: [], hybrid: [] };
 const essenceClickState = {};
+let currentView = 1;
 
 function init() {
     DOM.tablesContainer = document.getElementById("tablesContainer");
@@ -251,33 +393,62 @@ function init() {
     DOM.highlightLayer = document.getElementById("highlightLayer");
     DOM.comboInput.addEventListener("input", () => { updateHighlight(); debounceSearch(); });
     DOM.comboInput.addEventListener("scroll", () => { DOM.highlightLayer.scrollLeft = DOM.comboInput.scrollLeft; });
-    loadUnits(); renderDashboardAtoms(); renderTabs(); initEssenceData();
+    loadUnits(); renderDashboardAtoms(); renderTabs(); initEssenceData(); renderQuickFilters();
 }
 
-function switchView(viewId) {
-    document.getElementById('btn-view1').classList.remove('active');
-    document.getElementById('btn-view2').classList.remove('active');
-    document.getElementById('view-combo').classList.remove('active');
-    document.getElementById('view-essence').classList.remove('active');
-    if (viewId === 1) {
-        document.getElementById('btn-view1').classList.add('active');
-        document.getElementById('view-combo').classList.add('active');
-        document.getElementById('searchWrapper').style.display = 'flex';
-        document.getElementById('btn-guide').style.display = 'none';
-    } else {
-        document.getElementById('btn-view2').classList.add('active');
+function toggleMainView() {
+    const btn = document.getElementById('btn-toggle-view');
+    if (currentView === 1) {
+        currentView = 2;
+        document.getElementById('view-combo').classList.remove('active');
         document.getElementById('view-essence').classList.add('active');
-        document.getElementById('searchWrapper').style.display = 'none';
-        document.getElementById('btn-guide').style.display = 'flex';
+        btn.innerText = '히든조합 전환';
+    } else {
+        currentView = 1;
+        document.getElementById('view-combo').classList.add('active');
+        document.getElementById('view-essence').classList.remove('active');
+        btn.innerText = '일일정수 전환';
     }
 }
-
-function openGuideModal() { document.getElementById('guideModal').style.display = 'flex'; }
-function closeGuideModal() { document.getElementById('guideModal').style.display = 'none'; }
 
 function isLegend(name) { return unitGradeMap["레전드"].some(u => clean(u) === clean(name)); }
 function isHidden(name) { return unitGradeMap["히든"].some(u => clean(u) === clean(name)); }
 function isSuperHidden(name) { return unitGradeMap["슈퍼히든"].some(u => clean(u) === clean(name)); }
+
+function renderQuickFilters() {
+    const container = document.getElementById('quickGradeButtons');
+    const targetGrades = ["에픽", "유니크", "헬", "레전드", "히든", "슈퍼히든"];
+    let html = '';
+    targetGrades.forEach(g => {
+        html += `<button class="grade-btn" style="border-left: 4px solid ${gradeColors[g]};" onclick="showGradeUnits('${g}')">${g}</button>`;
+    });
+    container.innerHTML = html;
+}
+
+function showGradeUnits(grade) {
+    DOM.comboInput.value = ""; updateHighlight();
+    DOM.searchResultList.innerHTML = "";
+    resetMagicDashboard(true);
+    const units = unitGradeMap[grade];
+    if(!units) return;
+    
+    let html = `<div class="analysis-card" style="border-color:${gradeColors[grade]};"><h3 style="color:${gradeColors[grade]}; border-bottom-color:var(--border-light);">${grade} 등급 유닛 목록</h3><div style="display:flex; flex-direction:column; gap:8px; margin-top: 15px;">`;
+    units.forEach((u, idx) => {
+        html += `<div style="display:flex; align-items:center; padding: 12px 15px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-panel); cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='var(--bg-panel-hover)'" onmouseout="this.style.background='var(--bg-panel)'" onclick="selectUnitFromAction('${u}')">
+            <span style="color:var(--text-sub); width: 35px; font-weight:bold; font-size: 1.1rem;">${idx + 1}.</span>
+            <span style="color:${gradeColors[grade]}; font-weight:800; font-size: 1.05rem;">${u}</span>
+        </div>`;
+    });
+    html += `</div></div>`;
+    DOM.treeView.innerHTML = html;
+
+    // 모바일 자동 스크롤 적용
+    if(window.innerWidth <= 1200) {
+        document.getElementById('treeView').scrollIntoView({ behavior: 'smooth' });
+    } else {
+        DOM.treeView.scrollTop = 0;
+    }
+}
 
 function initEssenceData() {
     essenceUnitsMap.coral = []; essenceUnitsMap.aiur = []; essenceUnitsMap.zerus = []; essenceUnitsMap.hybrid = [];
@@ -301,7 +472,7 @@ function initEssenceData() {
         essenceUnitsMap[group].sort((a, b) => superHiddenCheck(a) - superHiddenCheck(b));
         if(group !== "hybrid") {
             essenceMax[group] = essenceUnitsMap[group].length + hybridLength; 
-            document.getElementById(`max-${group}`).innerText = ` / ${essenceMax[group]}`;
+            document.getElementById(`max-${group}`).innerText = `/${essenceMax[group]}`;
         }
     });
     renderEssenceGroups();
@@ -316,23 +487,45 @@ function renderEssenceGroups() {
         { id: 'hybrid', title: '혼종', data: essenceUnitsMap.hybrid }
     ];
     let html = '';
+    const isMobile = window.innerWidth <= 1200;
+    
     groupConfigs.forEach(g => {
-        html += `<div class="essence-group-box"><div class="essence-group-header"><div class="essence-group-title">${g.title}</div><button class="btn-select-all" onclick="toggleAllEssence('${g.id}')">전체선택</button></div>`;
+        const displayStyle = isMobile ? 'none' : 'block';
+        const icon = isMobile ? '▼' : '▲';
+        html += `<div class="essence-group">
+            <div class="essence-group-header" onclick="toggleEssenceGroup('${g.id}')" style="cursor:pointer;">
+                <h3 class="essence-group-title">${g.title} <span id="es-icon-${g.id}" style="font-size:0.8rem; margin-left:8px; color:var(--text-muted);">${icon}</span></h3>
+                <button class="btn-select-all" onclick="event.stopPropagation(); toggleAllEssence('${g.id}')">전체선택</button>
+            </div>
+            <div id="es-content-${g.id}" class="essence-content" style="display:${displayStyle};">`;
+        
         const categories = [...new Set(g.data.map(u => u.category))];
         categories.forEach(cat => {
             const catUnits = g.data.filter(u => u.category === cat);
             if(catUnits.length === 0) return;
-            html += `<div class="essence-sub-category">${cat}</div><div class="essence-unit-grid">`;
-            catUnits.forEach((uObj, idx) => {
-                const color = getUnitColor(uObj.name); const unitName = uObj.name;
-                const textColor = uObj.isSuper ? '#ffd700' : '#888';
-                html += `<div class="essence-unit-btn" id="es-btn-${clean(unitName)}" onclick="toggleEssence('${unitName}')" style="border-left: 4px solid ${color}; color: ${textColor};">${idx + 1}. ${unitName}</div>`;
+            html += `<div class="cat-title">${cat}</div><div class="unit-check-list">`;
+            catUnits.forEach((uObj) => {
+                const unitName = uObj.name;
+                const uColor = getUnitColor(unitName);
+                html += `<div class="unit-check-btn" id="es-btn-${clean(unitName)}" onclick="toggleEssence('${unitName}')"><span style="color:${uColor}; font-weight:800;">${unitName}</span></div>`;
             });
             html += `</div>`;
         });
-        html += `</div>`;
+        html += `</div></div>`;
     });
     container.innerHTML = html; updateEssenceCalculation();
+}
+
+function toggleEssenceGroup(groupId) {
+    const content = document.getElementById(`es-content-${groupId}`);
+    const icon = document.getElementById(`es-icon-${groupId}`);
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.innerText = '▲';
+    } else {
+        content.style.display = 'none';
+        icon.innerText = '▼';
+    }
 }
 
 function toggleAllEssence(groupId) {
@@ -352,6 +545,17 @@ function toggleEssence(unitName) {
     updateEssenceCalculation();
 }
 
+function resetAllEssence() {
+    for (let key in essenceClickState) {
+        if (essenceClickState.hasOwnProperty(key)) {
+            essenceClickState[key] = false;
+            const btn = document.getElementById(`es-btn-${clean(key)}`);
+            if (btn) btn.classList.remove('active');
+        }
+    }
+    updateEssenceCalculation();
+}
+
 function updateEssenceCalculation() {
     let baseCounts = { coral: 0, aiur: 0, zerus: 0, hybrid: 0 };
     essenceUnitsMap.coral.forEach(u => { if(essenceClickState[u.name]) baseCounts.coral++; });
@@ -365,19 +569,13 @@ function updateEssenceCalculation() {
 
 function loadUnits() {
     rawData.forEach(cat => cat.items.forEach(item => {
-        if (item.name === "혼종뫼비우스" && item.cost && !item.cost.includes("갓오브타임")) {
-            item.cost += ",갓오브타임[1]";
-        }
-        if (item.name === "제우스폭격기" && item.cost && !item.cost.includes("메시브")) {
-            item.cost += ",메시브디제스터[1]";
-        }
+        if (item.name === "혼종뫼비우스" && item.cost && !item.cost.includes("갓오브타임")) { item.cost += ",갓오브타임[1]"; }
+        if (item.name === "제우스폭격기" && item.cost && !item.cost.includes("메시브")) { item.cost += ",메시브디제스터[1]"; }
         allUnits.push({ ...item, key: clean(item.name), category: cat.category });
     }));
-    
     hiddenUnits.forEach(u => {
         const exist = allUnits.find(e => e.key === clean(u.name));
-        if (!exist) allUnits.push({ ...u, key: clean(u.name), category: "히든" });
-        else if (u.recipe) exist.recipe = u.recipe;
+        if (!exist) allUnits.push({ ...u, key: clean(u.name), category: "히든" }); else if (u.recipe) exist.recipe = u.recipe;
     });
 }
 
@@ -385,7 +583,7 @@ function getUnitColor(name) {
     const cName = clean(name.split(/[(\[▶▼]/)[0]);
     for (const [grade, units] of Object.entries(unitGradeMap)) { if (units.some(u => clean(u) === cName)) return gradeColors[grade]; }
     const unit = allUnits.find(u => u.key === cName);
-    return (unit && raceColors[unit.category]) ? raceColors[unit.category] : "#ffffff";
+    return (unit && raceColors[unit.category]) ? raceColors[unit.category] : "var(--text-main)";
 }
 
 function updateHighlight() {
@@ -393,8 +591,8 @@ function updateHighlight() {
     const safeVal = val.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const parts = safeVal.split(/([,\/]+)/);
     const coloredParts = parts.map(part => {
-        if (/^[,\/]+$/.test(part)) return `<span style="color:#888">${part}</span>`;
-        const subParts = part.split('*'); let unitName = subParts[0]; let color = "#d4d4d4";
+        if (/^[,\/]+$/.test(part)) return `<span style="color:var(--text-muted)">${part}</span>`;
+        const subParts = part.split('*'); let unitName = subParts[0]; let color = "var(--text-main)";
         if (unitName.trim().length > 0) {
             const cleanName = clean(unitName);
             const ali = { "아몬":"아몬", "불새":"불새케리건", "노바":"비밀작전노바", "아둔":"아둔의창", "나루드":"나루드", "초월체":"초월체" };
@@ -403,24 +601,18 @@ function updateHighlight() {
             if (found) color = getUnitColor(found.name);
         }
         subParts[0] = `<span style="color:${color}">${unitName}</span>`;
-        return subParts.join('<span style="color:#888">*</span>');
+        return subParts.join('<span style="color:var(--text-muted)">*</span>');
     });
     DOM.highlightLayer.innerHTML = coloredParts.join('');
 }
 
 function processCostKeyword(rawName, amount, map) {
-    let matched = false;
-    const cName = clean(rawName);
+    let matched = false; const cName = clean(rawName);
     for (const conf of specialKeywordMap) {
         if (conf.keys.some(k => cName.includes(clean(k)))) {
             const val = conf.divider ? amount / conf.divider : amount;
-            if (conf.subKey) {
-                map[conf.atom][conf.subKey] += val;
-            } else {
-                map[conf.atom] = (map[conf.atom] || 0) + val;
-            }
-            matched = true;
-            break;
+            if (conf.subKey) { map[conf.atom][conf.subKey] += val; } else { map[conf.atom] = (map[conf.atom] || 0) + val; }
+            matched = true; break;
         }
     }
     if (!matched) {
@@ -435,11 +627,8 @@ function parseFixedCost(costStr, multiplier, map) {
     const parts = costStr.split(',');
     parts.forEach(p => {
         const match = p.match(/(.+)\[(\d+)\]/);
-        if (match) {
-            processCostKeyword(match[1], parseInt(match[2]) * multiplier, map);
-        } else {
-            processCostKeyword(p, multiplier, map);
-        }
+        if (match) { processCostKeyword(match[1], parseInt(match[2]) * multiplier, map); } 
+        else { processCostKeyword(p, multiplier, map); }
     });
 }
 
@@ -448,33 +637,25 @@ function calculateRecursiveCost(name, m, map, visited = new Set()) {
     if (visited.has(pName)) return;
     const curV = new Set(visited); curV.add(pName);
 
-    if (processCostKeyword(pName, m, map)) {
-        return;
-    }
+    if (processCostKeyword(pName, m, map)) { return; }
     
     const u = allUnits.find(x => x.key === pName);
     if (u && u.recipe) {
         u.recipe.split(/[+,]/).forEach(part => {
             const ingMatch = part.match(/([^(\[\]+]+)/);
             if (ingMatch) {
-                const ingName = ingMatch[1].trim(); 
-                const cntMatch = part.match(/\[(\d+)\]/);
+                const ingName = ingMatch[1].trim(); const cntMatch = part.match(/\[(\d+)\]/);
                 const cnt = cntMatch ? parseInt(cntMatch[1]) : 1;
                 calculateRecursiveCost(ingName, cnt * m, map, curV);
-            } else {
-                calculateRecursiveCost(part.trim(), m, map, curV);
-            }
+            } else { calculateRecursiveCost(part.trim(), m, map, curV); }
         });
     }
 }
 
 function analyzeUnits(keys, mults = {}) {
-    resetMagicDashboard(false); 
-    const totalMap = {}; 
-    
+    resetMagicDashboard(false); const totalMap = {}; 
     dashboardAtoms.forEach(a => { 
-        if (a.name === "갓오타/메시브") totalMap[a.name] = { 갓오타: 0, 메시브: 0 };
-        else totalMap[a.name] = 0; 
+        if (a.name === "갓오타/메시브") totalMap[a.name] = { 갓오타: 0, 메시브: 0 }; else totalMap[a.name] = 0; 
     });
     
     if (keys.length === 1) {
@@ -486,14 +667,12 @@ function analyzeUnits(keys, mults = {}) {
             });
 
             if (parents.length > 0) {
-                let parentHtml = `<div class="analysis-card" style="border-top-color: #ffd700; border-bottom: 1px solid rgba(255,215,0,0.2); margin-bottom: 20px; background: rgba(255,215,0,0.05);">
-                    <h3 style="color: #ffd700; font-size: 0.95rem;">▲ 상위 계보 (이 유닛으로 조합 가능한 상위 유닛)</h3>
+                let parentHtml = `<div class="analysis-card" style="border-color: var(--accent); background: rgba(56, 189, 248, 0.05);">
+                    <h3 style="color: var(--accent); border-bottom-color: rgba(56,189,248,0.2);">🚀 상위 조합 가능 유닛 (계보)</h3>
                     <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">`;
-                
                 parents.forEach(p => {
-                    parentHtml += `<div class="unit-badge" style="color:${getUnitColor(p.name)}; border-color:rgba(255,215,0,0.4);" onclick="selectUnitFromAction('${p.name}')">${p.name}</div>`;
+                    parentHtml += `<div class="unit-badge" style="color:${getUnitColor(p.name)}; border-color: rgba(255,255,255,0.1);" onclick="selectUnitFromAction('${p.name}')">${p.name}</div>`;
                 });
-                
                 parentHtml += `</div></div>`;
                 DOM.treeView.innerHTML += parentHtml;
             }
@@ -505,20 +684,19 @@ function analyzeUnits(keys, mults = {}) {
         const c = mults[k] || 1;
         if (u.cost && u.cost !== "정보 부족" && u.cost !== "미발견" && u.cost !== "없음") parseFixedCost(u.cost, c, totalMap); 
         else calculateRecursiveCost(u.name, c, totalMap);
-        DOM.treeView.innerHTML += `<div class="analysis-card" style="border-top-color:${getUnitColor(u.name)}"><h3><span>[ ${u.name}${c>1?' x'+c:''} ]</span><button class="tree-btn" data-expanded="false" onclick="toggleSingleTree(this)">모두 펼치기</button></h3><ul class="tree-ul root-ul">${buildTree(u.key, new Set(), true)}</ul></div>`;
+        DOM.treeView.innerHTML += `<div class="analysis-card"><h3><span style="color:${getUnitColor(u.name)}; text-shadow:0 0 10px rgba(255,255,255,0.1);">${u.name}${c>1?' <span style="color:var(--text-muted);font-size:0.9rem;">x'+c+'</span>':''}</span><button class="tree-btn" data-expanded="false" onclick="toggleSingleTree(this)">전체 펼치기</button></h3><ul class="tree-ul root-ul">${buildTree(u.key, new Set(), true)}</ul></div>`;
     });
     
     dashboardAtoms.forEach(a => {
-        const val = totalMap[a.name]; 
-        const e = document.getElementById(`val-${a.name}`); 
+        const val = totalMap[a.name]; const e = document.getElementById(`val-${a.name}`); 
         const container = document.getElementById(`val-container-${a.name}`);
         const nameEl = container.querySelector('.slot-name');
 
         if (a.name === "갓오타/메시브") {
             if (val.갓오타 > 0 || val.메시브 > 0) {
                 let html = "";
-                if (val.갓오타 > 0) html += `<div style="font-size:0.85rem; line-height:1.3; color:#f39c12;">갓오타 [${Math.ceil(val.갓오타)}]</div>`;
-                if (val.메시브 > 0) html += `<div style="font-size:0.85rem; line-height:1.3; color:#e74c3c;">메시브 [${Math.ceil(val.메시브)}]</div>`;
+                if (val.갓오타 > 0) html += `<div style="font-size:0.9rem; line-height:1.2; color:#F59E0B;">갓오타 ${Math.ceil(val.갓오타)}</div>`;
+                if (val.메시브 > 0) html += `<div style="font-size:0.9rem; line-height:1.2; color:#EF4444; margin-top:2px;">메시브 ${Math.ceil(val.메시브)}</div>`;
                 e.innerHTML = html;
                 if(nameEl) nameEl.style.display = 'none'; 
                 container.classList.add('active'); 
@@ -534,7 +712,7 @@ function analyzeUnits(keys, mults = {}) {
 function buildTree(key, visited = new Set(), isRoot = false) {
     const u = allUnits.find(x => x.key === key);
     if (!u) return `<li class="tree-li"><div class="unit-badge">${key}</div></li>`;
-    if (visited.has(key)) return `<li class="tree-li"><div class="unit-badge" style="color:#e07a5f;">${u.name} (중복)</div></li>`;
+    if (visited.has(key)) return `<li class="tree-li"><div class="unit-badge" style="color:var(--text-muted); background:var(--bg-base);">${u.name} (중복)</div></li>`;
     const newV = new Set(visited); newV.add(key);
     const dStyle = isRoot ? 'block' : 'none'; const mark = dStyle === 'block' ? '▼' : '▶'; let ch = '';
     if (u.recipe) {
@@ -550,8 +728,8 @@ function buildTree(key, visited = new Set(), isRoot = false) {
         <div class="unit-badge" style="color:${getUnitColor(u.name)};" onclick="toggleTreeNode(this)">
             ${u.name}${ch ? `<span class="toggle-mark">${mark}</span>` : ''}
         </div>
-        ${u.recipe ? `<div class="bullet-recipe" style="display:${dStyle};">${u.recipe}</div>` : ''}
-        ${(u.cost && !isRedundant) ? `<div class="bullet-cost" style="display:${dStyle};">코스트: ${u.cost}</div>` : ''}
+        ${u.recipe ? `<div class="bullet-recipe" style="display:${dStyle};">재료: ${u.recipe}</div>` : ''}
+        ${(u.cost && !isRedundant) ? `<div class="bullet-cost" style="display:${dStyle};">매직: ${u.cost}</div>` : ''}
         ${ch ? `<ul class="tree-ul" style="display:${dStyle};">${ch}</ul>` : ''}
     </li>`;
 }
@@ -582,12 +760,17 @@ const debounceSearch = debounce(() => {
 
 function selectUnitFromAction(name) {
     DOM.comboInput.value = name; updateHighlight(); DOM.searchResultList.innerHTML = ""; DOM.treeView.innerHTML = ""; analyzeUnits([clean(name)]);
-    if(window.innerWidth <= 1024) document.getElementById('treeView').scrollIntoView({ behavior: 'smooth' }); else DOM.treeView.scrollTop = 0;
+    if(window.innerWidth <= 1200) document.getElementById('treeView').scrollIntoView({ behavior: 'smooth' }); else DOM.treeView.scrollTop = 0;
 }
 
 function renderTabs() {
     let h = `<div class="tabs-wrapper">`;
-    rawData.forEach((cat, idx) => { h += `<button class="tab-btn" id="tab-btn-${idx}" onclick="selectTab(${idx})">${cat.category}<span class="unit-count">(${cat.items.length})</span></button>`; });
+    rawData.forEach((cat, idx) => { 
+        h += `<button class="tab-btn" id="tab-btn-${idx}" onclick="selectTab(${idx})">
+                <span>${cat.category}</span>
+                <span class="unit-count">${cat.items.length}</span>
+              </button>`; 
+    });
     h += `</div><div id="tabContent" class="tab-content-area"></div>`;
     DOM.tablesContainer.innerHTML = h; selectTab(0);
 }
@@ -595,7 +778,7 @@ function renderTabs() {
 function selectTab(idx) {
     document.querySelectorAll('.tab-btn').forEach((btn, i) => { if(i === idx) btn.classList.add('active'); else btn.classList.remove('active'); });
     let h = `<table><tbody>`;
-    rawData[idx].items.forEach((item, i) => { h += `<tr onclick="selectUnitFromAction('${item.name}')"><td style="color:${getUnitColor(item.name)}; font-weight:bold; cursor:pointer; width:30%;">${i+1}. ${item.name}</td><td style="cursor:pointer; color:#aaa;">${item.recipe}</td></tr>`; });
+    rawData[idx].items.forEach((item, i) => { h += `<tr onclick="selectUnitFromAction('${item.name}')"><td style="color:${getUnitColor(item.name)}; cursor:pointer;">${i+1}. ${item.name}</td><td style="cursor:pointer;">${item.recipe}</td></tr>`; });
     h += `</tbody></table>`;
     const contentArea = document.getElementById('tabContent'); contentArea.innerHTML = h; contentArea.scrollTop = 0;
 }
@@ -619,8 +802,7 @@ function toggleSingleTree(btn) {
     card.querySelectorAll('.bullet-recipe').forEach(el => el.style.display = displayStyle);
     card.querySelectorAll('.bullet-cost').forEach(el => el.style.display = displayStyle); 
     card.querySelectorAll('.toggle-mark').forEach(el => el.innerText = markChar);
-    btn.setAttribute('data-expanded', newState); btn.innerText = newState ? '모두 접기' : '모두 펼치기';
-    if(newState) btn.classList.add('active-state'); else btn.classList.remove('active-state');
+    btn.setAttribute('data-expanded', newState); btn.innerText = newState ? '전체 접기' : '전체 펼치기';
 }
 
 function resetCombo() { DOM.comboInput.value = ""; updateHighlight(); DOM.searchResultList.innerHTML = ""; DOM.treeView.innerHTML = ""; resetMagicDashboard(true); }
@@ -640,13 +822,8 @@ function resetMagicDashboard(clearAll) {
         const container = document.getElementById(`val-container-${a.name}`);
         const e = document.getElementById(`val-${a.name}`); 
         const nameEl = container.querySelector('.slot-name');
-        
-        if(e) {
-            e.innerHTML = "0"; 
-            e.style.display = ""; 
-        }
+        if(e) { e.innerHTML = "0"; e.style.display = ""; }
         if(nameEl) nameEl.style.display = "block"; 
-        
         container.classList.remove('active'); 
     }); 
 }
@@ -656,103 +833,9 @@ function debounce(f, t) { let timer; return (...args) => { clearTimeout(timer); 
 window.onload = init;
 </script>
 
-<style>
-    @media (max-width: 1024px) {
-        * { box-sizing: border-box !important; }
-        html, body { overflow-x: hidden !important; width: 100% !important; position: relative; height: auto; }
-        .container { 
-            padding: 0 8px !important; width: 100% !important; 
-            max-width: 100vw !important; overflow-x: hidden !important; display: block !important; 
-        }
-        .header-container { flex-direction: column; padding: 10px 5px; gap: 8px; text-align: center; }
-
-        .view-toggles { 
-            display: flex !important; flex-direction: row !important; 
-            flex-wrap: nowrap !important; width: 100% !important; gap: 4px; 
-        }
-        .btn-view, .btn-guide { 
-            flex: 1 !important; padding: 12px 0 !important; 
-            font-size: 0.85rem !important; font-weight: 800 !important; 
-            white-space: nowrap; min-width: 0 !important;
-        }
-
-        .view-section.active { display: flex !important; flex-direction: column !important; width: 100% !important; }
-        .left-panel, .right-panel { width: 100% !important; flex: none !important; }
-
-        .magic-dashboard { 
-            display: grid !important; grid-template-columns: repeat(6, 1fr) !important; 
-            width: 100% !important; gap: 4px !important; padding: 5px !important; 
-        }
-        .cost-slot { height: 50px !important; min-width: 0 !important; padding: 2px !important; }
-        .slot-val { font-size: 0.95rem !important; }
-        .slot-name { font-size: 0.65rem !important; }
-
-        .tabs-wrapper { 
-            display: grid !important; grid-template-columns: repeat(3, 1fr) !important; 
-            gap: 6px !important; width: 100% !important; 
-        }
-        .tab-btn { padding: 10px 0 !important; font-size: 0.85rem !important; width: 100% !important; }
-
-        .essence-header-panel { 
-            position: sticky !important; top: 0 !important; z-index: 1100 !important; 
-            background: #05080a !important; 
-            width: calc(100% + 16px) !important; margin: 0 -8px 15px -8px !important; 
-            padding: 10px 8px 15px 8px !important;
-            border-bottom: 2px solid #1a3644 !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
-        }
-        #essence-total-val { font-size: 3.5rem !important; margin-bottom: 12px !important; }
-
-        .essence-cards { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
-        .essence-card { padding: 10px 2px !important; min-width: 0 !important; }
-        .essence-card-title { font-size: 0.75rem !important; }
-        .essence-card-val { font-size: 1.2rem !important; }
-
-        .essence-groups-container { display: flex !important; flex-direction: column !important; gap: 10px; padding-bottom: 80px; }
-        .essence-group-header { 
-            cursor: pointer; padding: 15px !important; background: rgba(17, 45, 59, 0.6); 
-            border: 1px solid #1a3644; border-radius: 8px;
-            display: flex !important; align-items: center !important; justify-content: space-between !important;
-        }
-        .btn-select-all { 
-            margin-left: auto !important; margin-right: 12px !important; 
-            padding: 6px 12px !important; font-size: 0.8rem !important;
-            background: transparent !important; border: 1px solid rgba(0, 191, 255, 0.4) !important;
-            color: #00bfff !important; min-width: 75px; flex-shrink: 0;
-        }
-        .essence-group-header::after { content: '▼'; font-size: 0.7rem; color: #00bfff; opacity: 0.7; }
-        .essence-group-box.active .essence-group-header::after { transform: rotate(180deg); }
-
-        .essence-group-box .essence-sub-category, .essence-group-box .essence-unit-grid { display: none; }
-        .essence-group-box.active .essence-sub-category, .essence-group-box.active .essence-unit-grid { display: flex; }
-
-        #treeView { overflow-x: hidden !important; padding-bottom: 100px; }
-    }
-</style>
-
 <script>
+    /* 보안 스크립트 */
     (function() {
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('btn-select-all')) {
-                e.stopPropagation();
-                return;
-            }
-            
-            const header = e.target.closest('.essence-group-header');
-            if (header && window.innerWidth <= 1024) {
-                const box = header.closest('.essence-group-box');
-                box.classList.toggle('active');
-                
-                if(box.classList.contains('active')) {
-                    setTimeout(() => {
-                        const stickyH = document.querySelector('.essence-header-panel').offsetHeight;
-                        const boxTop = box.getBoundingClientRect().top + window.pageYOffset;
-                        window.scrollTo({ top: boxTop - stickyH - 5, behavior: 'smooth' });
-                    }, 100);
-                }
-            }
-        });
-
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('dragstart', e => e.preventDefault());
         document.addEventListener('selectstart', e => e.preventDefault());
