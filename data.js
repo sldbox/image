@@ -91,7 +91,7 @@ const dashboardAtoms = [
     { name: "자동포탑", class: "r-special" }, 
     { name: "우르사돈[암]", class: "r-special" }, 
     { name: "우르사돈[수]", class: "r-special" }, 
-    { name: "갓오브타임/메시브데제스터", class: "r-special" }
+    { name: "갓오브타임/메시브", class: "r-special" }
 ];
 
 // [5. 유닛 조합 데이터 (메인 데이터베이스)]
