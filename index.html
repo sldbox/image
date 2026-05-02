@@ -3,223 +3,365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' blob: data:;">
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    
-    <title>이미지 용량절약 종합툴</title>
+    <title>초간편 사진/영상 용량 줄이기</title>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     <style>
         :root {
-            --bg: #0f172a; --card-bg: #1e293b; --text: #f1f5f9;
-            --accent: #38bdf8; --border: #334155; --success: #10b981;
+            --bg: #0b0f1a; --card: #161d31; --accent: #38bdf8;
+            --text: #f1f5f9; --border: #2d3748; --success: #10b981;
+            --danger: #ef4444; --info: #818cf8; --warning: #f59e0b;
         }
-        /* 드래그 및 선택 방지 */
-        * { 
-            box-sizing: border-box; 
-            -webkit-tap-highlight-color: transparent;
-            user-select: none; 
-            -webkit-user-drag: none;
-        }
-        body {
-            background-color: var(--bg); color: var(--text);
-            font-family: 'Pretendard', sans-serif; margin: 0; padding: 10px; 
-            display: flex; justify-content: center;
-        }
-        .app-container { width: 100%; max-width: 1200px; }
-        header { text-align: center; margin-bottom: 1.5rem; }
-        header h1 { color: var(--accent); font-size: 1.5rem; }
+        * { box-sizing: border-box; user-select: none; font-family: 'Pretendard', -apple-system, sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .app-wrapper { width: 100%; max-width: 1200px; }
 
-        .folder-notice {
-            background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent);
-            padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem;
-            display: flex; flex-direction: column; gap: 8px; align-items: center;
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { color: var(--accent); font-size: 2rem; margin: 0; letter-spacing: -1px; font-weight: 800; }
+        header p { color: #64748b; margin-top: 5px; font-size: 1rem; }
+
+        .control-bar {
+            background: rgba(30, 41, 59, 0.9); border: 1px solid var(--border);
+            padding: 18px 25px; border-radius: 20px; margin-bottom: 1.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+            backdrop-filter: blur(15px); position: sticky; top: 10px; z-index: 100;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
-        .upload-section {
-            border: 2px dashed var(--border); border-radius: 1rem;
-            padding: 2.5rem 1rem; text-align: center; cursor: pointer;
-            background: rgba(255,255,255,0.02); margin-bottom: 1.5rem;
+        .config-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 1.5rem; }
+        .glass-panel { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; }
+        .panel-title { font-size: 1.1rem; font-weight: 700; color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .control-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
+        
+        select, input[type="range"] {
+            background: #0f172a; border: 1px solid var(--border); color: white;
+            padding: 10px; border-radius: 8px; outline: none; font-size: 0.9rem;
         }
 
-        .controls {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-            background: rgba(0,0,0,0.2); padding: 1.2rem; border-radius: 1rem; margin-bottom: 1.5rem;
+        .drop-zone {
+            border: 2px dashed var(--border); border-radius: 20px; padding: 40px;
+            text-align: center; cursor: pointer; transition: 0.3s; background: rgba(255,255,255,0.02);
+            margin-bottom: 1.5rem;
         }
-        .control-group { display: flex; flex-direction: column; gap: 5px; }
-        select, input[type="range"] { 
-            background: var(--card-bg); color: var(--text); border: 1px solid var(--border);
-            padding: 10px; border-radius: 8px; outline: none;
-        }
+        .drop-zone:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
 
-        .task-list { display: flex; flex-direction: column; gap: 8px; }
+        .task-list { display: flex; flex-direction: column; gap: 12px; }
         .task-item {
-            background: var(--card-bg); padding: 0.8rem 1rem; border-radius: 0.8rem;
-            border: 1px solid var(--border); display: grid;
-            grid-template-columns: 1.5fr 1fr 1fr 1fr 0.8fr 0.8fr; align-items: center; gap: 10px;
+            background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 16px;
+            display: flex; flex-direction: column; gap: 15px;
         }
-        .status-badge { font-size: 0.7rem; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; }
-        .status-wait { background: #475569; }
-        .status-run { background: var(--accent); color: #000; }
-        .status-done { background: var(--success); color: #000; }
+        .task-header { display: flex; justify-content: space-between; align-items: center; }
+        .task-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; }
+        
+        .detail-box { display: flex; flex-direction: column; gap: 4px; }
+        .detail-label { font-size: 0.75rem; color: #64748b; font-weight: 700; }
+        .detail-value { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; }
 
-        .btn {
-            padding: 0.8rem; background: var(--accent); color: #0f172a;
-            font-weight: bold; border-radius: 0.6rem; cursor: pointer; border: none; width: 100%;
-        }
+        .status-pill { font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; font-weight: 800; }
+        .s-ready { background: #334155; color: #94a3b8; }
+        .s-run { background: var(--accent); color: #000; box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
+        .s-done { background: var(--success); color: #000; }
 
-        @media (max-width: 768px) {
-            .task-item { grid-template-columns: 1fr 1fr; }
-            .controls { grid-template-columns: 1fr; }
-        }
+        .btn-pro { padding: 12px 24px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 1rem; }
+        .btn-primary { background: #1e293b; color: var(--accent); border: 1px solid var(--accent); }
+        .btn-run { background: var(--success); color: #0f172a; width: 180px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+        .btn-run:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        @media (max-width: 900px) { .config-section { grid-template-columns: 1fr; } }
     </style>
 </head>
-<body oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
+<body>
 
-<div class="app-container">
-    <header><h1>이미지 용량절약 종합툴</h1></header>
+<div class="app-wrapper">
+    <header>
+        <h1>사진·영상 용량 줄이기 <span style="font-weight: 200;">PRO</span></h1>
+        <p>복잡한 설정 없이 클릭 한 번으로 미디어를 가볍게 만드세요</p>
+    </header>
 
-    <div class="folder-notice" id="folder-status">
-        <span id="status-text">저장 위치를 먼저 지정하십시오.</span>
-        <button class="btn" id="btn-dir">저장 폴더 선택</button>
+    <div class="control-bar">
+        <div id="queue-status">대기 중인 파일: <b id="count-wait" style="color:var(--accent)">0</b>개</div>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn-pro btn-primary" id="btn-dir">저장될 위치 선택</button>
+            <button class="btn-pro btn-run" id="btn-start" disabled>작업 시작하기</button>
+        </div>
     </div>
 
-    <div class="upload-section" id="drop-zone">
-        <p style="font-weight: 600;">변환할 폴더 또는 파일 선택</p>
-        <input type="file" id="file-input" accept="image/*" multiple webkitdirectory style="display:none">
+    <div class="config-section">
+        <div class="glass-panel">
+            <div class="panel-title">📸 사진 설정</div>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label>저장할 파일 종류</label>
+                    <select id="img-format">
+                        <option value="webp">WebP (표준 - 추천)</option>
+                        <option value="avif">AVIF (가장 가벼움)</option>
+                        <option value="jpeg">JPEG (호환성 좋음)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>선명도: <b id="img-q-label">80%</b></label>
+                    <input type="range" id="img-quality" min="10" max="100" value="80">
+                </div>
+                <div class="control-group">
+                    <label>사진 크기 줄이기</label>
+                    <select id="img-scale">
+                        <option value="1.0">그대로 유지 (100%)</option>
+                        <option value="0.75">조금 줄임 (75%)</option>
+                        <option value="0.5">절반으로 줄임 (50%)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>개인정보 삭제</label>
+                    <select id="img-meta">
+                        <option value="strip">위치/날짜정보 삭제(보안)</option>
+                        <option value="keep">정보 그대로 유지</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <div class="panel-title">🎬 영상 설정</div>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label>압축 방식</label>
+                    <select id="vid-codec">
+                        <option value="libx264">MP4 표준 (추천)</option>
+                        <option value="libx265">고효율 압축 (속도 느림)</option>
+                        <option value="copy">빠른 복사 (용량 안줄임)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>용량 줄이기 강도: <b id="vid-q-label">중간</b></label>
+                    <input type="range" id="vid-quality" min="18" max="35" value="23">
+                </div>
+                <div class="control-group">
+                    <label>영상 화질</label>
+                    <select id="vid-bitrate">
+                        <option value="auto">자동 최적화</option>
+                        <option value="5000k">고화질(선명함)</option>
+                        <option value="2500k">표준 화질</option>
+                        <option value="1000k">저화질(매우 가벼움)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>작업 속도</label>
+                    <select id="vid-speed">
+                        <option value="medium">표준 속도</option>
+                        <option value="fast">빠르게</option>
+                        <option value="ultrafast">매우 빠르게</option>
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="controls">
-        <div class="control-group">
-            <label>변환 포맷</label>
-            <select id="format-select">
-                <option value="image/avif">AVIF (최고압축)</option>
-                <option value="image/webp" selected>WebP (표준)</option>
-                <option value="image/jpeg">JPEG</option>
-                <option value="image/png">PNG</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label>품질: <b id="quality-label">80%</b></label>
-            <input type="range" id="quality-range" min="0.1" max="1.0" step="0.01" value="0.8">
-        </div>
+    <div class="drop-zone" id="drop-zone">
+        <div style="font-weight: 800; color: var(--accent); font-size: 1.3rem; margin-bottom: 8px;">여기에 사진이나 영상을 끌어다 놓으세요</div>
+        <p style="color:#64748b;">파일을 선택하면 자동으로 작업 목록에 추가됩니다</p>
+        <input type="file" id="file-input" multiple webkitdirectory style="display:none">
     </div>
 
     <div class="task-list" id="task-list"></div>
 </div>
 
 <script>
-    /** 1. 강력한 소스코드 접근 차단 로직 **/
-    (function() {
-        // 단축키 차단 (F12, Ctrl+U, Ctrl+Shift+I 등)
-        window.addEventListener('keydown', function(e) {
-            if (
-                e.keyCode === 123 || // F12
-                (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || // Ctrl+Shift+I/J
-                (e.ctrlKey && e.keyCode === 85) || // Ctrl+U
-                (e.ctrlKey && e.keyCode === 83)    // Ctrl+S
-            ) {
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        // 개발자 도구 감지 시 무한 루프 (Debugger Trap)
-        setInterval(function() {
-            (function(a) {
-                return (function(a) {
-                    return (Function('Function(arguments[0])(arguments[1])')(a, a));
-                })(a);
-            })('debugger');
-        }, 100);
-
-        // 콘솔 강제 초기화 및 경고
-        setInterval(() => {
-            console.clear();
-            console.log("%c경고: 소스코드 접근이 차단되었습니다.", "color:red; font-size:20px; font-weight:bold;");
-        }, 500);
-    })();
-
-    /** 2. 앱 기능 로직 **/
     "use strict";
-    const fileInput = document.getElementById('file-input');
-    const dropZone = document.getElementById('drop-zone');
-    const qualityRange = document.getElementById('quality-range');
-    const qualityLabel = document.getElementById('quality-label');
-    const formatSelect = document.getElementById('format-select');
-    const btnDir = document.getElementById('btn-dir');
-    const taskList = document.getElementById('task-list');
-    const statusText = document.getElementById('status-text');
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: false });
+    let ffmpegLoaded = false;
 
-    let rootDirectoryHandle = null;
-
-    btnDir.onclick = async () => {
-        try {
-            rootDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-            statusText.innerHTML = `<b style="color:var(--success)">✓ 연결됨: [${rootDirectoryHandle.name}]</b>`;
-        } catch (err) {}
+    const state = {
+        rootHandle: null,
+        queue: [],
+        isProcessing: false
     };
 
-    qualityRange.oninput = () => qualityLabel.innerText = Math.round(qualityRange.value * 100) + "%";
-    dropZone.onclick = () => fileInput.click();
-    fileInput.onchange = (e) => handleFiles(Array.from(e.target.files));
-    
-    async function handleFiles(files) {
-        if (!rootDirectoryHandle) { alert("저장 폴더를 지정하십시오."); return; }
-        const quality = parseFloat(qualityRange.value);
-        const format = formatSelect.value;
-        const ext = format.split('/')[1];
-        
-        for (const file of files) {
-            if (!file.type.startsWith('image/')) continue;
-            const relPath = file.webkitRelativePath || file.name;
-            const subFolder = relPath.includes('/') ? relPath.split('/')[0] : "Root";
-            const taskId = 't-' + Math.random().toString(36).substr(2, 5);
+    const UI = {
+        btnDir: document.getElementById('btn-dir'),
+        btnStart: document.getElementById('btn-start'),
+        countWait: document.getElementById('count-wait'),
+        fileInput: document.getElementById('file-input'),
+        imgQ: document.getElementById('img-quality'),
+        imgQLabel: document.getElementById('img-q-label'),
+        vidQ: document.getElementById('vid-quality'),
+        vidQLabel: document.getElementById('vid-q-label'),
+        taskList: document.getElementById('task-list'),
+        dropZone: document.getElementById('drop-zone')
+    };
 
-            const item = document.createElement('div');
-            item.className = 'task-item';
-            item.id = taskId;
-            item.innerHTML = `
-                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${file.name}</div>
-                <div style="font-size:0.7rem; color:#94a3b8;">${relPath}</div>
-                <div style="font-size:0.7rem; color:#94a3b8;">${subFolder}/...</div>
-                <div style="font-family:monospace; font-size:0.8rem;">${(file.size/1024).toFixed(1)}K → <span class="new-size">-</span></div>
-                <div class="reduction" style="color:var(--success); font-weight:bold;">-</div>
-                <div class="status-badge status-wait">대기</div>
-            `;
-            taskList.prepend(item);
-            await processFile(file, taskId, quality, subFolder, format, ext);
+    UI.imgQ.oninput = () => UI.imgQLabel.innerText = UI.imgQ.value + "%";
+    UI.vidQ.oninput = () => {
+        let v = UI.vidQ.value;
+        let text = "중간";
+        if (v < 22) text = "약하게(고화질)";
+        if (v > 28) text = "강하게(저용량)";
+        UI.vidQLabel.innerText = text;
+    };
+
+    UI.btnDir.onclick = async () => {
+        try {
+            state.rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            UI.btnDir.innerText = "✓ 폴더 연결됨";
+            updateBtn();
+        } catch (e) {}
+    };
+
+    UI.dropZone.onclick = () => UI.fileInput.click();
+    UI.fileInput.onchange = (e) => addToQueue(Array.from(e.target.files));
+
+    async function addToQueue(files) {
+        for (const file of files) {
+            const isVid = file.type.startsWith('video/');
+            const isImg = file.type.startsWith('image/');
+            if (!isVid && !isImg) continue;
+
+            const taskId = 't-' + Math.random().toString(36).substr(2, 9);
+            const taskObj = { file, taskId, type: isVid ? 'VIDEO' : 'IMAGE', status: 'ready' };
+            
+            state.queue.push(taskObj);
+            await renderTask(taskObj);
         }
+        updateSummary();
     }
 
-    async function processFile(file, taskId, quality, subFolder, format, ext) {
-        const item = document.getElementById(taskId);
-        const badge = item.querySelector('.status-badge');
-        badge.innerText = "진행중"; badge.className = "status-badge status-run";
+    async function renderTask(task) {
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        item.id = task.taskId;
+
+        let meta = '';
+        if (task.type === 'IMAGE') {
+            const bmp = await createImageBitmap(task.file);
+            meta = `<div class="detail-box"><span class="detail-label">사진 크기</span><span class="detail-value">${bmp.width} × ${bmp.height}</span></div>`;
+        } else {
+            meta = `<div class="detail-box"><span class="detail-label">종류</span><span class="detail-value">동영상 파일</span></div>`;
+        }
+
+        item.innerHTML = `
+            <div class="task-header">
+                <div class="file-name" style="font-weight:800;">${task.file.name}</div>
+                <div class="status-pill s-ready">준비됨</div>
+            </div>
+            <div class="task-body">
+                <div class="detail-box"><span class="detail-label">원래 용량</span><span class="detail-value">${(task.file.size/1024/1024).toFixed(2)} MB</span></div>
+                ${meta}
+                <div class="detail-box"><span class="detail-label">진행 결과</span><span class="detail-value target-val">대기 중...</span></div>
+            </div>
+        `;
+        UI.taskList.prepend(item);
+    }
+
+    UI.btnStart.onclick = async () => {
+        state.isProcessing = true;
+        updateBtn();
+
+        const pending = state.queue.filter(t => t.status === 'ready');
+        for (const task of pending) {
+            await processTask(task);
+        }
+
+        state.isProcessing = false;
+        updateBtn();
+    };
+
+    async function processTask(task) {
+        const el = document.getElementById(task.taskId);
+        const pill = el.querySelector('.status-pill');
+        pill.innerText = "처리 중..."; pill.className = "status-pill s-run";
+        task.status = 'running';
 
         try {
-            const blob = await new Promise((resolve, reject) => {
-                const img = new Image();
-                img.src = URL.createObjectURL(file);
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width; canvas.height = img.height;
-                    canvas.getContext('2d').drawImage(img, 0, 0);
-                    canvas.toBlob(b => { URL.revokeObjectURL(img.src); b ? resolve(b) : reject(); }, format, quality);
-                };
-                img.onerror = reject;
-            });
+            if (task.type === 'IMAGE') await runImage(task, el);
+            else await runVideo(task, el);
+            
+            task.status = 'done';
+            pill.innerText = "완료됨"; pill.className = "status-pill s-done";
+        } catch (e) {
+            task.status = 'error';
+            pill.innerText = "오류"; pill.style.background = "var(--danger)";
+        }
+        updateSummary();
+    }
 
-            const reduction = ((1 - blob.size / file.size) * 100).toFixed(1);
-            item.querySelector('.new-size').innerText = (blob.size/1024).toFixed(1) + "K";
-            item.querySelector('.reduction').innerText = reduction + "%";
-            
-            const subDir = await rootDirectoryHandle.getDirectoryHandle(subFolder, { create: true });
-            const fileHandle = await subDir.getFileHandle(`${file.name.split('.')[0]}_opt.${ext}`, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-            
-            badge.innerText = "완료"; badge.className = "status-badge status-done";
-        } catch (e) { badge.innerText = "실패"; }
+    async function runImage(task, el) {
+        const quality = UI.imgQ.value / 100;
+        const scale = parseFloat(document.getElementById('img-scale').value);
+        const format = 'image/' + document.getElementById('img-format').value;
+        const ext = document.getElementById('img-format').value;
+        
+        const bmp = await createImageBitmap(task.file);
+        const canvas = document.createElement('canvas');
+        canvas.width = bmp.width * scale;
+        canvas.height = bmp.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise(res => canvas.toBlob(res, format, quality));
+        await save(blob, task.file.name, ext);
+
+        updateResult(el, task.file.size, blob.size, `방식: ${ext.toUpperCase()} | 선명도: ${UI.imgQ.value}%`);
+    }
+
+    async function runVideo(task, el) {
+        if (!ffmpegLoaded) { await ffmpeg.load(); ffmpegLoaded = true; }
+
+        const codec = document.getElementById('vid-codec').value;
+        const crf = document.getElementById('vid-quality').value;
+        const speed = document.getElementById('vid-speed').value;
+        const bitrate = document.getElementById('vid-bitrate').value;
+
+        ffmpeg.FS('writeFile', 'input', await fetchFile(task.file));
+        
+        let args = ['-i', 'input'];
+        if (codec !== 'copy') {
+            args.push('-c:v', codec, '-crf', crf, '-preset', speed);
+            if (bitrate !== 'auto') args.push('-b:v', bitrate);
+            args.push('-c:a', 'aac', '-b:a', '128k');
+        } else {
+            args.push('-c', 'copy');
+        }
+        args.push('output.mp4');
+
+        await ffmpeg.run(...args);
+        
+        const data = ffmpeg.FS('readFile', 'output.mp4');
+        const blob = new Blob([data.buffer], { type: 'video/mp4' });
+        
+        await save(blob, task.file.name, 'mp4');
+        updateResult(el, task.file.size, blob.size, `방식: ${codec} | 속도: ${speed}`);
+    }
+
+    function updateResult(el, oldSize, newSize, detail) {
+        const ratio = ((1 - newSize / oldSize) * 100).toFixed(1);
+        el.querySelector('.target-val').innerHTML = `<span style="color:var(--success)">-${ratio}% 가벼워짐 (${(newSize/1024/1024).toFixed(2)}MB)</span>`;
+        
+        const d = document.createElement('div');
+        d.className = 'detail-box';
+        d.innerHTML = `<span class="detail-label">상세 보고</span><span class="detail-value" style="color:var(--info)">${detail}</span>`;
+        el.querySelector('.task-body').appendChild(d);
+    }
+
+    async function save(blob, name, ext) {
+        const n = name.split('.')[0] + `_압축됨.${ext}`;
+        const h = await state.rootHandle.getFileHandle(n, { create: true });
+        const w = await h.createWritable();
+        await w.write(blob);
+        await w.close();
+    }
+
+    function updateSummary() {
+        UI.countWait.innerText = state.queue.filter(t => t.status === 'ready').length;
+        updateBtn();
+    }
+
+    function updateBtn() {
+        const has = state.queue.some(t => t.status === 'ready');
+        UI.btnStart.disabled = !state.rootHandle || !has || state.isProcessing;
     }
 </script>
 </body>
