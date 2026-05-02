@@ -723,7 +723,7 @@ function buildTree(key, visited = new Set(), isRoot = false) {
             if (target && target.key !== u.key) ch += buildTree(target.key, newV, false);
         });
     }
-    const isRedundant = u.recipe && u.cost && clean(u.recipe) === clean(u.cost);
+    const isRedundant = u.recipe && u.cost && clean(u.recipe).replace(/\+/g, ',') === clean(u.cost).replace(/\+/g, ',');
     return `<li class="tree-li">
         <div class="unit-badge" style="color:${getUnitColor(u.name)};" onclick="toggleTreeNode(this)">
             ${u.name}${ch ? `<span class="toggle-mark">${mark}</span>` : ''}
