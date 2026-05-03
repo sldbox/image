@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SLD Nexus</title>
+    <title>SLD Nexus (EN/KR</title>
     <style>
         /* =========================================================
            [0] 폰트 및 전역 CSS 변수
@@ -221,7 +221,7 @@
             </div>
         </div>
         <div class="header-center">
-            <h1 class="main-title">SLD Nexus</h1>
+            <h1 class="main-title">SLD Nexus (EN/KR)</h1>
             <p class="creator-info">Creator Hoe-jang | Handle 3-S2-1-2461127</p>
         </div>
         <div class="header-right">
@@ -495,6 +495,7 @@ const TAB_CATEGORIES = [
 
 const unitMap = new Map();
 const clean = s => s ? s.replace(/\s+/g,'').toLowerCase() : '';
+const escapeStr = s => s.replace(/'/g, "\\'"); // 수정: 작은따옴표 이스케이프 함수 추가
 
 function getUnitColor(name){
     const cName = clean(name.split(/[(\[▶▼]/)[0]);
@@ -694,7 +695,7 @@ function analyzeUnits(keys, mults={}, targetContainer = null){
                     <h3 style="color:var(--accent);border-bottom-color:rgba(56,189,248,.2);">[!] Possible Higher Combinations (Lineage)</h3>
                     <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;">`;
                 parents.forEach(p=>{
-                    htmlBuffer += `<div class="unit-badge" style="color:${getUnitColor(p.name)};border-color:rgba(255,255,255,.1);" onclick="selectUnitFromAction('${p.name}')">${p.name}</div>`;
+                    htmlBuffer += `<div class="unit-badge" style="color:${getUnitColor(p.name)};border-color:rgba(255,255,255,.1);" onclick="selectUnitFromAction('${escapeStr(p.name)}')">${p.name}</div>`;
                 });
                 htmlBuffer += `</div></div>`;
             }
@@ -832,7 +833,7 @@ function selectTab(idx){
     combined.forEach((item) => {
         const nameColor = gradeColors[item.grade] || '#fff';
         
-        h += `<div class="unit-list-card" onclick="selectUnitFromAction('${item.name}')">
+        h += `<div class="unit-list-card" onclick="selectUnitFromAction('${escapeStr(item.name)}')">
             <div class="unit-list-name" style="color: ${nameColor};">
                 ${gradeTag(item.grade)} ${item.name}
             </div>
@@ -876,7 +877,7 @@ function showGradeUnits(grade){
     units.forEach((u,idx)=>{
         html+=`<div style="display:flex;align-items:center;padding:12px 16px;border-radius:8px;border:1px solid var(--border-light);background:var(--bg-base);cursor:pointer;transition:.2s;"
             onmouseover="this.style.background='var(--bg-panel-hover)'" onmouseout="this.style.background='var(--bg-base)'"
-            onclick="selectUnitFromAction('${u.name}')">
+            onclick="selectUnitFromAction('${escapeStr(u.name)}')">
             <span style="color:var(--text-sub);width:40px;font-weight:bold;font-size:.95rem;">${gradeTag(grade)}</span>
             <span style="color:${gradeColors[grade]};font-weight:800;font-size:1rem;margin-left:8px;">${u.name}</span>
             <span style="margin-left:auto;color:var(--text-muted);font-size:.85rem;">${u.category}</span>
@@ -1009,7 +1010,7 @@ function renderEssenceGroups(){
             html+=`<div class="unit-check-list" style="margin-bottom:14px;">`;
             gradeUnits.forEach(uObj=>{
                 const unitName=uObj.name;
-                html+=`<div class="unit-check-btn" id="es-btn-${clean(unitName)}" onclick="toggleEssence('${unitName}')">
+                html+=`<div class="unit-check-btn" id="es-btn-${clean(unitName)}" onclick="toggleEssence('${escapeStr(unitName)}')">
                     <span style="color:${getUnitColor(unitName)};font-weight:800;">${unitName}</span>
                     <span style="margin-left:auto;font-size:.8rem;color:${gradeColors[uObj.grade]||'var(--text-muted)'}">${uObj.category}</span>
                 </div>`;
