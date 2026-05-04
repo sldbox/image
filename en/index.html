@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SLD Nexus (KR Serv)</title>
+    <title>SLD Nexus</title>
     <style>
         /* =========================================================
            [0] 폰트 및 전역 CSS 변수
@@ -221,7 +221,7 @@
             </div>
         </div>
         <div class="header-center">
-            <h1 class="main-title">SLD Nexus (KR Serv)</h1>
+            <h1 class="main-title">SLD Nexus</h1>
             <p class="creator-info">Creator Hoe-jang | Handle 3-S2-1-2461127</p>
         </div>
         <div class="header-right">
@@ -352,7 +352,7 @@ const unitDatabase = [
   {name:"Tosh",  grade:"Hidden",  category:"T-Bio",recipe:"Spectre[2]+Hammer Securities[3]",cost:"Sniper[2],Hammer Securities[5]"},
   {name:"Miner",          grade:"Hidden",  category:"T-Bio",recipe:"Helper(500kills+)[1]+Tauren Toilet[1]",cost:"Warmonger[4],Dark Immortal[4],Helper[1]"},
   {name:"Swan",      grade:"Hidden",  category:"T-Bio",recipe:"Dominion Marauder[2]+Raven[1]+Auto Turret[1]",cost:"Warmonger[8],Hammer Securities[6],Raven[1],Auto Turret[5]"},
-  {name:"Miles Blaze Lewis",grade:"Hidden",category:"T-Bio",recipe:"Prometheus Company(X, 90%↑)+Dominion Marauder[2]+Crimson Archon(10kills+)[1]",cost:"Dark Archon[4],Warmonger[8],Hammer Securities[16],Sniper[4],Spartan Company[4]"},
+{name:"Miles Blaze Lewis",grade:"Hidden",category:"T-Bio",recipe:"Prometheus Company(X, 90%↑)+Dominion Marauder[2]+Crimson Archon(10kills+)[1]",cost:"Dark Archon[4],Warmonger[8],Hammer Securities[16],Sniper[4],Spartan Company[4]"},
   {name:"Murloc Marine",      grade:"Hidden",  category:"T-Bio",recipe:"Death Head[3]+Ravasaur(Burrow)[2]",cost:"Warmonger[3],Hammer Securities[3],Primal Roach[2],Primal Hydralisk[2]"},
   {name:"General Warfield",    grade:"Hidden",  category:"T-Bio",recipe:"Stukov[1]+Spectre[4]",cost:"Warmonger[1],Sniper[5],Hammer Securities[6],Primal Roach[1],Primal Lurker[1],Primal Hydralisk[2]"},
   {name:"Stetman",    grade:"Hidden",  category:"T-Bio",recipe:"Murloc Marine[1]+Tauren Toilet[1]",cost:"Warmonger[7],Hammer Securities[3],Dark Immortal[4],Primal Roach[2],Primal Hydralisk[2]"},
@@ -509,7 +509,7 @@ function getUnitColor(name){
    [ 태그 생성 함수 ]
 ======================================================================== */
 function gradeTag(grade){
-    const short={Magic:'M',Rare:'R',Epic:'E',Unique:'U',Hell:'H',Legend:'L',Hidden:'Hi','Super Hidden':'SH'};
+    const short={Magic:'M',Rare:'R',Epic:'E',Unique:'U',Hell:'HE',Legend:'L',Hidden:'H','Super Hidden':'S'};
     return `<span style="color:${gradeColors[grade]||'#fff'}; font-weight: 800;">[${short[grade]||grade}]</span>`;
 }
 
