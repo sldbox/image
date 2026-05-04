@@ -25,14 +25,59 @@
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg-base); color: var(--text-main); font-family: var(--font); user-select: none; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; letter-spacing: -0.02em; }
-        .container { width: 100%; max-width: 100%; padding: 20px 32px; box-sizing: border-box; display: flex; flex-direction: column; height: 100%; }
+        
+        /* =========================================================
+           [0-1] 시네마틱 인트로 CSS
+        ========================================================= */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000000; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.8s ease;
+        }
+        .splash-title {
+            font-size: 5.5rem; font-weight: 900; color: #ffffff; letter-spacing: 0.05em;
+            text-shadow: 0 0 20px var(--accent), 0 0 50px var(--accent-glow), 0 0 80px rgba(56,189,248,0.2);
+            opacity: 0;
+            animation: cinematicTitle 2s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+        }
+        .splash-access {
+            margin-top: 10px; font-size: 1.5rem; color: var(--accent); letter-spacing: 0.5em; font-weight: 800;
+            opacity: 0;
+            animation: cinematicFadeIn 1.5s ease forwards 0.8s;
+        }
+        .splash-creator {
+            margin-top: 40px; font-size: 1.1rem; color: var(--text-sub); letter-spacing: 0.4em; font-weight: 600;
+            opacity: 0;
+            animation: cinematicFadeIn 1.5s ease forwards 2.5s;
+        }
+        @keyframes cinematicTitle {
+            0% { opacity: 0; transform: scale(1.3); filter: blur(12px); }
+            100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+        @keyframes cinematicFadeIn {
+            0% { opacity: 0; transform: translateY(15px); filter: blur(5px); }
+            100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        @media(max-width: 768px) {
+            .splash-title { font-size: 3rem; }
+            .splash-access { font-size: 1rem; }
+            .splash-creator { font-size: 0.8rem; letter-spacing: 0.2em; }
+        }
+
+        /* 컨테이너 페이드인 효과 추가 */
+        .container { 
+            width: 100%; max-width: 100%; padding: 20px 32px; box-sizing: border-box; display: flex; flex-direction: column; height: 100%; 
+            opacity: 0; transform: scale(0.98); transition: opacity 1s ease, transform 1s ease;
+        }
+        .container.visible { opacity: 1; transform: scale(1); }
 
         /* =========================================================
            [1] 최상단 통합 글로벌 헤더 (검색 + 제목 + 버튼)
         ========================================================= */
         .global-unified-header {
             display: grid;
-            grid-template-columns: 1.1fr 1.3fr 1.1fr;
+            grid-template-columns: 1fr 1.8fr 1fr; /* 중앙 검색창 영역 확장 */
             gap: 18px;
             background: var(--bg-panel);
             border: 1px solid var(--border-light);
@@ -44,25 +89,48 @@
             width: 100%;
         }
         
-        .global-unified-header .header-left { display: flex; align-items: center; width: 100%; padding: 0 18px; box-sizing: border-box; }
-        .global-unified-header .header-center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .global-unified-header .header-right { display: flex; justify-content: flex-end; align-items: center; width: 100%; padding: 0 18px; box-sizing: border-box; }
+        .global-unified-header .header-left { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; width: 100%; padding: 0 24px; box-sizing: border-box; }
+        .global-unified-header .header-center { display: flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; }
+        .global-unified-header .header-right { display: flex; justify-content: flex-end; align-items: center; width: 100%; padding: 0 24px; box-sizing: border-box; }
 
-        /* 헤더 내 검색창 스타일 */
-        .header-search-container { display: flex; gap: 10px; width: 100%; max-width: none; transition: opacity 0.3s ease; }
+        /* 좌측 메인 타이틀 자동 전환 (시네마틱 효과) */
+        .animated-title-container { display: grid; place-items: center start; height: 32px; width: 100%; margin-bottom: 2px; }
+        .main-title { grid-area: 1 / 1; font-size: 1.55rem; font-weight: 800; line-height: 1.2; white-space: nowrap; }
+        .main-title.text-1 {
+            color: transparent; background: linear-gradient(90deg, #fff, var(--accent)); -webkit-background-clip: text; background-clip: text;
+            animation: titleTransition1 8s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .main-title.text-2 {
+            color: var(--accent); font-family: monospace; letter-spacing: 0.15em; text-shadow: 0 0 12px var(--accent-glow); opacity: 0;
+            animation: titleTransition2 8s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes titleTransition1 {
+            0%, 42% { opacity: 1; filter: blur(0); transform: scale(1); }
+            48%, 94% { opacity: 0; filter: blur(5px); transform: scale(1.03); }
+            100% { opacity: 1; filter: blur(0); transform: scale(1); }
+        }
+        @keyframes titleTransition2 {
+            0%, 42% { opacity: 0; filter: blur(5px); transform: scale(0.97); }
+            48%, 94% { opacity: 1; filter: blur(0); transform: scale(1); }
+            100% { opacity: 0; filter: blur(5px); transform: scale(0.97); }
+        }
+        
+        .creator-info { font-size: 0.85rem; color: var(--text-sub); margin: 0; font-weight: 600; }
+
+        /* 헤더 내 중앙 검색창 스타일 (사이즈 확대) */
+        .header-search-container { display: flex; gap: 12px; width: 100%; max-width: 800px; transition: opacity 0.3s ease; }
         .header-search-container .input-wrapper { flex: 1; position: relative; border-radius: 12px; background: var(--bg-base); border: 1px solid var(--border-light); transition: .3s; }
         .header-search-container .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-        .header-search-container .input-overlay-box { width: 100%; height: 48px; box-sizing: border-box; font-size: 1.15rem; font-weight: 700; padding: 0 16px; line-height: 48px; white-space: pre; overflow-x: auto; overflow-y: hidden; border: none; background: transparent; scrollbar-width: none; color: var(--text-main); font-family: var(--font); }
+        .header-search-container .input-overlay-box { width: 100%; height: 56px; box-sizing: border-box; font-size: 1.25rem; font-weight: 700; padding: 0 20px; line-height: 56px; white-space: pre; overflow-x: auto; overflow-y: hidden; border: none; background: transparent; scrollbar-width: none; color: var(--text-main); font-family: var(--font); }
         #highlightLayer { position: absolute; top: 0; left: 0; z-index: 1; color: var(--text-main); pointer-events: none; }
         #comboInput { position: absolute; top: 0; left: 0; z-index: 2; color: transparent; caret-color: var(--accent); outline: none; }
-        #comboInput::placeholder { color: var(--text-muted); font-weight: 600; font-size: 1rem; }
-        .header-search-container .btn-reset { background: rgba(255,255,255,.05); color: var(--text-main); border: 1px solid var(--border-light); border-radius: 12px; padding: 0 20px; font-size: 0.95rem; cursor: pointer; font-weight: bold; transition: .2s; height: 48px; white-space: nowrap; }
+        #comboInput::placeholder { color: var(--text-muted); font-weight: 600; font-size: 1.1rem; }
+        .header-search-container .btn-reset { background: rgba(255,255,255,.05); color: var(--text-main); border: 1px solid var(--border-light); border-radius: 12px; padding: 0 28px; font-size: 1.05rem; cursor: pointer; font-weight: bold; transition: .2s; height: 56px; white-space: nowrap; }
         .header-search-container .btn-reset:hover { background: rgba(255,99,132,.1); color: #FF6B6B; border-color: #FF6B6B; }
 
-        /* 타이틀 및 우측 버튼 */
-        .main-title { color: transparent; background: linear-gradient(90deg, #fff, var(--accent)); -webkit-background-clip: text; background-clip: text; font-size: 1.45rem; font-weight: 800; margin-bottom: 2px; line-height: 1.2; }
-        .creator-info { font-size: 0.8rem; color: var(--text-sub); margin: 0; }
-        .btn-toggle-view { background: linear-gradient(180deg, var(--accent), #0284C7); color: #fff; border: none; border-radius: 50px; padding: 10px 26px; font-size: 0.95rem; cursor: pointer; font-weight: 700; transition: all .3s; box-shadow: 0 4px 15px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.3); font-family: var(--font); white-space: nowrap; }
+        /* 우측 버튼 (사이즈 확대) */
+        .btn-toggle-view { background: linear-gradient(180deg, var(--accent), #0284C7); color: #fff; border: none; border-radius: 50px; padding: 14px 36px; font-size: 1.1rem; cursor: pointer; font-weight: 700; transition: all .3s; box-shadow: 0 4px 15px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.3); font-family: var(--font); white-space: nowrap; }
         .btn-toggle-view:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--accent-glow); }
 
         /* =========================================================
@@ -186,7 +254,9 @@
             .container { padding: 12px; height: auto; }
             
             .global-unified-header { display: flex; flex-direction: column; gap: 16px; padding: 16px; }
-            .global-unified-header .header-left, .global-unified-header .header-right { width: 100%; justify-content: center; padding: 0; }
+            .global-unified-header .header-left { align-items: center; padding: 0; }
+            .global-unified-header .header-center, .global-unified-header .header-right { width: 100%; justify-content: center; padding: 0; }
+            .animated-title-container { place-items: center center; margin-bottom: 6px; }
 
             .view-section.active, #view-essence.active { display: flex; flex-direction: column; gap: 16px; height: auto; }
             .panel-col { height: auto; flex: none; }
@@ -207,11 +277,26 @@
     </style>
 </head>
 <body oncontextmenu="return false">
+
+<!-- [인트로] 시네마틱 스플래시 스크린 -->
+<div id="splash-screen">
+    <div class="splash-title">개복디 넥서스</div>
+    <div class="splash-access">ACCESS GRANTED</div>
+    <div class="splash-creator">제작자 회장 | 핸들값 3-S2-1-2461127</div>
+</div>
+
 <div class="container">
 
     <!-- [최상단 통합 글로벌 헤더] -->
     <div class="global-unified-header">
         <div class="header-left">
+            <div class="animated-title-container">
+                <span class="main-title text-1">개복디 넥서스</span>
+                <span class="main-title text-2">히든조합&일일정수 데이터허브</span>
+            </div>
+            <p class="creator-info">제작자 회장 | 핸들값 3-S2-1-2461127</p>
+        </div>
+        <div class="header-center">
             <div class="header-search-container" id="header-search-block">
                 <div class="input-wrapper">
                     <input type="text" id="comboInput" class="input-overlay-box" placeholder="유닛명*수량 (예: 타이커스*8)" autocomplete="off" spellcheck="false">
@@ -220,12 +305,8 @@
                 <button class="btn-reset" onclick="resetCombo()">초기화</button>
             </div>
         </div>
-        <div class="header-center">
-            <h1 class="main-title">개복디 넥서스</h1>
-            <p class="creator-info">제작자 회장 | 핸들값 3-S2-1-2461127</p>
-        </div>
         <div class="header-right">
-            <button id="btn-toggle-view" class="btn-toggle-view" onclick="toggleMainView()">일일정수 전환</button>
+            <button id="btn-toggle-view" class="btn-toggle-view" onclick="toggleMainView()">일일정수</button>
         </div>
     </div>
 
@@ -249,7 +330,7 @@
         <!-- 2. 중앙 계보 트리 레이어 -->
         <div class="card-panel" id="treeScrollPanel">
             <div id="treeView" class="tree-scroll-container">
-                <div style="color:var(--text-muted);text-align:center;margin-top:80px;font-size:1rem;font-weight:600;">좌측이나 우측에서 유닛을 검색/선택하시면<br>이곳에 계보가 표시됩니다.</div>
+                <div style="color:var(--text-muted);text-align:center;margin-top:80px;font-size:1rem;font-weight:600;">유닛명을 검색 & 빠른 필터 에서 유닛명 선택시<br>등급 목록 및 계보 보기 가 표시됩니다.</div>
             </div>
         </div>
         
@@ -292,7 +373,7 @@
         
         <div class="essence-right-col">
             <div id="essenceTreeView" class="tree-scroll-container">
-                <div style="color:var(--text-muted);text-align:center;margin-top:80px;font-size:1rem;font-weight:600;">좌측에서 유닛을 클릭하면<br>해당 유닛의 계보가 모두 표시됩니다.</div>
+                <div style="color:var(--text-muted);text-align:center;margin-top:80px;font-size:1rem;font-weight:600;">유닛명을 클릭하면<br>해당 유닛의 계보가 표시됩니다.</div>
             </div>
         </div>
     </div>
@@ -455,10 +536,7 @@ const unitDatabase = [
   {name:"군단숙주",      grade:"히든",  category:"저그중립",recipe:"변종가시지옥(SS↑)[2]",cost:"변종가시지옥[2]"},
   {name:"데하카",        grade:"히든",  category:"저그중립",recipe:"데하카고치[1]+퀸(SXD)[1]",cost:"전쟁광[7],망치경호대[3],암흑불멸자[4],원시바퀴[3],변종가시지옥[4],원시히드라리스크[3]"},
   {name:"데하카고치",    grade:"히든",  category:"저그중립",recipe:"데하카의오른팔[1]+이곤스텟먼(SXD)[1]",cost:"전쟁광[7],망치경호대[3],암흑불멸자[4],원시바퀴[2],원시히드라리스크[2]"},
-  
-  // 수정된 데하카의오른팔
   {name:"데하카의오른팔",grade:"히든",  category:"저그중립",recipe:"100라운드이전까지저그업20↑ [(타 종족 업 0)[1],역전 복권10회[1],인생 복권3회시-소환[1]]",cost:"없음"},
-  
   {name:"땅굴파괴자",    grade:"히든",  category:"저그중립",recipe:"아토실로프(X↑,200%↑,Lv7)[4]",cost:"우르사돈[암][8]"},
   {name:"무리군주",      grade:"히든",  category:"저그중립",recipe:"퀸[2]+크레이스[1]",cost:"암흑광전사[1],암흑고위기사[1],암흑집정관[2],원시바퀴[3],변종가시지옥[13],원시히드라리스크[8]"},
   {name:"살모사",        grade:"히든",  category:"저그중립",recipe:"퀸[1]+일벌레(SS↑)[3]",cost:"원시바퀴[2],변종가시지옥[4],원시히드라리스크[3]"},
@@ -929,14 +1007,14 @@ function toggleMainView(){
         currentView=2;
         document.getElementById('view-combo').classList.remove('active');
         document.getElementById('view-essence').classList.add('active');
-        btn.innerText='히든조합 전환';
+        btn.innerText='히든조합';
         searchBlock.style.opacity = '0';
         setTimeout(() => searchBlock.style.display = 'none', 300);
     } else {
         currentView=1;
         document.getElementById('view-combo').classList.add('active');
         document.getElementById('view-essence').classList.remove('active');
-        btn.innerText='일일정수 전환';
+        btn.innerText='일일정수';
         searchBlock.style.display = 'flex';
         setTimeout(() => searchBlock.style.opacity = '1', 10);
     }
@@ -1107,6 +1185,20 @@ function renderEssenceTree(){
 ======================================================================== */
 function debounce(f,t){let timer; return(...args)=>{clearTimeout(timer);timer=setTimeout(()=>f.apply(this,args),t);};}
 
+window.onload = () => {
+    init();
+    
+    // 시네마틱 인트로 스플래시 제어
+    setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => splash.style.display = 'none', 800);
+        }
+        document.querySelector('.container').classList.add('visible');
+    }, 4800);
+};
+
 function init(){
     unitDatabase.forEach(u=>{ if(!u.key) u.key=clean(u.name); unitMap.set(u.key, u); });
 
@@ -1125,7 +1217,6 @@ function init(){
     initEssenceData();
 }
 
-window.onload=init;
 </script>
 
 <script>
