@@ -23,7 +23,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
     <style>
 /* ============================================================
@@ -56,10 +56,10 @@
     --text-sub:    #7A9A7A;
     --text-muted:  #3A5A3A;
 
-    --font-body:   'Noto Sans KR', sans-serif;
-    --font-mono:   'Share Tech Mono', monospace;
+    --font-body:   'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', sans-serif;
+    --font-mono:   'Noto Sans KR', 'Malgun Gothic', sans-serif;
 
-    --header-h:    60px;
+    --header-h:    0px;
     --radius:      3px;
     --safe-top:    env(safe-area-inset-top, 0px);
     --safe-bot:    env(safe-area-inset-bottom, 0px);
@@ -165,7 +165,7 @@ body {
 .intro-hud {
     position: relative; z-index: 5;
     width: min(620px, 92vw);
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     color: var(--g);
     padding: 28px 32px 24px;
     border: 1px solid var(--g-dim);
@@ -308,208 +308,92 @@ body {
 @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
 
 /* ============================================================
-   HEADER
+   HEADER — 완전 제거
 ============================================================ */
-.site-header {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(0,0,0,0.92);
-    border-bottom: 1px solid var(--g-border);
-    backdrop-filter: blur(8px);
-    padding: calc(var(--safe-top) + 10px) 16px 10px;
-    /* glow line */
-    box-shadow: 0 1px 0 var(--g-dim), 0 2px 20px rgba(0,255,65,0.06);
-}
+.site-header { display: none; }
 
-.header-inner {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    max-width: 1800px;
-    margin: 0 auto;
-}
-
-.brand {
-    flex-shrink: 0;
-    font-family: var(--font-mono);
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--g);
-    letter-spacing: 0.08em;
-    text-shadow: 0 0 12px var(--g-glow);
-    white-space: nowrap;
-    position: relative;
-}
-.brand::after {
-    content: "";
-    position: absolute; bottom: -2px; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, var(--g), transparent);
-}
-/* animated title cycling */
-.brand-cycle {
-    display: inline-block;
-    overflow: hidden;
-    border-right: 2px solid var(--g);
-    white-space: nowrap;
-    animation: blink-cursor 0.7s step-end infinite;
-}
-
-/* Search wrapper */
-.search-wrap {
-    flex: 1;
-    min-width: 0;
-    position: relative;
-}
-.search-box {
-    display: flex; align-items: center; gap: 6px;
-    height: 40px;
-    background: rgba(0,255,65,0.03);
-    border: 1px solid var(--g-border);
-    border-radius: var(--radius);
-    padding: 0 12px;
-    position: relative;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-.search-box:focus-within {
-    border-color: var(--g);
-    box-shadow: 0 0 12px rgba(0,255,65,0.15);
-}
-.search-icon {
-    color: var(--g-dim); font-size: 0.85rem; flex-shrink: 0;
-    font-family: var(--font-mono);
-}
-.search-inner { flex: 1; position: relative; min-width: 0; }
-#comboInput {
-    position: absolute; inset: 0;
-    background: transparent; border: none; outline: none;
-    color: transparent; caret-color: var(--g);
-    font-size: 0.95rem; font-family: var(--font-mono);
-    width: 100%;
-}
-#comboInput::placeholder { color: var(--text-muted); font-size: 0.85rem; font-family: var(--font-body); }
-#highlightLayer {
-    pointer-events: none;
-    font-size: 0.95rem; font-family: var(--font-mono);
-    color: var(--text);
-    white-space: pre;
-    overflow: hidden;
-    height: 100%;
-    display: flex; align-items: center;
-}
-.search-suggestions {
-    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-    background: #050505;
-    border: 1px solid var(--g-dim);
-    border-radius: var(--radius);
-    max-height: 300px; overflow-y: auto;
-    z-index: 200; display: none;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.8);
-}
-.search-suggestions.visible { display: block; }
-.suggestion-item {
-    padding: 10px 14px; cursor: pointer;
-    display: flex; align-items: center; gap: 10px;
-    border-bottom: 1px solid rgba(0,255,65,0.06);
-    font-size: 0.9rem; transition: background 0.15s;
-}
-.suggestion-item:hover, .suggestion-item.focused {
-    background: rgba(0,255,65,0.1);
-    border-left: 2px solid var(--g);
-    padding-left: 12px;
-}
-
-/* Header buttons */
-.hdr-btns { display: flex; gap: 6px; flex-shrink: 0; }
-.btn-hdr {
-    height: 40px; padding: 0 14px;
-    background: transparent;
-    border: 1px solid var(--g-border);
-    border-radius: var(--radius);
-    color: var(--g);
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-.btn-hdr:hover {
-    background: var(--g);
-    color: #000;
-    box-shadow: 0 0 12px var(--g-glow);
-}
-
-/* Mobile search row collapse */
-@media (max-width: 719px) {
-    .site-header {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        padding: calc(var(--safe-top) + 8px) 12px 8px;
-    }
-    .header-inner { flex-wrap: wrap; gap: 8px; }
-    .brand { font-size: 1rem; }
-    .search-wrap { order: 3; flex-basis: 100%; }
-    .hdr-btns { margin-left: auto; }
-    .btn-hdr { font-size: 0.75rem; padding: 0 10px; }
-}
+/* 헤더 관련 CSS 제거됨 */
 
 /* ============================================================
-   MAIN LAYOUT
+   MAIN LAYOUT — 헤더 없음, 100vh, 45/30/25
 ============================================================ */
 .main-layout {
+    display: grid;
+    grid-template-columns: 35fr 35fr 30fr;
+    grid-template-rows: auto 1fr;
+    gap: 8px;
+    padding: 8px 8px calc(var(--safe-bot) + 8px);
+    height: 100vh;
+    min-height: 0;
     opacity: 0;
     transform: translateY(8px);
     transition: opacity 0.5s ease, transform 0.5s ease;
 }
 .main-layout.visible { opacity: 1; transform: translateY(0); }
+.panel-codex   { grid-column: 1; grid-row: 1 / 3; min-height: 0; }
+.panel-tree    { grid-column: 2; grid-row: 1 / 3; min-height: 0; }
+/* 3열: 정수(auto) + 매직(나머지) */
+.panel-essence { grid-column: 3; grid-row: 1; min-height: 0; }
+.panel-magic   { grid-column: 3; grid-row: 2; min-height: 0; overflow: hidden; }
+.panel-magic .panel-body { overflow: hidden; padding: 4px; flex: 1; display: flex; flex-direction: column; }
+.panel-essence .panel-body { padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
 
-/* ---- 가로 모니터 / 와이드 PC (landscape + 충분한 가로폭) ---- */
-@media (min-width: 1100px) and (min-aspect-ratio: 1/1) {
-    .main-layout {
-        display: grid;
-        grid-template-columns: 38fr 33fr 29fr;
-        grid-template-rows: auto 1fr;
-        gap: 12px;
-        padding: 12px 16px;
-        height: calc(100vh - var(--header-h));
-        min-height: 0;
-    }
-    .panel-codex   { grid-column: 1; grid-row: 1 / 3; min-height: 0; }
-    .panel-tree    { grid-column: 2; grid-row: 1 / 3; min-height: 0; }
-    .panel-essence { grid-column: 3; grid-row: 1; flex: none; }
-    .panel-magic   { grid-column: 3; grid-row: 2; min-height: 0; overflow: hidden; }
-    .panel-magic .panel-body { overflow-y: auto; }
-    .magic-grid { height: 100%; grid-template-rows: repeat(4, 1fr); }
-    .cost-slot { height: 100%; }
+/* ============================================================
+   TREE 패널 상단 타이틀바 — 제목 크게 + 초기화/사용방법 버튼 크게
+============================================================ */
+.tree-title-bar {
+    display: flex; align-items: center;
+    padding: 10px 16px;
+    background: rgba(0,255,65,0.03);
+    border-bottom: 2px solid var(--g-border);
+    flex-shrink: 0;
+    gap: 10px;
+    position: relative;
 }
-
-/* ---- 세로 모니터 PC (portrait 또는 1100px 미만 넓은 화면) ---- */
-@media (min-width: 720px) and (max-aspect-ratio: 1/1) {
-    .main-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        padding: 10px 14px calc(var(--safe-bot) + 10px);
-    }
-    .panel-essence { grid-column: 1; grid-row: 1; }
-    .panel-magic   { grid-column: 2; grid-row: 1; min-height: 320px; }
-    .panel-codex   { grid-column: 1 / 3; grid-row: 2; min-height: 460px; }
-    .panel-tree    { grid-column: 1 / 3; grid-row: 3; min-height: 400px; }
-    .magic-grid { grid-template-columns: repeat(4, 1fr); }
+.tree-title-bar::after {
+    content: "";
+    position: absolute; bottom: 0; left: 0;
+    width: 60%; height: 1px;
+    background: linear-gradient(90deg, var(--g), transparent);
 }
-
-/* ---- 모바일 / 좁은 화면 (719px 미만) ---- */
-@media (max-width: 719px) {
-    .main-layout {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 10px 10px calc(var(--safe-bot) + 10px);
-    }
-    .panel-essence { order: 1; }
-    .panel-magic   { order: 2; }
-    .panel-codex   { order: 3; }
-    .panel-tree    { order: 4; }
+.tree-brand {
+    font-family: var(--font-body);
+    font-size: 1.25rem; font-weight: 900;
+    color: var(--g);
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 14px var(--g-glow), 0 0 30px rgba(0,255,65,0.2);
+    white-space: nowrap;
+    flex-shrink: 0;
+    /* 커서 깜빡 */
+    border-right: 3px solid var(--g);
+    padding-right: 8px;
+    animation: blink-cursor 0.7s step-end infinite;
+}
+/* 제목과 버튼 사이 탄성 공간 */
+.tree-title-spacer { flex: 1; }
+.tree-title-btns { display: flex; gap: 7px; flex-shrink: 0; }
+.btn-tree-action {
+    height: 36px; padding: 0 18px;
+    background: transparent;
+    border: 1px solid var(--g-border);
+    border-radius: var(--radius);
+    color: var(--g);
+    font-family: var(--font-body);
+    font-size: 0.9rem; font-weight: 900;
+    cursor: pointer; transition: all 0.2s;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+.btn-tree-action:hover {
+    background: var(--g); color: #000;
+    box-shadow: 0 0 14px var(--g-glow);
+}
+/* 초기화 — 약간 강조 */
+.btn-tree-action.btn-reset {
+    border-color: rgba(0,255,65,0.5);
+}
+.btn-tree-action.btn-reset:hover {
+    background: var(--g); color: #000;
 }
 
 /* ============================================================
@@ -573,6 +457,7 @@ body {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    font-family: var(--font-body);
 }
 
 /* ============================================================
@@ -582,7 +467,7 @@ body {
     display: flex; gap: 4px;
     background: rgba(0,0,0,0.4);
     padding: 5px; border-radius: var(--radius);
-    margin-bottom: 12px; flex-shrink: 0;
+    margin-bottom: 10px; flex-shrink: 0;
     overflow-x: auto; white-space: nowrap;
     scrollbar-width: none;
 }
@@ -591,8 +476,8 @@ body {
     background: none; border: none;
     color: var(--text-muted);
     font-family: var(--font-body);
-    font-size: 0.85rem; font-weight: 700;
-    padding: 8px 12px;
+    font-size: 0.82rem; font-weight: 700;
+    padding: 6px 10px;
     cursor: pointer; transition: all 0.2s;
     border-radius: 2px;
     flex-shrink: 0;
@@ -608,16 +493,20 @@ body {
 
 #tabContent { flex: 1; overflow-y: auto; }
 
+/* 2컬럼 유닛 카드 */
 .unit-card {
-    display: flex; flex-direction: column;
-    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: stretch;
+    gap: 0;
     background: rgba(0,0,0,0.5);
     border: 1px solid #161616;
     border-left: 3px solid transparent;
     border-radius: var(--radius);
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     cursor: pointer;
     transition: all 0.18s;
+    overflow: hidden;
 }
 .unit-card:hover { background: #0f0f0f; border-color: #2a2a2a; }
 .unit-card.active {
@@ -625,39 +514,77 @@ body {
     background: var(--g-faint);
     border-color: var(--g-border);
 }
-.uc-title {
-    font-weight: 800; font-size: 1rem;
-    display: flex; align-items: center; gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 6px;
-}
-.uc-recipe { font-size: 0.85rem; color: var(--text-sub); line-height: 1.6; word-break: keep-all; }
 
-/* Grade tag */
-.gtag {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    padding: 1px 5px;
-    border: 1px solid currentColor;
-    border-radius: 2px;
-    opacity: 0.85;
+/* 왼쪽: 유닛명 + 조합조건 */
+.uc-left {
+    padding: 8px 10px;
+    min-width: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 4px;
 }
-.essence-label {
-    font-size: 0.75rem; color: var(--g);
-    font-weight: 800; margin-left: 4px;
+.uc-name-row {
+    display: flex; align-items: center; gap: 5px;
+    font-weight: 800; font-size: 0.92rem;
+    flex-wrap: nowrap; overflow: hidden;
+}
+.uc-recipe {
+    font-size: 0.75rem; color: var(--text-sub);
+    line-height: 1.5; word-break: keep-all;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* 오른쪽: 코스트 + 정수확보 */
+.uc-right {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px;
+    padding: 6px 8px;
+    border-left: 1px solid #1e1e1e;
+    background: rgba(0,0,0,0.3);
+    min-width: 52px;
+    flex-shrink: 0;
+}
+.uc-cost-badge {
     font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-sub);
+    font-weight: 700;
+    background: rgba(0,255,65,0.05);
+    border: 1px solid #282828;
+    border-radius: 2px;
+    padding: 2px 5px;
+    white-space: nowrap;
+}
+.unit-card.active .uc-cost-badge { color: var(--g); border-color: var(--g-border); }
+.essence-label {
+    font-size: 0.65rem; color: var(--g);
+    font-weight: 800;
+    font-family: var(--font-mono);
+    background: rgba(0,255,65,0.1);
+    border: 1px solid var(--g-border);
+    border-radius: 2px;
+    padding: 1px 4px;
+    white-space: nowrap;
     animation: ess-pulse 2s ease infinite;
 }
 @keyframes ess-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-/* Mobile: collapse tabs to grid */
-@media (max-width: 719px) {
-    .codex-tabs { flex-wrap: wrap; white-space: normal; overflow-x: hidden; }
-    .tab-btn { flex: 1 1 calc(33.333% - 4px); min-width: auto; padding: 8px 4px; font-size: 0.8rem; }
+/* Grade tag */
+.gtag {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 1px 4px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    opacity: 0.85;
+    flex-shrink: 0;
 }
 
 /* ============================================================
-   TREE PANEL
+   TREE PANEL — 색상 세분화, 가시성 향상
 ============================================================ */
 .empty-hud {
     display: flex; flex-direction: column;
@@ -665,62 +592,129 @@ body {
     height: 100%; min-height: 160px;
     color: var(--text-muted);
     text-align: center;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
+    gap: 6px;
 }
-.empty-hud-icon { font-size: 1.8rem; margin-bottom: 12px; opacity: 0.4; }
-.empty-hud-msg { font-size: 0.9rem; opacity: 0.6; }
-.empty-hud-sub { font-size: 0.75rem; opacity: 0.35; margin-top: 6px; }
+.empty-hud-tree-title {
+    font-size: 1.4rem; font-weight: 900;
+    color: var(--g);
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 16px var(--g-glow);
+    margin-bottom: 8px;
+    opacity: 0.85;
+}
+.empty-hud-icon { font-size: 1.6rem; opacity: 0.35; }
+.empty-hud-msg { font-size: 1rem; opacity: 0.55; font-weight: 700; }
+.empty-hud-sub { font-size: 0.82rem; opacity: 0.3; }
 
 .analysis-card {
     background: rgba(0,0,0,0.3);
     border: 1px solid #1e1e1e;
     border-left: 3px solid var(--g);
-    padding: 16px;
-    margin-bottom: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
     border-radius: var(--radius);
 }
 .analysis-card h3 {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     border-bottom: 1px solid #222;
-    padding-bottom: 12px;
-    margin-bottom: 14px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
     display: flex; justify-content: space-between; align-items: center;
     gap: 10px; flex-wrap: wrap;
+    font-family: var(--font-body); font-weight: 900;
 }
 
-.tree-ul { list-style: none; padding-left: 24px; margin-top: 10px; border-left: 1px dashed #2a2a2a; }
+.tree-ul { list-style: none; padding-left: 20px; margin-top: 8px; border-left: 1px dashed #2a2a2a; }
 .tree-ul.root-ul { border-left: none; padding-left: 0; }
-.tree-li { position: relative; margin-top: 10px; }
-.tree-li::before { content: ""; position: absolute; top: 14px; left: -24px; width: 18px; height: 1px; background: #2a2a2a; }
+.tree-li { position: relative; margin-top: 12px; }
+.tree-li::before { content: ""; position: absolute; top: 13px; left: -20px; width: 14px; height: 1px; background: #2a2a2a; }
 .root-ul > .tree-li::before { display: none; }
-.tree-node-wrapper { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tree-node-wrapper { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
 .unit-badge {
     background: #0c0c0c; border: 1px solid #252525;
-    padding: 6px 14px; font-size: 0.9rem; font-weight: 700;
+    padding: 6px 14px; font-size: 0.95rem; font-weight: 700;
     cursor: pointer; border-radius: var(--radius); transition: 0.2s;
+    font-family: var(--font-body);
 }
 .unit-badge:hover { border-color: var(--g); filter: brightness(1.3); }
+
+/* 조합 조건 뱃지 (SXD, X↑ 등) — 노란색 계열로 통일 */
+.cond-badge {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #FFD700;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.35);
+    border-radius: 2px;
+    padding: 2px 7px;
+    white-space: nowrap;
+}
+
+/* 조합법 라인 */
 .bullet-recipe {
-    color: var(--text-sub); font-size: 0.82rem;
-    padding-left: 10px; margin-top: 6px;
-    border-left: 2px solid #282828; margin-left: 14px;
-    line-height: 1.6;
+    font-size: 0.88rem;
+    padding: 6px 12px;
+    margin-top: 6px;
+    margin-left: 12px;
+    border-left: 2px solid #4a7a9b;
+    background: rgba(74,122,155,0.07);
+    border-radius: 0 2px 2px 0;
+    line-height: 1.8;
+    font-family: var(--font-body);
 }
+/* 조합: 레이블 */
+.bullet-recipe .lbl-recipe {
+    color: #4a7a9b;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-right: 6px;
+}
+/* 조합 재료명 — 밝은 하늘색으로 통일 */
+.bullet-recipe .ing-name { color: #87CEEB; font-weight: 600; }
+/* 조합 조건 (괄호) — 노란색으로 통일 */
+.bullet-recipe .ing-cond { color: #FFD700; font-size: 0.82rem; font-weight: 600; }
+/* 조합 수량 — 밝은 초록색으로 통일 */
+.bullet-recipe .ing-cnt { color: #34D399; font-family: var(--font-body); font-size: 0.82rem; font-weight: 700; }
+
+/* 비용 라인 */
 .bullet-cost {
-    color: var(--g); font-size: 0.82rem;
-    padding-left: 10px; margin-top: 4px;
-    font-weight: 700; border-left: 2px solid var(--g-dim); margin-left: 14px;
-    font-family: var(--font-mono);
-    line-height: 1.6;
+    font-size: 0.88rem;
+    padding: 6px 12px;
+    margin-top: 4px;
+    margin-left: 12px;
+    border-left: 2px solid var(--g-dim);
+    background: rgba(0,255,65,0.04);
+    border-radius: 0 2px 2px 0;
+    line-height: 1.8;
+    font-family: var(--font-body);
 }
-.toggle-mark { font-size: 0.65rem; color: var(--g); margin-left: 5px; }
+/* 비용: 레이블 */
+.bullet-cost .lbl-cost {
+    color: var(--g-dim);
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-right: 6px;
+}
+/* 비용 유닛명 — 연두색으로 통일 */
+.bullet-cost .cost-unit-name { color: #7ec87e; font-weight: 600; }
+/* 비용 수량 — 밝은 초록색으로 통일 */
+.bullet-cost .cost-unit-cnt {
+    color: var(--g);
+    font-weight: 700;
+}
+
+.toggle-mark { font-size: 0.65rem; color: var(--g); margin-left: 4px; }
 
 .btn-small {
     background: transparent; color: var(--g);
     border: 1px solid var(--g-border);
     border-radius: var(--radius);
-    padding: 4px 10px; font-size: 0.75rem;
-    font-family: var(--font-mono);
+    padding: 4px 10px; font-size: 0.8rem;
+    font-family: var(--font-body); font-weight: 700;
     cursor: pointer; transition: 0.2s;
 }
 .btn-small:hover { background: var(--g); color: #000; }
@@ -730,6 +724,7 @@ body {
 ============================================================ */
 .essence-row {
     display: flex; gap: 8px; width: 100%;
+    flex: 1;
 }
 .score-cell {
     flex: 1;
@@ -738,7 +733,7 @@ body {
     border-radius: var(--radius);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    padding: 14px 8px;
+    padding: 10px 8px;
     min-width: 0;
     transition: border-color 0.2s;
     position: relative; overflow: hidden;
@@ -753,8 +748,8 @@ body {
     background: linear-gradient(90deg, transparent, var(--g), transparent);
 }
 .score-val {
-    font-family: var(--font-mono);
-    font-size: 1.8rem; font-weight: 400;
+    font-family: var(--font-body);
+    font-size: clamp(1.2rem, 2vw, 2rem); font-weight: 900;
     line-height: 1;
     color: var(--text-muted);
 }
@@ -763,57 +758,56 @@ body {
 .score-label {
     font-size: 0.72rem; margin-top: 6px;
     font-weight: 700; color: var(--text-sub);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     white-space: nowrap;
+    font-family: var(--font-body);
 }
 
 /* ============================================================
-   MAGIC PANEL
+   MAGIC PANEL — 5x4 고정 그리드, 간격 없이 전체 채움
 ============================================================ */
 .magic-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 3px;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    /* 세로가 길어지면 가로 비율로 제한 */
+    max-height: calc(var(--magic-w, 100%) * 4 / 5);
 }
 .cost-slot {
-    background: #050505;
-    border: 1px solid #181818;
-    border-radius: var(--radius);
+    background: #0a0a0a;
+    border: 1px solid #1e1e1e;
+    border-radius: 2px;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    padding: 10px 4px; min-height: 64px;
+    padding: 4px 2px;
     transition: all 0.2s;
+    min-height: 0; min-width: 0;
+    overflow: hidden;
+    /* 정사각형 셀 유지 */
+    aspect-ratio: 1 / 1;
 }
 .cost-slot.active {
-    background: var(--g-faint);
+    background: rgba(0,255,65,0.06);
     border-color: var(--g-border);
-    box-shadow: 0 0 10px rgba(0,255,65,0.08);
+    box-shadow: 0 0 8px rgba(0,255,65,0.1);
 }
 .cost-val {
-    font-family: var(--font-mono);
-    font-size: 1.3rem; font-weight: 400;
+    font-family: var(--font-body);
+    font-size: clamp(0.75rem, 1.2vw, 1.3rem); font-weight: 900;
     color: var(--text-muted);
+    line-height: 1;
 }
-.cost-slot.active .cost-val { color: var(--g); }
+.cost-slot.active .cost-val { color: var(--g); text-shadow: 0 0 8px var(--g-glow); }
 .cost-name {
-    font-size: 0.68rem; color: var(--text-sub);
-    margin-top: 6px; font-weight: 700;
-    text-align: center; line-height: 1.3;
+    font-size: clamp(0.5rem, 0.65vw, 0.68rem); color: var(--text-sub);
+    margin-top: 2px; font-weight: 700;
+    text-align: center; line-height: 1.2;
     word-break: keep-all;
-}
-
-@media (max-width: 719px) {
-    .magic-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .cost-slot { min-height: 56px; padding: 8px 2px; }
-    .cost-val { font-size: 1.1rem; }
-    .cost-name { font-size: 0.62rem; }
-}
-
-/* 모바일 패널 최소 높이 (719px 미만) */
-@media (max-width: 719px) {
-    .panel-magic { min-height: 280px; }
-    .panel-codex { min-height: 500px; }
-    .panel-tree  { min-height: 380px; }
+    font-family: var(--font-body);
 }
 
 /* ============================================================
@@ -884,6 +878,243 @@ body {
    UTILITY
 ============================================================ */
 .no-select { user-select: none; }
+
+/* ============================================================
+   CODEX - 유닛 카드 3열 가로 레이아웃
+============================================================ */
+.tab-btn { font-size: 0.88rem; font-weight: 700; font-family: var(--font-body); }
+.ph-title { font-size: 0.95rem; font-family: var(--font-body); }
+.gtag { font-family: var(--font-body); font-size: 0.68rem; }
+
+/* 카드: 3컬럼 — [유닛명+조합] | [수량] | [코스트+정수] */
+.unit-card {
+    display: grid;
+    grid-template-columns: 1fr 100px 58px;
+    align-items: stretch;
+    gap: 0;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #161616;
+    border-left: 3px solid transparent;
+    border-radius: var(--radius);
+    margin-bottom: 4px;
+    cursor: pointer;
+    transition: all 0.18s;
+    overflow: hidden;
+    min-height: 54px;
+}
+.unit-card:hover { background: #0f0f0f; border-color: #2a2a2a; }
+.unit-card.active {
+    border-left-color: var(--g);
+    background: var(--g-faint);
+    border-color: var(--g-border);
+}
+
+/* 1열: 유닛명 + 조합조건 */
+.uc-left {
+    padding: 8px 10px;
+    min-width: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 4px;
+}
+.uc-name-row {
+    display: flex; align-items: center; gap: 4px;
+    font-weight: 800; font-size: 0.92rem;
+    flex-wrap: nowrap; overflow: hidden;
+}
+.uc-recipe {
+    font-size: 0.72rem; color: var(--text-sub);
+    line-height: 1.5; word-break: keep-all;
+    white-space: normal;
+}
+
+/* 2열: 수량 조절 — 가로 배치 [−][수][+], 버튼 크게 */
+.uc-qty {
+    border-left: 1px solid #1c1c1c;
+    background: rgba(0,0,0,0.25);
+    display: flex; flex-direction: row;
+    align-items: stretch; justify-content: stretch;
+    gap: 0; padding: 0;
+    min-width: 0;
+}
+.qty-btn {
+    background: transparent; border: none;
+    color: var(--text-sub); font-size: 1.2rem; font-weight: 900;
+    flex: 1; width: 100%; min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: 0.15s;
+    font-family: var(--font-body); padding: 0;
+    /* 터치 영역 확보 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.qty-btn:hover  { color: var(--g); background: rgba(0,255,65,0.14); }
+.qty-btn:active { background: rgba(0,255,65,0.25); }
+.unit-card.active .qty-btn { color: var(--g-dim); }
+.unit-card.active .qty-btn:hover { color: var(--g); }
+.qty-num {
+    font-family: var(--font-body); font-size: 1rem; font-weight: 900;
+    color: var(--text-muted); min-width: 22px; text-align: center; line-height: 1;
+    flex-shrink: 0;
+    border-left: 1px solid #1c1c1c;
+    border-right: 1px solid #1c1c1c;
+    padding: 0 2px;
+    display: flex; align-items: center; justify-content: center;
+    align-self: stretch;
+}
+.unit-card.active .qty-num { color: var(--g); }
+
+/* 3열: 코스트 + 정수확보 */
+.uc-right {
+    border-left: 1px solid #1c1c1c;
+    background: rgba(0,0,0,0.3);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px; padding: 5px 4px;
+    min-width: 0;
+}
+.uc-cost-badge {
+    font-family: var(--font-body);
+    font-size: 0.72rem; color: var(--text-muted);
+    font-weight: 700;
+    background: rgba(0,255,65,0.04);
+    border: 1px solid #252525;
+    border-radius: 2px;
+    padding: 2px 4px;
+    white-space: nowrap; text-align: center;
+    line-height: 1.2;
+}
+.unit-card.active .uc-cost-badge { color: var(--g); border-color: var(--g-border); }
+.uc-cost-badge.multi {
+    color: #FFD700; border-color: rgba(255,215,0,0.35);
+    background: rgba(255,215,0,0.06);
+    font-size: 0.68rem;
+}
+.essence-label {
+    font-size: 0.62rem; color: var(--g);
+    font-weight: 800;
+    background: rgba(0,255,65,0.1);
+    border: 1px solid var(--g-border);
+    border-radius: 2px;
+    padding: 1px 3px;
+    white-space: nowrap;
+    animation: ess-pulse 2s ease infinite;
+}
+@keyframes ess-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* Grade tag */
+.gtag {
+    font-family: var(--font-body); font-size: 0.62rem;
+    padding: 1px 3px;
+    border: 1px solid currentColor;
+    border-radius: 2px; opacity: 0.85; flex-shrink: 0;
+}
+
+/* ============================================================
+   RESPONSIVE — MOBILE (터치 + 작은 화면)
+============================================================ */
+@media (max-width: 768px) and (pointer: coarse) {
+    body { min-width: unset; overflow-x: hidden; }
+    .main-layout {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 6px 6px calc(var(--safe-bot) + 30px);
+        gap: 6px;
+    }
+    /* 모바일 순서: 정수카운터 → 매직코스트 → 유닛도감 → 계보 */
+    .panel-essence { order: 1; }
+    .panel-magic   { order: 2; }
+    .panel-codex   { order: 3; }
+    .panel-tree    { order: 4; }
+    .panel-essence, .panel-magic, .panel-codex, .panel-tree {
+        grid-column: unset; grid-row: unset;
+        min-height: auto; height: auto;
+    }
+    .panel-essence .panel-body { padding: 8px; }
+    .essence-row { flex-direction: row; gap: 6px; }
+    .score-cell { padding: 10px 6px; }
+    .score-val { font-size: 1.4rem; }
+    .panel-magic { height: auto; }
+    .panel-magic .panel-body { padding: 5px; overflow: visible; }
+    .magic-grid { height: auto; grid-template-rows: repeat(4, 56px); }
+    .cost-slot { aspect-ratio: unset; height: 56px; }
+    .cost-val { font-size: 1rem; }
+    .cost-name { font-size: 0.58rem; }
+    .panel-codex .panel-body { max-height: 60vh; overflow-y: auto; }
+    .panel-tree .panel-body { max-height: 80vh; overflow-y: auto; }
+    /* 모바일 수량 버튼 더 크게 */
+    .unit-card { grid-template-columns: 1fr 100px 56px; min-height: 58px; }
+    .qty-btn { font-size: 1.3rem; min-height: 48px; }
+    .qty-num { font-size: 1.1rem; }
+    /* 계보 타이틀바 모바일 */
+    .tree-brand { font-size: 1rem; }
+    .btn-tree-action { height: 30px; padding: 0 12px; font-size: 0.8rem; }
+}
+
+@media (max-width: 480px) and (pointer: coarse) {
+    .tree-brand { font-size: 0.88rem; }
+    .btn-tree-action { padding: 0 9px; font-size: 0.76rem; height: 28px; }
+    .unit-card { grid-template-columns: 1fr 100px 52px; min-height: 56px; }
+    .qty-btn { font-size: 1.25rem; }
+}
+
+/* ============================================================
+   PC / 노트북 / 창모드 — 항상 3열 가로 레이아웃 유지
+   최소 너비 이하로 줄어들면 가로 스크롤
+============================================================ */
+.main-layout {
+    min-width: 900px; /* 이 이하로 줄어들면 가로스크롤 */
+}
+body {
+    min-width: 900px;
+    overflow-x: auto;
+}
+
+/* ============================================================
+   세로 모니터 전용
+   — 실제 세로 화면(height > width) 이고 터치 장치일 때만 적용
+   — PC 창모드에서는 절대 발동 안 함
+============================================================ */
+@media (max-aspect-ratio: 1/1) and (max-width: 1100px) and (pointer: coarse) {
+    body { min-width: unset; overflow-x: hidden; }
+    .main-layout {
+        display: grid;
+        min-width: unset;
+        grid-template-columns: 45fr 55fr;
+        grid-template-rows: 1fr auto auto auto;
+        gap: 8px;
+        height: 100vh;
+    }
+    .panel-codex {
+        grid-column: 1; grid-row: 1 / 4; min-height: 0;
+    }
+    .panel-essence {
+        grid-column: 2; grid-row: 1; min-height: 0; display: flex;
+    }
+    .panel-magic {
+        grid-column: 2; grid-row: 2 / 4; min-height: 0; overflow: hidden; display: flex;
+    }
+    .panel-tree {
+        grid-column: 1 / 3; grid-row: 4; min-height: 0; height: 38vh;
+    }
+    .panel-essence .panel-body {
+        padding: 8px 12px; flex: 1; display: flex; flex-direction: column; justify-content: center;
+    }
+    .essence-row { gap: 6px; }
+    .score-cell { padding: 10px 6px; }
+    .score-val { font-size: clamp(1.2rem, 2vw, 1.8rem); }
+    .panel-magic .panel-body {
+        padding: 5px; overflow: hidden; flex: 1; display: flex; flex-direction: column;
+    }
+    .magic-grid { flex: 1; height: 100%; }
+    .panel-tree .panel-body { overflow-y: auto; padding: 12px 14px; }
+    .tree-title-bar { padding: 8px 14px; }
+    .tree-brand { font-size: 1.1rem; }
+    .btn-tree-action { height: 32px; padding: 0 14px; font-size: 0.84rem; }
+}
 </style>
 </head>
 <body oncontextmenu="return false">
@@ -936,34 +1167,7 @@ body {
     <div class="skip-hint"><span>[ 화면 터치 / 클릭으로 스킵 ]</span></div>
 </div>
 
-<!-- ============================================================
-     HEADER
-============================================================ -->
-<header class="site-header">
-    <div class="header-inner">
-        <div class="brand">
-            <span class="brand-cycle" id="brandCycle">개복디 넥서스</span>
-        </div>
-
-        <div class="search-wrap">
-            <div class="search-box">
-                <span class="search-icon">&#128269;</span>
-                <div class="search-inner">
-                    <input type="text" id="comboInput"
-                        placeholder="유닛 검색 (예: 불새, 아몬, 테라*2)"
-                        autocomplete="off" spellcheck="false">
-                    <div id="highlightLayer"></div>
-                </div>
-            </div>
-            <div class="search-suggestions" id="searchSuggestions"></div>
-        </div>
-
-        <div class="hdr-btns">
-            <button class="btn-hdr" onclick="resetAll()">초기화</button>
-            <button class="btn-hdr" onclick="openHelpModal()">사용방법</button>
-        </div>
-    </div>
-</header>
+<!-- 헤더 제거됨 — 제목/버튼은 계보 패널 상단으로 이동 -->
 
 <!-- ============================================================
      MAIN LAYOUT
@@ -984,15 +1188,20 @@ body {
 
     <!-- TREE -->
     <div class="hud-panel panel-tree">
-        <div class="panel-header">
-            <span class="ph-icon">TREE</span>
-            <span class="ph-title">계보 & 조합 트리 시뮬레이션</span>
+        <div class="tree-title-bar">
+            <span class="tree-brand" id="brandCycle">개복디 넥서스</span>
+            <div class="tree-title-spacer"></div>
+            <div class="tree-title-btns">
+                <button class="btn-tree-action btn-reset" onclick="resetAll()">초기화</button>
+                <button class="btn-tree-action" onclick="openHelpModal()">사용방법</button>
+            </div>
         </div>
         <div class="panel-body" id="treeView">
             <div class="empty-hud">
+                <div class="empty-hud-tree-title">계보 &amp; 조합 트리</div>
                 <div class="empty-hud-icon">◈</div>
                 <div class="empty-hud-msg">명령 대기 중</div>
-                <div class="empty-hud-sub">좌측 도감이나 검색창에서 대상을 선택하십시오</div>
+                <div class="empty-hud-sub" id="emptyHudSub">좌측 도감에서 유닛을 선택하십시오</div>
             </div>
         </div>
     </div>
@@ -1003,7 +1212,7 @@ body {
             <span class="ph-icon">ESS</span>
             <span class="ph-title">일일 정수 카운터</span>
         </div>
-        <div class="panel-body" style="padding:12px;">
+        <div class="panel-body" style="padding:10px;display:flex;flex-direction:column;">
             <div class="essence-row">
                 <div class="score-cell total">
                     <div class="score-val" id="essence-total-val">0</div>
@@ -1048,43 +1257,75 @@ body {
             <button class="btn-close" onclick="closeHelpModal()">&times;</button>
         </div>
         <div class="modal-body-scroll">
+
             <div class="guide-section">
-                <h3>유닛 검색 및 자동완성</h3>
+                <h3>화면 구성</h3>
                 <ul>
-                    <li>유닛 이름, 초성, 별명(예: 불새)을 검색창에 직접 입력하여 찾을 수 있습니다.</li>
-                    <li><span class="hl">유닛명*숫자</span> (예: 테라*2) 형식으로 입력하면 여러 유닛을 한 번에 추가 및 계산합니다.</li>
+                    <li>화면은 <span class="hl">유닛 도감</span> · <span class="hl">계보 &amp; 조합 트리</span> · <span class="hl">일일 정수 카운터</span> · <span class="hl">매직 코스트 매트릭스</span> 총 4개 영역으로 구성됩니다.</li>
+                    <li>상단의 <span class="hl">개복디 넥서스</span> 제목 옆 <span class="hl">[초기화]</span> 버튼으로 모든 선택을 한 번에 리셋할 수 있습니다.</li>
+                    <li>모바일에서는 정수 카운터 → 매직 코스트 → 유닛 도감 → 계보 순서로 세로 배치됩니다.</li>
                 </ul>
             </div>
+
             <div class="guide-section">
-                <h3>유닛 도감 데이터베이스 (좌측)</h3>
+                <h3>유닛 도감 — 유닛 선택 &amp; 수량 조절</h3>
                 <ul>
-                    <li>종족별 탭을 눌러 해당 카테고리의 모든 유닛 조합법을 확인합니다.</li>
-                    <li>목록은 <span class="hl">총 필요 비용(Cost)이 비싼 순서</span>로 자동 정렬되어 노출됩니다. (슈퍼히든 등급은 예외로 최상단 고정)</li>
-                    <li>유닛을 클릭하면 중앙 및 우측 패널의 계산기에 즉시 데이터가 반영됩니다.</li>
+                    <li>상단 탭(테바 · 테메 · 토바 · 토메 · 저그중립 · 혼종)으로 종족별 유닛 목록을 전환합니다. 탭 옆 숫자는 해당 카테고리의 히든 이상 유닛 수입니다.</li>
+                    <li>목록은 <span class="hl">총 매직 코스트가 높은 순</span>으로 자동 정렬되며, 슈퍼히든 등급은 최상단에 고정됩니다.</li>
+                    <li>유닛 카드를 <span class="hl">클릭</span>하면 선택(초록 테두리)되며, 계보 트리 · 정수 카운터 · 매직 코스트가 즉시 반영됩니다. 다시 클릭하면 선택 해제됩니다.</li>
+                    <li>카드 중앙의 <span class="hl">[−] 숫자 [+]</span> 버튼으로 해당 유닛의 제작 수량을 1~8 사이에서 조절합니다. 수량이 2 이상이면 코스트 배지가 <span class="hl" style="color:#FFD700;">단가 × 수량 = 합계</span> 형식으로 강조 표시됩니다.</li>
+                    <li>여러 유닛을 동시에 선택하면 모든 유닛의 코스트가 <span class="hl">합산</span>되어 매직 코스트 매트릭스에 반영됩니다.</li>
+                    <li>카드 우측에 <span class="hl">[정수확보]</span> 태그가 표시된 유닛은 오늘 정수를 이미 획득한 유닛입니다.</li>
                 </ul>
             </div>
+
             <div class="guide-section">
-                <h3>계보 및 조합 트리 시뮬레이션 (중앙)</h3>
+                <h3>계보 &amp; 조합 트리</h3>
                 <ul>
-                    <li>선택한 유닛을 만들기 위한 하위 재료가 트리 형태로 상세히 펼쳐집니다.</li>
-                    <li><span class="hl">모두 펼치기/접기</span> 버튼으로 복잡한 계보를 한눈에 파악할 수 있습니다.</li>
-                    <li>단일 유닛을 선택할 경우, 해당 유닛을 재료로 사용하는 <span class="hl">상위 조합 가능 유닛</span>을 추천 목록에 표시해 줍니다.</li>
+                    <li>도감에서 유닛을 선택하면 해당 유닛을 제작하기 위한 <span class="hl">전체 재료 계보</span>가 트리 구조로 펼쳐집니다.</li>
+                    <li>각 노드를 <span class="hl">클릭</span>하면 하위 재료를 접거나 펼칠 수 있습니다.</li>
+                    <li><span class="hl">[모두 펼치기 / 모두 접기]</span> 버튼으로 전체 계보를 한번에 조작합니다.</li>
+                    <li>조합 조건(SXD, X↑ 등)은 <span class="hl" style="color:#FFD700;">노란색 뱃지</span>로, 재료명은 <span class="hl" style="color:#87CEEB;">하늘색</span>으로, 비용 수량은 <span class="hl">초록색</span>으로 구분 표시됩니다.</li>
+                    <li>단일 유닛만 선택했을 때, 해당 유닛을 재료로 사용하는 <span class="hl">상위 조합 가능 유닛</span> 목록이 상단에 추가로 표시됩니다.</li>
+                    <li>여러 유닛을 동시에 선택하면 각 유닛의 계보 카드가 순서대로 나열됩니다.</li>
                 </ul>
             </div>
+
             <div class="guide-section">
-                <h3>일일 정수 카운터 (우측 상단)</h3>
+                <h3>일일 정수 카운터</h3>
                 <ul>
-                    <li><span class="hl">좌측 유닛 도감에서 직접 클릭하여 선택한 유닛</span>에 한해서만 1일 1회 정수(1점)가 오릅니다.</li>
-                    <li>검색창에서 '유닛명*숫자'를 입력하여 코스트를 계산하더라도, 정수 카운터는 함께 오르지 않도록 분리되어 있습니다.</li>
-                    <li>도감에서 유닛을 클릭하면 이름 옆에 <span class="hl">[정수확보]</span> 태그가 표시되어 획득 여부를 쉽게 파악할 수 있습니다.</li>
+                    <li>도감에서 유닛을 <span class="hl">클릭하여 선택</span>할 때마다 해당 유닛의 정수 1점이 자동으로 카운팅됩니다.</li>
+                    <li>종족별로 정수가 분리 집계됩니다: <span class="hl" style="color:#FF6B6B;">코랄</span>(테바·테메) · <span class="hl" style="color:var(--grade-rare);">아이어</span>(토바·토메) · <span class="hl" style="color:var(--grade-legend);">제루스</span>(저그중립). 혼종 유닛은 세 종족 모두에 중복 집계됩니다.</li>
+                    <li><span class="hl">총합</span> 칸은 모든 종족 정수의 합산 값입니다.</li>
+                    <li>정수 카운터는 <span class="hl">[초기화]</span> 버튼으로 리셋할 수 있습니다.</li>
                 </ul>
             </div>
+
             <div class="guide-section">
-                <h3>매직 코스트 산출 매트릭스 (우측 하단)</h3>
+                <h3>매직 코스트 산출 매트릭스</h3>
                 <ul>
-                    <li>선택한 최종 유닛들을 제작하기 위해 필요한 <span class="hl">가장 기초적인 매직 등급 유닛의 총 요구 개수</span>를 역산하여 보여줍니다.</li>
+                    <li>선택한 유닛(수량 포함)을 제작하는 데 필요한 <span class="hl">기초 매직 등급 유닛의 총 개수</span>를 역산해 5×4 그리드로 표시합니다.</li>
+                    <li>숫자가 표시된 칸은 초록색으로 활성화되며, 값이 0인 칸은 어둡게 유지됩니다.</li>
+                    <li>여러 유닛을 동시에 선택하거나 수량을 올리면 모든 비용이 <span class="hl">자동 합산</span>됩니다.</li>
                 </ul>
             </div>
+
+            <div class="guide-section">
+                <h3>등급 색상 안내</h3>
+                <ul>
+                    <li><span class="hl" style="color:#87CEEB;">■ 매직</span> &nbsp;
+                        <span class="hl" style="color:#FBBF24;">■ 레어</span> &nbsp;
+                        <span class="hl" style="color:#FB923C;">■ 에픽</span> &nbsp;
+                        <span class="hl" style="color:#EF4444;">■ 유니크</span> &nbsp;
+                        <span class="hl" style="color:#EC4899;">■ 헬</span> &nbsp;
+                        <span class="hl" style="color:#A78BFA;">■ 레전드</span> &nbsp;
+                        <span class="hl" style="color:#34D399;">■ 히든</span> &nbsp;
+                        <span class="hl" style="color:#FFD700;">■ 슈퍼히든</span>
+                    </li>
+                    <li>도감에는 <span class="hl">레전드 · 히든 · 슈퍼히든</span> 등급만 표시됩니다. 매직~헬 등급은 조합 재료로만 등장합니다.</li>
+                </ul>
+            </div>
+
         </div>
     </div>
 </div>
@@ -1225,18 +1466,53 @@ function calculateTotalCostScore(costStr){
 ==================================================================== */
 function toggleUnitSelection(name){
     const cName=clean(name);
-    if(essenceUnits.has(cName)) essenceUnits.delete(cName);
-    else essenceUnits.add(cName);
-    if(activeUnits.has(cName)) activeUnits.delete(cName);
-    else activeUnits.set(cName,1);
-    updateAllPanels(); updateSearchBarFromState();
+    if(activeUnits.has(cName)){
+        /* 이미 선택됨 → 해제 */
+        activeUnits.delete(cName);
+        essenceUnits.delete(cName);
+    } else {
+        /* 새로 선택 → 수량 1, 정수확보 추가 */
+        activeUnits.set(cName,1);
+        essenceUnits.add(cName);
+    }
+    updateAllPanels();
+    /* 현재 탭 새로고침 — 수량 컨트롤 표시/숨김 */
+    const activeTabIdx=Array.from(document.querySelectorAll('.tab-btn')).findIndex(b=>b.classList.contains('active'));
+    if(activeTabIdx>=0) selectTab(activeTabIdx);
 }
-function updateSearchBarFromState(){
-    const arr=[];
-    activeUnits.forEach((count,key)=>{const u=unitMap.get(key);if(u)arr.push(count>1?`${u.name}*${count}`:u.name);});
-    DOM.comboInput.value=arr.join(", "); updateHighlight();
+
+function changeQty(name, delta){
+    const cName=clean(name);
+    if(!activeUnits.has(cName)) return;
+    const cur=activeUnits.get(cName)||1;
+    const next=Math.max(1,Math.min(8,cur+delta));
+    activeUnits.set(cName,next);
+    const qtyEl=document.getElementById(`qty-${cName}`);
+    if(qtyEl) qtyEl.textContent=next;
+    const u=unitMap.get(cName);
+    const badgeEl=document.getElementById(`badge-${cName}`);
+    if(badgeEl&&u){
+        const base=calculateTotalCostScore(u.cost);
+        const total=base*next;
+        if(next>1){
+            badgeEl.className='uc-cost-badge multi';
+            badgeEl.innerHTML=`${base}×${next}<br><b>${total}</b>`;
+        } else {
+            badgeEl.className='uc-cost-badge';
+            badgeEl.innerHTML=`[${base}]`;
+        }
+    }
+    updateAllPanels();
 }
 function updateAllPanels(){renderTreeAndMagic();updateEssence();refreshCodexHighlight();}
+
+/* PC/모바일 안내문구 동적 전환 */
+function updateEmptyHudText(){
+    const el=document.getElementById('emptyHudSub');
+    if(!el) return;
+    const isMobile=window.innerWidth<=768;
+    el.textContent=isMobile?'상단 도감에서 유닛을 선택하십시오':'좌측 도감에서 유닛을 선택하십시오';
+}
 
 function updateEssence(){
     let counts={coral:0,aiur:0,zerus:0,hybrid:0};
@@ -1264,20 +1540,30 @@ function updateEssence(){
 }
 function refreshCodexHighlight(){
     document.querySelectorAll('.unit-card').forEach(card=>{
-        const name=clean(card.dataset.name);
-        if(activeUnits.has(name)) card.classList.add('active');
-        else card.classList.remove('active');
-        let titleRow=card.querySelector('.uc-title');
-        let eLabel=titleRow.querySelector('.essence-label');
+        const name=clean(card.dataset.name||'');
+        if(!name) return;
+        const isActive=activeUnits.has(name);
+        card.classList.toggle('active', isActive);
+        /* qty 숫자 동기화 */
+        if(isActive){
+            const qty=activeUnits.get(name)||1;
+            const qnum=card.querySelector('.qty-num');
+            if(qnum) qnum.textContent=qty;
+        }
+        /* 정수확보 배지 */
+        const rightCol=card.querySelector('.uc-right');
+        if(!rightCol) return;
+        let eLabel=rightCol.querySelector('.essence-label');
         if(essenceUnits.has(name)){
-            if(!eLabel) titleRow.insertAdjacentHTML('beforeend','<span class="essence-label">[정수확보]</span>');
+            if(!eLabel) rightCol.insertAdjacentHTML('beforeend','<span class="essence-label">정수확보</span>');
         } else { if(eLabel) eLabel.remove(); }
     });
 }
 function renderTreeAndMagic(){
     resetMagicDashboard();
     if(activeUnits.size===0){
-        DOM.treeView.innerHTML=`<div class="empty-hud"><div class="empty-hud-icon">◈</div><div class="empty-hud-msg">명령 대기 중</div><div class="empty-hud-sub">좌측 도감이나 검색창에서 대상을 선택하십시오</div></div>`;
+        DOM.treeView.innerHTML=`<div class="empty-hud"><div class="empty-hud-tree-title">계보 &amp; 조합 트리</div><div class="empty-hud-icon">◈</div><div class="empty-hud-msg">명령 대기 중</div><div class="empty-hud-sub" id="emptyHudSub">좌측 도감에서 유닛을 선택하십시오</div></div>`;
+        updateEmptyHudText();
         return;
     }
     const totalMap={};
@@ -1330,9 +1616,33 @@ function renderTreeAndMagic(){
         }
     });
 }
+function formatRecipeHTML(recipe){
+    if(!recipe||["미발견","없음",""].includes(recipe)) return '';
+    /* 재료 파싱: 이름(조건)[수량]+... */
+    return recipe.split('+').map(part=>{
+        part=part.trim();
+        const m=part.match(/^([^(\[]+)(?:\(([^)]*)\))?(?:\[(\d+)\])?/);
+        if(!m) return `<span class="ing-name">${part}</span>`;
+        const nm=m[1]?m[1].trim():''; const cond=m[2]?m[2]:''; const cnt=m[3]?m[3]:'';
+        return [
+            nm?`<span class="ing-name">${nm}</span>`:'',
+            cond?`<span class="ing-cond">(${cond})</span>`:'',
+            cnt?`<span class="ing-cnt">[${cnt}]</span>`:''
+        ].filter(Boolean).join('');
+    }).join('<span style="color:#444;margin:0 2px;">+</span>');
+}
+function formatCostHTML(cost){
+    if(!cost||["정보 부족","미발견","없음",""].includes(cost)) return '';
+    return cost.split(',').map(p=>{
+        p=p.trim();
+        const m=p.match(/^(.+?)\[(\d+(?:\.\d+)?)\]$/);
+        if(m) return `<span class="cost-unit-name">${m[1].trim()}</span><span class="cost-unit-cnt">[${m[2]}]</span>`;
+        return `<span class="cost-unit-name">${p}</span>`;
+    }).join('<span style="color:#333;margin:0 1px;">,</span>');
+}
 function buildTree(key,visited=new Set(),isRoot=false,conditionStr='',depth=0){
     const u=unitMap.get(key);
-    if(!u)return`<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge">${key}</div><span style="color:var(--text-sub);font-size:0.85rem;">${conditionStr}</span></div></li>`;
+    if(!u)return`<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge">${key}</div>${conditionStr?`<span class="cond-badge">${conditionStr}</span>`:''}</div></li>`;
     if(visited.has(key))return`<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted);opacity:0.5;">${u.name} (중복)</div></div></li>`;
     const newV=new Set(visited); newV.add(key); let ch='';
     if(u.recipe&&!IGNORE_PARSE_RECIPES.includes(u.recipe)){
@@ -1342,7 +1652,7 @@ function buildTree(key,visited=new Set(),isRoot=false,conditionStr='',depth=0){
                 const childName=clean(match[1]); const cond=match[2]?`(${match[2]})`:''; const cnt=match[3]?`[${match[3]}]`:'';
                 const combined=`${cond}${cnt}`; const target=unitMap.get(childName);
                 if(target&&target.key!==u.key)ch+=buildTree(target.key||childName,newV,false,combined,depth+1);
-                else ch+=`<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted);">${match[1].trim()}</div><span style="color:var(--text-sub);font-size:0.85rem;">${combined}</span></div></li>`;
+                else ch+=`<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted);">${match[1].trim()}</div>${combined?`<span class="cond-badge">${combined}</span>`:''}</div></li>`;
             } else {
                 const childName=clean(part); const target=unitMap.get(childName);
                 if(target&&target.key!==u.key)ch+=buildTree(target.key||childName,newV,false,'',depth+1);
@@ -1351,14 +1661,16 @@ function buildTree(key,visited=new Set(),isRoot=false,conditionStr='',depth=0){
     }
     const ulStyle=depth===0?'block':'none'; const mark=depth===0?'▼':'▶'; const bulletDisplay=depth===0?'block':'none';
     const isRedundant=u.recipe&&u.cost&&clean(u.recipe).replace(/\+/g,',')===clean(u.cost).replace(/\+/g,',');
+    const recipeHTML=formatRecipeHTML(u.recipe);
+    const costHTML=formatCostHTML(u.cost);
     return`<li class="tree-li">
         <div class="tree-node-wrapper">
             <div class="unit-badge" style="color:${getUnitColor(u.name)};" onclick="toggleTreeNode(this)">${u.name}${ch?`<span class="toggle-mark">${mark}</span>`:''}
             </div>
-            ${conditionStr?`<span style="color:var(--text-sub);font-size:0.82rem;">${conditionStr}</span>`:''}
+            ${conditionStr?`<span class="cond-badge">${conditionStr}</span>`:''}
         </div>
-        ${(u.recipe&&!["미발견","없음",""].includes(u.recipe))?`<div class="bullet-recipe" style="display:${bulletDisplay};">조합: ${u.recipe}</div>`:''}
-        ${(u.cost&&!isRedundant&&!["미발견","없음",""].includes(u.cost))?`<div class="bullet-cost" style="display:${bulletDisplay};">비용: ${u.cost}</div>`:''}
+        ${(recipeHTML&&!["미발견","없음",""].includes(u.recipe))?`<div class="bullet-recipe" style="display:${bulletDisplay};"><span class="lbl-recipe">조합:</span>${recipeHTML}</div>`:''}
+        ${(costHTML&&!isRedundant&&!["미발견","없음",""].includes(u.cost))?`<div class="bullet-cost" style="display:${bulletDisplay};"><span class="lbl-cost">비용:</span>${costHTML}</div>`:''}
         ${ch?`<ul class="tree-ul ${isRoot?'root-ul':''}" style="display:${ulStyle};">${ch}</ul>`:''}
     </li>`;
 }
@@ -1417,9 +1729,13 @@ const debounceSearch=debounce(()=>{
 
 function resetAll(){
     activeUnits.clear(); essenceUnits.clear();
-    DOM.comboInput.value=""; updateHighlight(); hideSuggestions();
-    DOM.treeView.innerHTML=`<div class="empty-hud"><div class="empty-hud-icon">◈</div><div class="empty-hud-msg">명령 대기 중</div><div class="empty-hud-sub">좌측 도감이나 검색창에서 대상을 선택하십시오</div></div>`;
-    resetMagicDashboard(); updateAllPanels(); DOM.comboInput.focus();
+    hideSuggestions();
+    DOM.treeView.innerHTML=`<div class="empty-hud"><div class="empty-hud-tree-title">계보 &amp; 조합 트리</div><div class="empty-hud-icon">◈</div><div class="empty-hud-msg">명령 대기 중</div><div class="empty-hud-sub" id="emptyHudSub">좌측 도감에서 유닛을 선택하십시오</div></div>`;
+    updateEmptyHudText();
+    resetMagicDashboard(); updateAllPanels();
+    /* 현재 탭 새로고침 */
+    const activeTabIdx=Array.from(document.querySelectorAll('.tab-btn')).findIndex(b=>b.classList.contains('active'));
+    if(activeTabIdx>=0) selectTab(activeTabIdx);
 }
 
 let suggestionsState={focused:-1,items:[]};
@@ -1481,14 +1797,33 @@ function selectTab(idx){
     });
     let h='<div>';
     items.forEach(item=>{
-        const isActive=activeUnits.has(clean(item.name))?'active':'';
-        const totalCost=calculateTotalCostScore(item.cost);
-        const costLabel=totalCost>0?` <span style="font-size:0.78rem;color:var(--text-sub);font-weight:400;">[${totalCost}]</span>`:'';
+        const cName=clean(item.name);
+        const isActive=activeUnits.has(cName)?'active':'';
+        const qty=activeUnits.get(cName)||1;
+        const baseCost=calculateTotalCostScore(item.cost);
+        const totalCost=baseCost*qty;
+        const multiClass=qty>1?' multi':'';
+        /* 코스트 배지: 1마리=[합계], 2마리 이상=단가×수량=합산 */
+        const costBadgeContent=qty>1?`${baseCost}×${qty}<br><b>${totalCost}</b>`:`[${baseCost}]`;
+        const costBadge=baseCost>0?`<span class="uc-cost-badge${multiClass}" id="badge-${cName}">${costBadgeContent}</span>`:'';
+        const isEssence=essenceUnits.has(cName);
+        const essenceBadge=isEssence?`<span class="essence-label">정수확보</span>`:'';
         h+=`<div class="unit-card ${isActive}" data-name="${item.name}" onclick="toggleUnitSelection('${item.name}')">
-            <div class="uc-title" style="color:${getUnitColor(item.name)};">
-                ${gradeTag(item.grade)} ${item.name}${costLabel}
+            <div class="uc-left">
+                <div class="uc-name-row" style="color:${getUnitColor(item.name)};">
+                    ${gradeTag(item.grade)}<span>${item.name}</span>
+                </div>
+                <div class="uc-recipe">${item.recipe||'정보 없음'}</div>
             </div>
-            <div class="uc-recipe">${item.recipe||'정보 없음'}</div>
+            <div class="uc-qty" onclick="event.stopPropagation()">
+                <button class="qty-btn" onclick="changeQty('${item.name}',-1)">−</button>
+                <span class="qty-num" id="qty-${cName}">${qty}</span>
+                <button class="qty-btn" onclick="changeQty('${item.name}',1)">+</button>
+            </div>
+            <div class="uc-right">
+                ${costBadge}
+                ${essenceBadge}
+            </div>
         </div>`;
     });
     h+='</div>';
@@ -1604,20 +1939,16 @@ window.addEventListener('load',()=>{
     /* Cache DOM */
     DOM.magicDashboard=document.getElementById('magicDashboard');
     DOM.treeView=document.getElementById('treeView');
-    DOM.comboInput=document.getElementById('comboInput');
-    DOM.highlightLayer=document.getElementById('highlightLayer');
-    DOM.suggestions=document.getElementById('searchSuggestions');
-
-    /* Input events */
-    DOM.comboInput.addEventListener('input',()=>{updateHighlight();updateSuggestions();debounceSearch();});
-    DOM.comboInput.addEventListener('scroll',()=>{DOM.highlightLayer.scrollLeft=DOM.comboInput.scrollLeft;});
-    DOM.comboInput.addEventListener('focus',()=>{if(DOM.comboInput.value.trim())updateSuggestions();});
-    DOM.comboInput.addEventListener('keydown',handleSuggestionKey);
-    document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))hideSuggestions();});
+    /* 검색바 없음 — 더미 객체로 오류 방지 */
+    DOM.comboInput={value:'',addEventListener:()=>{},setAttribute:()=>{},focus:()=>{}};
+    DOM.highlightLayer={innerHTML:'',scrollLeft:0};
+    DOM.suggestions={classList:{add:()=>{},remove:()=>{},contains:()=>false},innerHTML:'',querySelectorAll:()=>[]};
 
     /* Render */
     renderDashboardAtoms();
     renderTabs();
+    updateEmptyHudText();
+    window.addEventListener('resize', updateEmptyHudText);
 
     /* Brand title cycling */
     const titles=['개복디 넥서스','DATA MATRIX','SYSTEM ONLINE','ACCESS GRANTED'];
