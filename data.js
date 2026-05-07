@@ -104,6 +104,7 @@ const UNIT_DATABASE = {
         ["고르곤전투순양함", "레전드", "테메", "히페리온[1]+과학선[1]", "코브라[11],스파르타중대[7],공성파괴단[18],암흑파수기[1],암흑추적자[1],암흑불멸자[2]"],
         ["과학선", "히든", "테메", "오딘[1]+A.R.E.S[4]", "코브라[6],스파르타중대[2],공성파괴단[8]"],
         ["낮까마귀", "히든", "테메", "땅거미지뢰[2]+투견[3]+통기레쓰[1]", "시체매-지뢰매설[24],코브라[3],스파르타중대[6],암흑광전사[2]"],
+        ["자동포탑", "Normal", "테메", "", ""],
         ["대천사전투기", "히든", "테메", "대천사(SSS↑)[4]", "코브라[4],스파르타중대[4],공성파괴단[8]"],
         ["드라켄레이저천공기", "히든", "테메", "공성파괴단[3]+A.R.E.S[2]", "코브라[2],공성파괴단[5]"],
         ["땅거미지뢰", "히든", "테메", "거미지뢰(시체매로매설)[12]", "시체매-지뢰매설[12]"],
@@ -252,7 +253,7 @@ const UNIT_DATABASE = {
         ["Gorgon Battlecruiser", "Legend", "T-Mech", "Hyperion[1]+Science Vessel[1]", "Diamondback[11],Spartan Company[7],Siege Breaker[18],Dark Sentry[1],Dark Stalker[1],Dark Immortal[2]"],
         ["Science Vessel", "Hidden", "T-Mech", "Odin[1]+ARES[4]", "Diamondback[6],Spartan Company[2],Siege Breaker[8]"],
         ["Raven", "Hidden", "T-Mech", "Widow Mine[2]+WarHound[3]+Garbage[1]", "Vulture-MinePlant[24],Diamondback[3],Spartan Company[6],Dark Zealot[2]"],
-        // [수정완료] Sky Fury(창공의 분노) 영어 조합식 Limit Break 1+ 로 변경
+        ["Auto Turret", "Normal", "T-Mech"],
         ["Arch Fighter", "Hidden", "T-Mech", "Archangel(SSS+)[4]", "Diamondback[4],Spartan Company[4],Siege Breaker[8]"],
         ["Drakken Laser Drill", "Hidden", "T-Mech", "Siege Breaker[3]+ARES[2]", "Diamondback[2],Siege Breaker[5]"],
         ["Widow Mine", "Hidden", "T-Mech", "Spider Mine (Planted by Vulture)[12]", "Vulture-MinePlant[12]"],
