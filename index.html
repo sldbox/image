@@ -1,21 +1,23 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>개복디 넥서스</title>
+    <title>SLD Nexus</title>
     
-    <link rel="icon" href="https://sldbox.github.io/site/icon.png" type="image/png">
-    <link rel="shortcut icon" href="https://sldbox.github.io/site/icon.png" type="image/png">
-    <link rel="apple-touch-icon" href="https://sldbox.github.io/site/icon.png">
-    <meta name="description" content="개복디 넥서스 - 개인복권디펜스 유닛 조합 & 일일정수 계산기">
+    <link rel="icon" href="https://sldbox.github.io/site/image/en-logo/icon.png" 입력="image/png">
+    <link rel="shortcut icon" href="https://sldbox.github.io/site/image/en-logo/icon.png" 입력="image/png">
+    <link rel="apple-touch-icon" href="https://sldbox.github.io/site/image/en-logo/icon.png">
+    <meta name="description" content="SLD Nexus - Unit Combo & Daily Essence Calculator">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://sldbox.github.io/site/">
-    <meta property="og:title" content="개복디 넥서스 - MATRIX HUD">
-    <meta property="og:description" content="히든 조합 계보 시뮬레이션 및 일일 정수 계산기">
-    <meta property="og:image" content="https://sldbox.github.io/site/logo.png">
+    <meta property="og:url" content="https://sldbox.github.io/site/en/">
+    <meta property="og:title" content="SLD Nexus - MATRIX HUD">
+    <meta property="og:description" content="Hidden Combo Lineage Simulation & Essence Calculator">
+    <meta property="og:image" content="https://sldbox.github.io/site/image/en-logo/logo.png">
     
-    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&family=Share+Tech+Mono&family=Song+Myung&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     
     <script>
         (function(){
@@ -28,39 +30,56 @@
 </head>
 <body oncontextmenu="return false">
 
-<div id="introCinematic">
-    <div class="intro-text">SYSTEM BOOTING...</div>
-    <div class="intro-sub">LOADING DATABASE MATRIX</div>
+<div id="introCinematic" class="intro-screen">
+    <div class="intro-scan-lines"></div>
+    <div class="intro-hex-grid"></div>
+    <div class="intro-vignette"></div>
+    <div class="intro-corner tl"></div><div class="intro-corner tr"></div>
+    <div class="intro-corner bl"></div><div class="intro-corner br"></div>
+
+    <div class="intro-status" id="intro-status-text">◈ SYSTEM INITIALIZING ◈</div>
+    <div class="intro-logo">
+        <div class="intro-logo-glow" aria-hidden="true">SLD NEXUS</div>
+        <div class="intro-logo-sup">StarCraft · Lost Dragon</div>
+        <h1>SLD <span class="accent-word">NEXUS</span></h1>
+        <div class="intro-sub">Unit Encyclopedia</div>
+    </div>
+    <div class="intro-divider"></div>
+    <div class="intro-boot-text">
+        HIDDEN COMBO DATABASE · LINEAGE TRACKER · DAILY ESSENCE CALCULATOR<br>
+        Created by Hoe-jang · 3-S2-1-2461127
+    </div>
+    <div class="intro-bar-outer"><div class="intro-bar-inner"></div></div>
 </div>
 
 <main class="main-layout" id="mainLayout">
     <header class="site-header">
         <div class="header-top">
             <div class="header-left">
-                <span style="color:var(--text-sub); font-weight:900;">제작자</span><span style="color:var(--g-dim);">|</span>
-                <span style="color:var(--text-sub); font-weight:900;">회장</span><span style="color:var(--g-dim);">|</span>
+                <span style="color:var(--text-sub); font-weight:900;">Creator</span><span style="color:var(--g-dim);">|</span>
+                <span style="color:var(--text-sub); font-weight:900;">Hoe-jang</span><span style="color:var(--g-dim);">|</span>
                 <span style="color:var(--text-sub); font-weight:900; letter-spacing:0.05em;">3-S2-1-2461127</span>
             </div>
-            <div class="brand"><span class="brand-cycle" id="brandCycle" style="font-size:1.45rem;">개복디 넥서스</span></div>
+            <div class="brand"><span class="brand-cycle" id="brandCycle" style="font-size:1.45rem;">SLD NEXUS</span></div>
         </div>
         <div class="hdr-btns">
-            <button class="btn-hdr" id="btnTheme" onclick="toggleTheme()">☀️ 라이트</button>
-            <button class="btn-hdr" onclick="resetAll()">초기화</button>
-            <button class="btn-hdr" onclick="openHelpModal()">가이드</button>
-            <button class="btn-hdr" onclick="openJewelModal()">쥬얼도감</button>
+            <button class="btn-hdr" id="btnTheme" onclick="toggleTheme()">☀️ Light</button>
+            <button class="btn-hdr" onclick="resetAll()">Reset All</button>
+            <button class="btn-hdr" onclick="openHelpModal()">Guide</button>
+            <button class="btn-hdr" onclick="openJewelModal()">Jewels</button>
         </div>
     </header>
 
     <div class="hud-panel panel-codex">
         <div class="panel-header" style="flex-direction:column; align-items:stretch; padding:0; background:var(--panel-hdr-bg);">
             <div style="padding:11px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:center; gap:10px; background:var(--g-faint);">
-                <span class="ph-icon">DB</span><span class="ph-title">유닛&도감 데이터베이스</span>
+                <span class="ph-icon">DB</span><span class="ph-title">UNIT & CODEX DATABASE</span>
             </div>
             <div style="display:flex; width:100%; gap:6px; padding:10px 10px 0 10px; border-bottom:1px solid var(--border); align-items:stretch;">
                 <div class="codex-tabs" id="codexTabs" style="flex:1.5;"></div>
                 <div style="display:flex; gap:6px; flex:1; padding-bottom:10px;">
-                    <button id="btnToggleLineage" class="btn-action" style="flex:1;" onclick="toggleGlobalLineage()">계보</button>
-                    <button id="btnToggleSelectAll" class="btn-action" style="flex:1; padding:0;" onclick="toggleSelectAllInCurrentTab()">전체선택/해제</button>
+                    <button id="btnToggleLineage" class="btn-action" style="flex:1;" onclick="toggleGlobalLineage()">Lineage</button>
+                    <button id="btnToggleSelectAll" class="btn-action" style="flex:1; padding:0;" onclick="toggleSelectAllInCurrentTab()">Select All/None</button>
                 </div>
             </div>
         </div>
@@ -70,36 +89,36 @@
     </div>
 
     <div class="hud-panel panel-magic">
-        <div class="panel-header" style="justify-content:center;"><span class="ph-icon">COST</span><span class="ph-title">총합 코스트 계산 매트릭스</span></div>
+        <div class="panel-header" style="justify-content:center;"><span class="ph-icon">COST</span><span class="ph-title">TOTAL COST MATRIX</span></div>
         <div class="panel-body" style="padding:0;"><div class="magic-grid" id="magicDashboard"></div></div>
     </div>
 </main>
 
 <div class="modal-backdrop" id="helpModal" onclick="closeHelpModal(event)">
     <div class="modal-box" onclick="event.stopPropagation()">
-        <div class="modal-head"><h2>개복디 넥서스 가이드</h2><button class="btn-close" onclick="closeHelpModal()">&times;</button></div>
+        <div class="modal-head"><h2>SLD Nexus Guide</h2><button class="btn-close" onclick="closeHelpModal()">&times;</button></div>
         <div class="modal-body-scroll">
             <div style="text-align:center; margin-bottom:24px; padding-top:10px;">
-                <h3 style="color:var(--text); font-size:1.3rem;">✨ 초보자를 위한 넥서스 가이드 ✨</h3>
-                <p style="color:var(--text-sub); font-size:0.95rem; margin-top:8px;">단 3단계면 복잡한 코스트 및 정수 계산이 끝납니다!</p>
+                <h3 style="color:var(--text); font-size:1.3rem;">✨ Beginner's Guide ✨</h3>
+                <p style="color:var(--text-sub); font-size:0.95rem; margin-top:8px;">Complex combo and essence calculations done in 3 steps!</p>
             </div>
             <div class="step-card">
-                <h3><span class="step-num">1</span> 목표 유닛 선택하기</h3>
-                <p>좌측 도감 목록에서 게임 내에서 만들고 싶은 카드를 찾아 클릭하세요.</p>
-                <p class="sub-txt">✔️ 카드를 클릭하면 테두리에 불이 들어오며 선택됩니다.<br>✔️ 히든 유닛은 <b>[ − / + ]</b> 버튼으로 한 번에 여러 개(최대 8개)를 조절할 수 있습니다.<br>✔️ <span class="highlight">슈퍼히든(SH) 유닛은 강력한 만큼 덱당 1개로 제한</span>되어 수량이 고정됩니다.</p>
+                <h3><span class="step-num">1</span> Select Target Units</h3>
+                <p>Find the unit you want to build in the codex list and click on it.</p>
+                <p class="sub-txt">✔️ Selected cards light up.<br>✔️ Hidden units can be adjusted up to 8 using the <b>[ − / + ]</b> buttons.<br>✔️ <span class="highlight">Super Hidden (SH) units are limited to 1 per deck</span>.</p>
             </div>
             <div class="step-card">
-                <h3><span class="step-num">2</span> 획득하는 일일 정수 확인하기</h3>
-                <p>히든이나 슈퍼히든을 선택하는 즉시, 획득하는 <span class="highlight">총 정수(코랄/아이어/제루스)가 자동 합산</span>됩니다.</p>
-                <p class="sub-txt">✔️ 유닛 카드 우측의 <b>[정수N]</b> 뱃지에서 해당 유닛의 가치를 즉시 파악할 수 있습니다.<br>✔️ 하위 재료에 포함된 모든 히든 유닛의 정수까지 빠짐없이 자동 추적합니다.<br>✔️ 전체 목표 획득 정수는 <b>중앙 매트릭스</b>의 <b>[총정수코스트]</b> 패널에서 확인하세요!</p>
+                <h3><span class="step-num">2</span> Check Daily Essence</h3>
+                <p>Selecting Hidden/Super Hidden units automatically calculates your <span class="highlight">Total Essence (Korhal/Aiur/Zerus)</span>.</p>
+                <p class="sub-txt">✔️ Check the <b>[Essence N]</b> badge on the right of each unit card.<br>✔️ Hidden units used as materials are tracked automatically.<br>✔️ Your goal points are displayed in the <b>[Total Essence]</b> panel!</p>
             </div>
             <div class="step-card">
-                <h3><span class="step-num">3</span> 재료 모으기 & 계보 트리 파악</h3>
-                <p>선택을 마쳤다면, 게임 시작부터 모아야 할 <span class="highlight">총 기초 매직 유닛 갯수</span>가 중앙 매트릭스에 역산되어 표시됩니다.</p>
-                <p class="sub-txt">✔️ 더 이상 복잡하게 메모장에 적지 마세요. 중앙 숫자를 보며 매직 유닛만 모으시면 됩니다.<br>✔️ <b>우측 패널</b>의 <b>[계보]</b> 버튼을 열면, 어떤 유닛을 거쳐서 최종 유닛이 완성되는지 한눈에 파악할 수 있는 트리가 나타납니다.</p>
+                <h3><span class="step-num">3</span> Gather Materials & Check Lineage</h3>
+                <p>The total base magic units required are reversely calculated and displayed in the <span class="highlight">Central Matrix</span>.</p>
+                <p class="sub-txt">✔️ Just collect the magic units shown in the center numbers.<br>✔️ Toggle the <b>[Lineage]</b> button to expand the full recipe tree.</p>
             </div>
             <div style="text-align:center; margin-top:20px;">
-                <p style="color:var(--text-sub); font-size:0.9rem;">💡 <b>안내:</b> 상단의 <b>[☀️ 라이트 / 🌙 다크]</b> 버튼을 눌러 눈이 편안한 테마로 변경해 보세요!</p>
+                <p style="color:var(--text-sub); font-size:0.9rem;">💡 <b>안내:</b> Click the <b>[☀️ Light / 🌙 Dark]</b> button at the top for your preferred theme!</p>
             </div>
         </div>
     </div>
@@ -107,7 +126,7 @@
 
 <div class="modal-backdrop" id="jewelModal" onclick="closeJewelModal(event)">
     <div class="modal-box" onclick="event.stopPropagation()" style="width:min(1000px, 95vw); max-height:85vh;">
-        <div class="modal-head"><h2 style="font-family:'Song Myung',serif;">쥬얼 도감</h2><button class="btn-close" onclick="closeJewelModal()">&times;</button></div>
+        <div class="modal-head"><h2 style="font-family:'Orbitron', sans-serif;">Jewel Dictionary</h2><button class="btn-close" onclick="closeJewelModal()">&times;</button></div>
         <div class="modal-body-scroll" style="background:var(--panel-b);"><div id="jewelGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:20px;"></div></div>
     </div>
 </div>
@@ -116,13 +135,13 @@
     <div style="background:var(--modal-bg); border:1px solid var(--border); border-radius:20px; padding:30px; width:400px; text-align:center; position:relative;" onclick="event.stopPropagation()">
         <span style="position:absolute; top:20px; right:20px; font-size:1.8rem; color:var(--text-muted); cursor:pointer;" onclick="closeJewelPopup()">&times;</span>
         <div id="jp-color-border" style="width:120px; height:120px; border-radius:50%; border:3px solid #fff; margin:0 auto 20px; display:flex; justify-content:center; align-items:center; overflow:hidden;"><img id="jp-img" style="width:140%; height:140%; object-fit:cover;"></div>
-        <div style="font-size:0.8rem; color:var(--text-sub); letter-spacing:2px;" id="jp-en"></div>
-        <div style="font-size:2rem; font-weight:bold; margin-bottom:20px; color:var(--text);" id="jp-kr"></div>
+        <div style="font-size:0.8rem; color:var(--text-sub); letter-spacing:2px;">JEWEL</div>
+        <div style="font-size:2rem; font-weight:bold; margin-bottom:20px; color:var(--text); font-family:var(--font-display);" id="jp-en"></div>
         <div style="text-align:left; background:var(--jewel-card); padding:15px; border-radius:10px; margin-bottom:10px;">
-            <div style="font-size:0.8rem; color:var(--g); margin-bottom:5px;">전설 능력</div><div style="font-size:1.2rem; font-weight:bold; color:var(--text);" id="jp-leg"></div>
+            <div style="font-size:0.8rem; color:var(--g); margin-bottom:5px;">Legendary Ability</div><div style="font-size:1.1rem; font-weight:bold; color:var(--text);" id="jp-leg"></div>
         </div>
         <div id="jp-myth-area" style="text-align:left; background:var(--jewel-card); padding:15px; border-radius:10px; display:none;">
-            <div style="font-size:0.8rem; color:var(--grade-hell); margin-bottom:5px;">신화 능력</div><div style="font-size:1.2rem; font-weight:bold; color:var(--text);" id="jp-myth"></div>
+            <div style="font-size:0.8rem; color:var(--grade-hell); margin-bottom:5px;">Mythic Ability</div><div style="font-size:1.1rem; font-weight:bold; color:var(--text);" id="jp-myth"></div>
         </div>
     </div>
 </div>
