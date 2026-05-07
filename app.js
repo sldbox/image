@@ -333,13 +333,13 @@ function renderJewelGrid(){
     const cMap={"가넷":"#ff1e1e","아메시스트":"#9d4edd","아쿠아마린":"#4cc9f0","다이아몬드":"#ffffff","에메랄드":"#2ecc71","펄":"#fefae0","루비":"#e63946","페리도트":"#aacc00","사파이어":"#0077b6","오팔":"#ffafcc","토파즈":"#ffd700","터쿼이즈":"#40e0d0","블러드스톤":"#8a0303","스피넬":"#ff4d4d","플로라이트":"#90ee90","라피스":"#0000ff","헬리오도르":"#dfdf00","제트":"#1a1a1a","아게이트":"#e0af1f","올리빈":"#9ab973","히아신스":"#ff8c00","크리소베릴":"#dfff00","파파라챠":"#ff8b61","탄자나이트":"#483d8b","루벨라이트":"#e0115f"};
     for(let i=0;i<JEWEL_RAW_DATA.length;i+=4){
         const en=JEWEL_RAW_DATA[i],kr=JEWEL_RAW_DATA[i+1],leg=JEWEL_RAW_DATA[i+2],myth=JEWEL_RAW_DATA[i+3],c=cMap[kr]||"#fff"; if(!en) continue;
-        h+=`<div onclick="openJewelPopup('${en}','${kr}','${leg}','${myth}','${c}')" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;background:var(--jewel-card);padding:15px;border-radius:10px;border:1px solid var(--border);"><div style="width:120px;height:120px;border-radius:50%;border:2px solid ${c}80;display:flex;justify-content:center;align-items:center;margin-bottom:15px;overflow:hidden;background:var(--jewel-card);"><img src="${url}${en}.png" style="width:145%;height:145%;object-fit:cover;"></div><div style="font-size:0.75rem;color:var(--text-sub);font-family:'Cinzel',serif;">${en.toUpperCase()}</div><div style="font-size:1.6rem;color:var(--text);font-family:'Song Myung',serif;">${kr}</div></div>`;
+        h+=`<div onclick="openJewelPopup('${en}','${kr}','${leg}','${myth}','${c}')" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;background:var(--jewel-card);padding:15px;border-radius:10px;border:1px solid var(--border);"><div style="width:120px;height:120px;border-radius:50%;border:2px solid ${c}80;display:flex;justify-content:center;align-items:center;margin-bottom:15px;overflow:hidden;background:var(--jewel-card);"><img src="${url}${en}.png" style="width:145%;height:145%;object-fit:cover;"></div><div style="font-size:1.6rem;color:var(--text);font-family:'Song Myung',serif;">${kr}</div></div>`;
     }
     g.innerHTML=h;
 }
 function openJewelPopup(e,k,l,m,c){
     const url="https://raw.githubusercontent.com/sldbox/site/main/image/jw/";
-    document.getElementById('jp-img').src=`${url}${e}.png`; document.getElementById('jp-en').innerText=e.toUpperCase(); document.getElementById('jp-kr').innerText=k; document.getElementById('jp-leg').innerText=l;
+    document.getElementById('jp-img').src=`${url}${e}.png`;  document.getElementById('jp-kr').innerText=k; document.getElementById('jp-leg').innerText=l;
     const mArea=document.getElementById('jp-myth-area'); if(m&&m.trim()!==""){mArea.style.display='block';document.getElementById('jp-myth').innerText=m;}else{mArea.style.display='none';}
     document.getElementById('jp-color-border').style.borderColor=c; document.getElementById('jp-color-border').style.boxShadow=`0 0 20px ${c}`; document.getElementById('jewel-popup-overlay').style.display='flex';
 }
