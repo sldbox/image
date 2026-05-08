@@ -1,18 +1,6 @@
 /*
 =============================================================================
 [파일 설명서] app.js
-- 시스템 초기화 및 코스트 수학 계산 (한국어 전용 개복디 넥서스)
-- 스마트 부분 검색(findBestUnitMatch) 및 *N 자동 합산 기능
-- [수정완료] 계보(Lineage) 트리 렌더링 시 비용(Cost) 표시 위치를 자식 노드 목록(ul) 하단에서 유닛 배지 바로 아래(상단)로 이전
-- [수정완료] 좌측 도감 탭 내 심볼(T-BIO 등)과 종족명을 좌우 가로(Row) 배치로 렌더링하도록 변경
-- [수정완료] 선택된 유닛이 포함된 종족 카테고리 탭 버튼에 글로우 효과(.has-active) 클래스가 연동되도록 로직 추가
-- [수정완료] 우측 계보 탭의 '계보 활성화' 버튼 의존성 완전 제거 (선택 시 즉시 계보 노출)
-- [수정완료] 매트릭스 / 계보 탭 스위칭 로직(switchRightTab) 추가 및 연동
-- [수정완료] 계보 트리가 우측 계보 전용 탭 보드 내에서 자동 렌더링되도록 완전히 분리 및 이전
-- [수정완료] 쥬얼 도감 리스트에 전설/신화 능력이 직접 노출되도록 렌더링 변경
-- [수정완료] 공지사항 전용 모달 오픈/클로즈 제어 함수 추가
-- [수정완료] 유닛 카드 우측 컨트롤 박스 통합 렌더링 구조로 개선
-- [수정완료] 일벌레/미니성큰 등 소수점 코스트(0.3333, 0.6666)를 화면 UI(계보) 렌더링 시에만 정수(1, 2)로 보여주도록 예외 처리
 =============================================================================
 */
 
@@ -24,14 +12,13 @@ const GRADE_ORDER = ["Magic", "Rare", "Epic", "Unique", "Hell", "Legend", "Hidde
 const gradeColorsRaw = { "Magic":"var(--grade-magic)", "Rare":"var(--grade-rare)", "Epic":"var(--grade-epic)", "Unique":"var(--grade-unique)", "Hell":"var(--grade-hell)", "Legend":"var(--grade-legend)", "Hidden":"var(--grade-hidden)", "SuperHidden":"var(--grade-super)" };
 const GRADE_SHORT = { Magic:'M', Rare:'R', Epic:'E', Unique:'U', Hell:'HE', Legend:'L', Hidden:'H', SuperHidden:'SH' };
 
-// 종족별 탭과 심볼(약자) 정의
 const TAB_CATEGORIES = [
-    {key:"TBio", name:"테바", sym:"T-BIO"},
-    {key:"TMech", name:"테메", sym:"T-MEC"},
-    {key:"PBio", name:"토바", sym:"P-BIO"},
-    {key:"PMech", name:"토메", sym:"P-MEC"},
-    {key:"Zerg", name:"저그중립", sym:"ZERG"},
-    {key:"Hybrid", name:"혼종", sym:"HYB"}
+    {key:"TBio", name:"테바", sym:"♆"},
+    {key:"TMech", name:"테메", sym:"⚙︎"},
+    {key:"PBio", name:"토바", sym:"⟡"},
+    {key:"PMech", name:"토메", sym:"⟁"},
+    {key:"Zerg", name:"저그중립", sym:"☣︎"},
+    {key:"Hybrid", name:"혼종", sym:"⌬"}
 ];
 
 const gradeMap = {"매직":"Magic", "레어":"Rare", "에픽":"Epic", "유니크":"Unique", "헬":"Hell", "레전드":"Legend", "히든":"Hidden", "슈퍼히든":"SuperHidden"};
@@ -49,6 +36,7 @@ const specialKeywordMap = [
 ];
 
 const EMPTY_SVG = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2;"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><line x1="3" y1="21" x2="21" y2="3"></line></svg>`;
+const MINI_EMPTY_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2;"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><line x1="3" y1="21" x2="21" y2="3"></line></svg>`;
 
 function getUnitId(rawName){ const c=clean(rawName); const u=unitMap.get(c); return u ? u.id : c; }
 
@@ -117,7 +105,7 @@ function toggleSelectAllInCurrentTab() {
     const q = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase().trim() : '';
     const catKey = TAB_CATEGORIES[_activeTabIdx].key;
 
-    let items = Array.from(new Set(Array.from(unitMap.values()))).filter(u => ["SuperHidden","Hidden","Legend"].includes(u.grade));
+    let items = Array.from(unitMap.values()).filter(u => ["SuperHidden","Hidden","Legend"].includes(u.grade));
 
     if (q) {
         const queries = q.split(/[\/,]/).map(s => s.trim()).filter(s => s.length > 0);
@@ -141,11 +129,11 @@ function toggleSelectAllInCurrentTab() {
     updateAllPanels();
 }
 
-function toggleUnitSelection(id){
+function toggleUnitSelection(id, qty = 1){
     if(activeUnits.has(id)){
         activeUnits.delete(id); essenceUnits.delete(id);
     } else {
-        activeUnits.set(id, 1); essenceUnits.add(id);
+        activeUnits.set(id, qty); essenceUnits.add(id);
     }
     updateAllPanels();
 }
@@ -241,14 +229,65 @@ function updateMagicDashboard(){
     if(magicTotalEl){magicTotalEl.innerText=Math.ceil(totalMagic);magicTotalEl.parentElement.classList.toggle('active',totalMagic>0);}
 }
 
+function getUnitTotalMatrixHtml(u, qty) {
+    const map = {};
+    dashboardAtoms.forEach(a => {
+        if (a === "갓오타/메시브") map[a] = { 갓오타: 0, 메시브: 0 };
+        else map[a] = 0;
+    });
+
+    if(u.cost && !IGNORE_PARSE_RECIPES.includes(u.cost)) {
+        parseFixedCost(u.cost.replace(/0\.3333/g, '1').replace(/0\.6666/g, '2'), qty, map);
+    } else {
+        calculateRecursiveCost(u.name, qty, map);
+    }
+
+    let h = `<div class="mini-magic-grid">`;
+    dashboardAtoms.forEach(a => {
+        const val = map[a];
+        const isSkill = (a === "갓오타/메시브");
+        const isMagic = !isSkill;
+
+        let content = MINI_EMPTY_SVG;
+        let isActive = false;
+        let isDualActive = false;
+
+        if (a === "갓오타/메시브") {
+            if (val.갓오타 > 0 || val.메시브 > 0) {
+                isActive = true; isDualActive = true;
+                content = `<div style="display:flex; width:100%; height:100%;">
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; border-right:1px solid rgba(236,72,153,0.3);">
+                        <span style="font-size:1.2rem; font-weight:900; color:var(--grade-rare); line-height:1; margin-bottom:2px; text-shadow:0 0 5px rgba(251,191,36,0.5);">${val.갓오타}</span>
+                        <span style="font-size:0.6rem; color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">갓오타</span>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                        <span style="font-size:1.2rem; font-weight:900; color:var(--grade-unique); line-height:1; margin-bottom:2px; text-shadow:0 0 5px rgba(239,68,68,0.5);">${val.메시브}</span>
+                        <span style="font-size:0.6rem; color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">메시브</span>
+                    </div>
+                </div>`;
+            }
+        } else if (val > 0) {
+            isActive = true;
+            content = Math.ceil(val);
+        }
+
+        h += `<div class="mini-cost-slot ${isMagic ? 'is-magic-slot' : ''} ${isSkill ? 'is-skill-slot' : ''} ${isActive ? 'active' : ''}">
+            <div class="mini-cost-val" style="${isDualActive ? 'padding:0;' : ''}">${content}</div>
+            ${!isDualActive ? `<div class="mini-cost-name">${a}</div>` : ''}
+        </div>`;
+    });
+    h += `</div>`;
+    return h;
+}
+
 function buildTree(uid,visited=new Set(),isRoot=false,conditionStr='',depth=0){
     const u=unitMap.get(uid);
-    if(!u) return `<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge">${uid} ${conditionStr?`<span class="badge-cond">${conditionStr}</span>`:''}</div></div></li>`;
+    if(!u) return `<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted); border-left-color:var(--text-muted);">${uid} ${conditionStr?`<span class="badge-cond">${conditionStr}</span>`:''}</div></div></li>`;
 
     const nameDisp = u.name;
     const color = gradeColorsRaw[u.grade] || "var(--text)";
 
-    if(visited.has(uid)) return `<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted);opacity:0.5;">${nameDisp} ${conditionStr?`<span class="badge-cond">${conditionStr}</span>`:''} <span style="font-size:0.8rem; margin-left:4px;">(중복)</span></div></div></li>`;
+    if(visited.has(uid)) return `<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted); opacity:0.6; border-left-color:var(--text-muted);">${nameDisp} ${conditionStr?`<span class="badge-cond">${conditionStr}</span>`:''} <span style="font-size:0.8rem; margin-left:4px; font-weight:normal;">(중복)</span></div></div></li>`;
 
     const newV=new Set(visited); newV.add(uid);
     let ch='';
@@ -266,7 +305,7 @@ function buildTree(uid,visited=new Set(),isRoot=false,conditionStr='',depth=0){
                 if(target&&target.id!==u.id) {
                     ch+=buildTree(target.id,newV,false,combined,depth+1);
                 } else {
-                    ch+=`<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted);">${match[1].trim()} ${combined?`<span class="badge-cond">${combined}</span>`:''}</div></div></li>`;
+                    ch+=`<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted); border-left-color:var(--text-muted);">${match[1].trim()} ${combined?`<span class="badge-cond">${combined}</span>`:''}</div></div></li>`;
                 }
             } else {
                 const childUid=getUnitId(part), target=unitMap.get(childUid);
@@ -277,13 +316,19 @@ function buildTree(uid,visited=new Set(),isRoot=false,conditionStr='',depth=0){
 
     const ulStyle=depth===0?'block':'none', mark=depth===0?'▼':'▶', bulletDisplay=depth===0?'block':'none';
 
+    let costHtml = '';
+    if(u.cost && !IGNORE_PARSE_RECIPES.includes(u.cost)){
+        const costItems = u.cost.replace(/0\.3333/g, '1').replace(/0\.6666/g, '2').split(',').map(item => `<span class="cost-tag">${item.trim()}</span>`).join('');
+        costHtml = `<div class="bullet-cost" style="display:${bulletDisplay};"><div class="cost-inner-wrap"><span class="cost-label">↳ 요구재료 :</span> <div class="cost-tags-wrap">${costItems}</div></div></div>`;
+    }
+
     return `<li class="tree-li">
         <div class="tree-node-wrapper">
-            <div class="unit-badge" style="color:${color};" onclick="toggleTreeNode(this)">
+            <div class="unit-badge" style="color:${color}; border-left-color:${color};" onclick="toggleTreeNode(this)">
                 ${nameDisp} ${conditionStr?`<span class="badge-cond">${conditionStr}</span>`:''} ${ch?`<span class="toggle-mark">${mark}</span>`:''}
             </div>
         </div>
-        ${(u.cost&&!IGNORE_PARSE_RECIPES.includes(u.cost))?`<div class="bullet-cost" style="display:${bulletDisplay};">비용: ${u.cost.replace(/0\.3333/g, '1').replace(/0\.6666/g, '2')}</div>`:''}
+        ${costHtml}
         ${ch?`<ul class="tree-ul ${isRoot?'root-ul':''}" style="display:${ulStyle};">${ch}</ul>`:''}
     </li>`;
 }
@@ -304,15 +349,28 @@ function renderLineageBoard() {
 
         let upperHtml = '';
         if (["Legend","Hidden","Hell","SuperHidden"].includes(u.grade)) {
-            const parents = Array.from(new Set(Array.from(unitMap.values()))).filter(p => ["Hidden","SuperHidden"].includes(p.grade) && p.id !== u.id && p.recipe && p.recipe.includes(u.name));
+            const parents = Array.from(unitMap.values()).filter(p => ["Hidden","SuperHidden"].includes(p.grade) && p.id !== u.id && p.recipe && p.recipe.includes(u.name));
             if (parents.length > 0) {
                 parents.sort((a,b) => GRADE_ORDER.indexOf(a.grade) - GRADE_ORDER.indexOf(b.grade));
-                upperHtml += `<div style="margin-bottom:12px;"><div style="color:var(--grade-rare); font-size:0.85rem; margin-bottom:6px;">> 상위 조합 가능</div><div style="display:flex; flex-wrap:wrap; gap:6px;">`;
+                upperHtml += `<div class="upper-lineage-box">
+                    <div class="ul-title"><span style="color:var(--g); margin-right:6px;">▲</span> 상위 조합 가능 계보</div>
+                    <div class="ul-badges">`;
                 parents.forEach(p => {
-                    upperHtml += `<div class="unit-badge" style="color:${gradeColorsRaw[p.grade]}; padding:4px 8px; font-size:0.8rem;" onclick="event.stopPropagation(); toggleUnitSelection('${p.id}')">${p.name}</div>`;
+                    upperHtml += `<div class="unit-badge ul-badge" style="color:${gradeColorsRaw[p.grade]}; border-color:${gradeColorsRaw[p.grade]}55;" onclick="event.stopPropagation(); activeUnits.clear(); essenceUnits.clear(); toggleUnitSelection('${p.id}', 1);">
+                        <span class="gtag" style="border-color:${gradeColorsRaw[p.grade]}44; margin-right:6px;">${GRADE_SHORT[p.grade]}</span>${p.name}
+                    </div>`;
                 });
                 upperHtml += `</div></div>`;
             }
+        }
+
+        let rootMatrixHtml = '';
+        if (["SuperHidden", "Hidden", "Legend"].includes(u.grade)) {
+            rootMatrixHtml = `
+            <div style="margin-bottom:20px;">
+                <div class="ul-title" style="margin-bottom:12px;"><span style="color:var(--grade-epic); margin-right:6px;">❖</span> [${u.name} x ${qty}] 총 요구재료 메트릭스</div>
+                ${getUnitTotalMatrixHtml(u, qty)}
+            </div>`;
         }
 
         h += `<div class="analysis-card" style="margin-bottom:0; width:100%; border-left-color:var(--g); background:var(--badge-bg);">
@@ -321,6 +379,7 @@ function renderLineageBoard() {
                     <button class="btn-small" data-expanded="false" onclick="toggleAllTree(this)">모두 펼치기</button>
                 </h3>
                 ${upperHtml}
+                ${rootMatrixHtml}
                 <ul class="tree-ul root-ul" style="display:block; padding-left:0;">${buildTree(u.id, new Set(), true, '', 0)}</ul>
               </div>`;
     });
@@ -349,7 +408,7 @@ function renderTabs(){
         const symGlow = hasSelected ? 'text-shadow:0 0 5px var(--g-glow); box-shadow:0 0 5px var(--g-faint);' : '';
 
         h+=`<button class="tab-btn ${activeClass} ${glowClass}" onclick="selectTab(${idx})">
-                <span style="font-family:var(--font-mono); font-size:0.75rem; color:${symColor}; border:1px solid ${symBorder}; padding:2px 5px; border-radius:3px; background:rgba(0,0,0,0.3); ${symGlow}">${cat.sym}</span>
+                <span style="font-size:1.1rem; color:${symColor}; border:1px solid ${symBorder}; padding:2px 5px; border-radius:3px; background:rgba(0,0,0,0.3); ${symGlow}">${cat.sym}</span>
                 <span>${cat.name}</span>
             </button>`;
     });
@@ -445,7 +504,7 @@ function renderCurrentTabContent() {
     const catKey = TAB_CATEGORIES[_activeTabIdx].key;
     const q = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase().trim() : '';
 
-    let items = Array.from(new Set(Array.from(unitMap.values()))).filter(u => ["SuperHidden","Hidden","Legend"].includes(u.grade));
+    let items = Array.from(unitMap.values()).filter(u => ["SuperHidden","Hidden","Legend"].includes(u.grade));
     let searchMultipliers = {};
 
     if (q) {
@@ -496,7 +555,6 @@ function renderCurrentTabContent() {
         const nameDisp = item.name;
         const multi = searchMultipliers[item.id] || 1;
 
-        const cardBg = isActive ? 'var(--g-faint)' : 'var(--card-bg)', cardBorder = isActive ? 'var(--g-border)' : 'var(--border)';
         const badgeClass = item.grade === "SuperHidden" ? "badge-essence sh" : "badge-essence";
         const essenceBox = unitEssence > 0 ? `<div class="${badgeClass}">정수 [${unitEssence}]</div>` : '';
 
@@ -506,11 +564,13 @@ function renderCurrentTabContent() {
 
         h+=`<div class="unit-card ${isActive?'active':''}" style="animation-delay:${index * 0.03}s" onclick="toggleUnitSelection('${item.id}', ${multi})">
             <div class="uc-wrap">
-                <div class="uc-name">
-                    <div style="color:${gradeColorsRaw[item.grade]}; font-weight:bold; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
-                    <span class="gtag" style="border-color:${gradeColorsRaw[item.grade]}44;">${GRADE_SHORT[item.grade]}</span> ${nameDisp}</div>
+                <div class="uc-info">
+                    <div class="uc-name">
+                        <div style="color:${gradeColorsRaw[item.grade]}; font-weight:bold; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
+                        <span class="gtag" style="border-color:${gradeColorsRaw[item.grade]}44;">${GRADE_SHORT[item.grade]}</span> ${nameDisp}</div>
+                    </div>
+                    <div class="uc-recipe">${formatRecipeVertical(item)}</div>
                 </div>
-                <div class="uc-recipe">${formatRecipeVertical(item)}</div>
                 ${rightControls}
             </div>
         </div>`;
