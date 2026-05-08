@@ -1,7 +1,22 @@
-let _activeTabIdx = 0;
-let _activeGradeFilter = 'SuperHidden'; 
-let _isLineageView = false; 
+/*
+=============================================================================
+[파일 설명서] app.js
+- 시스템 초기화 및 코스트 수학 계산 (한국어 전용 개복디 넥서스)
+- 스마트 부분 검색(findBestUnitMatch) 및 *N 자동 합산 기능
+- [수정완료] 계보(Lineage) 트리 렌더링 시 비용(Cost) 표시 위치를 자식 노드 목록(ul) 하단에서 유닛 배지 바로 아래(상단)로 이전
+- [수정완료] 좌측 도감 탭 내 심볼(T-BIO 등)과 종족명을 좌우 가로(Row) 배치로 렌더링하도록 변경
+- [수정완료] 선택된 유닛이 포함된 종족 카테고리 탭 버튼에 글로우 효과(.has-active) 클래스가 연동되도록 로직 추가
+- [수정완료] 우측 계보 탭의 '계보 활성화' 버튼 의존성 완전 제거 (선택 시 즉시 계보 노출)
+- [수정완료] 매트릭스 / 계보 탭 스위칭 로직(switchRightTab) 추가 및 연동
+- [수정완료] 계보 트리가 우측 계보 전용 탭 보드 내에서 자동 렌더링되도록 완전히 분리 및 이전
+- [수정완료] 쥬얼 도감 리스트에 전설/신화 능력이 직접 노출되도록 렌더링 변경
+- [수정완료] 공지사항 전용 모달 오픈/클로즈 제어 함수 추가
+- [수정완료] 유닛 카드 우측 컨트롤 박스 통합 렌더링 구조로 개선
+- [수정완료] 일벌레/미니성큰 등 소수점 코스트(0.3333, 0.6666)를 화면 UI(계보) 렌더링 시에만 정수(1, 2)로 보여주도록 예외 처리
+=============================================================================
+*/
 
+let _activeTabIdx = 0;
 const unitMap = new Map(), activeUnits = new Map(), essenceUnits = new Set(), DOM = {};
 const clean = s => s ? s.replace(/\s+/g, '').toLowerCase() : '';
 
@@ -9,18 +24,19 @@ const GRADE_ORDER = ["Magic", "Rare", "Epic", "Unique", "Hell", "Legend", "Hidde
 const gradeColorsRaw = { "Magic":"var(--grade-magic)", "Rare":"var(--grade-rare)", "Epic":"var(--grade-epic)", "Unique":"var(--grade-unique)", "Hell":"var(--grade-hell)", "Legend":"var(--grade-legend)", "Hidden":"var(--grade-hidden)", "SuperHidden":"var(--grade-super)" };
 const GRADE_SHORT = { Magic:'M', Rare:'R', Epic:'E', Unique:'U', Hell:'HE', Legend:'L', Hidden:'H', SuperHidden:'SH' };
 
-const TAB_CATEGORIES = [ 
-    {key:"TBio", name:"테바", sym:"T-BIO"}, 
-    {key:"TMech", name:"테메", sym:"T-MEC"}, 
-    {key:"PBio", name:"토바", sym:"P-BIO"}, 
-    {key:"PMech", name:"토메", sym:"P-MEC"}, 
-    {key:"Zerg", name:"저그중립", sym:"ZERG"}, 
-    {key:"Hybrid", name:"혼종", sym:"HYB"} 
+// 종족별 탭과 심볼(약자) 정의
+const TAB_CATEGORIES = [
+    {key:"TBio", name:"테바", sym:"T-BIO"},
+    {key:"TMech", name:"테메", sym:"T-MEC"},
+    {key:"PBio", name:"토바", sym:"P-BIO"},
+    {key:"PMech", name:"토메", sym:"P-MEC"},
+    {key:"Zerg", name:"저그중립", sym:"ZERG"},
+    {key:"Hybrid", name:"혼종", sym:"HYB"}
 ];
 
 const gradeMap = {"매직":"Magic", "레어":"Rare", "에픽":"Epic", "유니크":"Unique", "헬":"Hell", "레전드":"Legend", "히든":"Hidden", "슈퍼히든":"SuperHidden"};
 const raceMap = {"테바":"TBio", "테메":"TMech", "토바":"PBio", "토메":"PMech", "저그중립":"Zerg", "혼종":"Hybrid"};
-const IGNORE_PARSE_RECIPES = ["미발견", "없음", "", "100라운드이전까지저그업20↑[(타종족업0)[1],역전복권10회[1],인생복권3회시-소환[1]]"];
+const IGNORE_PARSE_RECIPES = ["미발견", "없음", "", "100라운드이전까지저그업20↑ [(타 종족 업 0)[1],역전 복권10회[1],인생 복권3회시-소환[1]]"];
 
 const dashboardAtoms = ["전쟁광", "스파르타중대", "암흑광전사", "암흑파수기", "원시바퀴", "저격수", "코브라", "암흑고위기사", "암흑추적자", "변종가시지옥", "망치경호대", "공성파괴단", "암흑집정관", "암흑불멸자", "원시히드라리스크", "땅거미지뢰", "자동포탑", "우르사돈[암]", "우르사돈[수]", "갓오타/메시브"];
 
@@ -28,7 +44,7 @@ const specialKeywordMap = [
     {keys:["자동포탑"], atom:"자동포탑"}, {keys:["잠복"], atom:"잠복"},
     {keys:["지뢰", "시체매"], atom:"땅거미지뢰", divider:12},
     {keys:["우르사돈[암]", "우르사돈암"], atom:"우르사돈[암]"}, {keys:["우르사돈[수]", "우르사돈수"], atom:"우르사돈[수]"},
-    {keys:["메시브", "디제스터"], atom:"갓오타/메시브", subKey:"메시브"}, 
+    {keys:["메시브", "디제스터"], atom:"갓오타/메시브", subKey:"메시브"},
     {keys:["갓오브타임", "갓오타"], atom:"갓오타/메시브", subKey:"갓오타"}
 ];
 
@@ -84,72 +100,25 @@ function calculateRecursiveCost(nameKo,m,map,visited=new Set()){
 
 function updateAllPanels() { updateMagicDashboard(); updateEssence(); renderTabs(); renderCurrentTabContent(); renderLineageBoard(); }
 
-function toggleMainView() {
-    _isLineageView = !_isLineageView;
-    const btn = document.getElementById('btnToggleView');
-    const layout = document.getElementById('mainLayout');
-    const hMatrix = document.getElementById('headerMatrix');
-    const hLineage = document.getElementById('headerLineage');
-    const vMatrix = document.getElementById('viewMatrix');
-    const vLineage = document.getElementById('viewLineage');
-    const raceTabContainer = document.getElementById('raceTabContainer');
-    const gradeFilterWrap = document.getElementById('gradeFilterWrap');
-
-    if(_isLineageView) {
-        layout.classList.add('view-mode-lineage'); 
-        btn.innerHTML = '<i class="fas fa-desktop" style="margin-right:6px;"></i>메인화면';
-        btn.style.color = 'var(--g)';
-        btn.style.borderColor = 'var(--g)';
-        btn.style.boxShadow = '0 0 15px var(--g-glow)';
-
-        hMatrix.style.display = 'none';
-        vMatrix.style.display = 'none';
-        hLineage.style.display = 'flex';
-        vLineage.style.display = 'flex';
-        
-        if (raceTabContainer) raceTabContainer.style.display = 'none';
-        if (gradeFilterWrap) gradeFilterWrap.style.display = 'grid'; // 그리드 레이아웃 활성화
-
-        renderCurrentTabContent();
-        renderLineageBoard();
+function switchRightTab(tab) {
+    document.getElementById('btnTabMatrix').classList.toggle('active', tab === 'matrix');
+    document.getElementById('btnTabLineage').classList.toggle('active', tab === 'lineage');
+    if(tab === 'matrix') {
+        document.getElementById('viewMatrix').style.display = 'flex';
+        document.getElementById('viewLineage').style.display = 'none';
     } else {
-        layout.classList.remove('view-mode-lineage');
-        btn.innerHTML = '<i class="fas fa-sitemap" style="margin-right:6px;"></i>계보도감';
-        btn.style.color = 'var(--grade-hidden)';
-        btn.style.borderColor = 'var(--grade-hidden)';
-        btn.style.boxShadow = '0 0 10px rgba(52,211,153,0.3)';
-
-        hMatrix.style.display = 'flex';
-        vMatrix.style.display = 'flex';
-        hLineage.style.display = 'none';
-        vLineage.style.display = 'none';
-        
-        if (raceTabContainer) raceTabContainer.style.display = 'flex';
-        if (gradeFilterWrap) gradeFilterWrap.style.display = 'none';
-
-        renderCurrentTabContent();
+        document.getElementById('viewMatrix').style.display = 'none';
+        document.getElementById('viewLineage').style.display = 'flex';
+        renderLineageBoard();
     }
-}
-
-function setGradeFilter(grade) {
-    _activeGradeFilter = grade;
-    document.querySelectorAll('.gf-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-grade') === grade);
-    });
-    renderCurrentTabContent();
 }
 
 function toggleSelectAllInCurrentTab() {
     const q = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase().trim() : '';
-    let items = Array.from(unitMap.values());
-    
-    if (_isLineageView) {
-        items = items.filter(u => u.grade === _activeGradeFilter);
-    } else {
-        const catKey = TAB_CATEGORIES[_activeTabIdx].key;
-        items = items.filter(u => u.category === catKey);
-    }
-    
+    const catKey = TAB_CATEGORIES[_activeTabIdx].key;
+
+    let items = Array.from(new Set(Array.from(unitMap.values()))).filter(u => ["SuperHidden","Hidden","Legend"].includes(u.grade));
+
     if (q) {
         const queries = q.split(/[\/,]/).map(s => s.trim()).filter(s => s.length > 0);
         items = items.filter(u => {
@@ -158,74 +127,38 @@ function toggleSelectAllInCurrentTab() {
                 let namePart = query;
                 if(query.includes('*')) namePart = query.split('*')[0].trim();
                 return searchStr.includes(namePart);
-            }); 
+            });
         });
+    } else {
+        items = items.filter(u => u.category === catKey);
     }
 
     const allSelected = items.length > 0 && items.every(u => activeUnits.has(u.id));
     items.forEach(u => {
-        if (allSelected) { activeUnits.delete(u.id); essenceUnits.delete(u.id); } 
+        if (allSelected) { activeUnits.delete(u.id); essenceUnits.delete(u.id); }
         else if (!activeUnits.has(u.id)) { activeUnits.set(u.id, 1); essenceUnits.add(u.id); }
     });
     updateAllPanels();
 }
 
-function toggleUnitSelection(id, multi = 1){
-    if (_isLineageView) {
-        // 계보도감 모드일 때는 단일 선택만 가능하도록 제한
-        if (activeUnits.has(id) && activeUnits.size === 1) {
-            // 이미 선택된 유닛 1개라면 선택 해제
-            activeUnits.clear();
-            essenceUnits.clear();
-        } else {
-            // 다른 유닛을 선택했다면 기존 것을 전부 지우고 새 유닛 1개만 선택
-            activeUnits.clear();
-            essenceUnits.clear();
-            activeUnits.set(id, 1);
-            essenceUnits.add(id);
-        }
+function toggleUnitSelection(id){
+    if(activeUnits.has(id)){
+        activeUnits.delete(id); essenceUnits.delete(id);
     } else {
-        // 메인화면일 때는 다중 선택 가능
-        if(activeUnits.has(id)){
-            activeUnits.delete(id); essenceUnits.delete(id);
-        } else {
-            activeUnits.set(id, multi); essenceUnits.add(id);
-        }
+        activeUnits.set(id, 1); essenceUnits.add(id);
     }
     updateAllPanels();
-}
-
-function viewSingleLineage(id) {
-    activeUnits.clear();
-    essenceUnits.clear();
-    activeUnits.set(id, 1);
-    essenceUnits.add(id);
-
-    const u = unitMap.get(id);
-    if (u && _isLineageView) {
-        _activeGradeFilter = u.grade;
-        document.querySelectorAll('.gf-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.getAttribute('data-grade') === u.grade);
-        });
-    }
-    
-    updateAllPanels();
-    
-    setTimeout(() => {
-        const viewLineage = document.getElementById('viewLineage');
-        if(viewLineage) viewLineage.scrollTop = 0;
-    }, 50);
 }
 
 function changeUnitQty(id,delta){
-    const u = unitMap.get(id); if(u && u.grade === "SuperHidden") return; 
-    let qty = activeUnits.get(id) || 0; 
+    const u = unitMap.get(id); if(u && u.grade === "SuperHidden") return;
+    let qty = activeUnits.get(id) || 0;
     qty += delta;
     if(qty < 1){ activeUnits.delete(id); essenceUnits.delete(id); }
-    else { 
-        if(qty > 16) qty = 16; 
-        activeUnits.set(id, qty); 
-        essenceUnits.add(id); 
+    else {
+        if(qty > 16) qty = 16;
+        activeUnits.set(id, qty);
+        essenceUnits.add(id);
     }
     updateAllPanels();
 }
@@ -234,15 +167,15 @@ function calcEssenceRecursive(uid, counts, visited) {
     if(visited.has(uid)) return; visited.add(uid);
     const u = unitMap.get(uid); if(!u) return;
     if(["Hidden", "SuperHidden"].includes(u.grade)) {
-        if(["TBio","TMech"].includes(u.category)) counts.coral += 1; 
-        else if(["PBio","PMech"].includes(u.category)) counts.aiur += 1; 
-        else if(u.category === "Zerg") counts.zerus += 1; 
+        if(["TBio","TMech"].includes(u.category)) counts.coral += 1;
+        else if(["PBio","PMech"].includes(u.category)) counts.aiur += 1;
+        else if(u.category === "Zerg") counts.zerus += 1;
         else if(u.category === "Hybrid") { counts.coral += 1; counts.aiur += 1; counts.zerus += 1; }
     }
     if(u.recipe && !IGNORE_PARSE_RECIPES.includes(u.recipe)) {
-        u.recipe.split(/\+(?![^()]*\))/).forEach(part => { 
-            const match = part.trim().match(/^([^(\[]+)/); 
-            if(match) calcEssenceRecursive(getUnitId(match[1]), counts, visited); 
+        u.recipe.split(/\+(?![^()]*\))/).forEach(part => {
+            const match = part.trim().match(/^([^(\[]+)/);
+            if(match) calcEssenceRecursive(getUnitId(match[1]), counts, visited);
         });
     }
 }
@@ -256,56 +189,35 @@ function getUnitEssenceTotal(uid) {
 function updateEssence(){
     let counts={coral:0, aiur:0, zerus:0}, visited = new Set();
     activeUnits.forEach((qty, key) => { const u = unitMap.get(key); if(u && ["Hidden", "SuperHidden"].includes(u.grade)) calcEssenceRecursive(key, counts, visited); });
-    
-    const setVal = (id, v) => {
-        const el = document.getElementById(id);
-        if(el){
-            el.innerText = v;
-            if(v > 0) el.parentElement.classList.add('active');
-            else el.parentElement.classList.remove('active');
-        }
-    };
-    
-    setVal('hdr-val-coral', counts.coral);
-    setVal('hdr-val-aiur', counts.aiur);
-    setVal('hdr-val-zerus', counts.zerus);
-    setVal('hdr-val-essence', counts.coral + counts.aiur + counts.zerus);
+    const setVal=(id,v)=>{const el=document.getElementById(id);if(el){el.innerText=v;el.parentElement.className='cost-slot'+(el.parentElement.id.includes('magic')?' is-magic-slot':'')+(id.includes('total')?' total':'')+(v>0?' active':'')}};
+    setVal('val-coral',counts.coral);setVal('val-aiur',counts.aiur);setVal('val-zerus',counts.zerus);setVal('essence-total-val',counts.coral+counts.aiur+counts.zerus);
 }
 
 function updateMagicDashboard(){
-    resetMagicDashboard(); 
-    if(activeUnits.size === 0) {
-        const magicTotalEl = document.getElementById('hdr-val-magic');
-        if(magicTotalEl){ 
-            magicTotalEl.innerText = "0"; 
-            magicTotalEl.parentElement.classList.remove('active'); 
-        }
-        return;
-    }
-    
+    resetMagicDashboard(); if(activeUnits.size===0) return;
     const totalMap={}; dashboardAtoms.forEach(a=>{if(a==="갓오타/메시브")totalMap[a]={갓오타:0,메시브:0};else totalMap[a]=0;});
-    
+
     Array.from(activeUnits.keys()).forEach(k=>{
         const u=unitMap.get(k);if(!u)return; const c=activeUnits.get(k)||1;
-        if(u.cost&&!IGNORE_PARSE_RECIPES.includes(u.cost)) parseFixedCost(u.cost,c,totalMap); 
+        if(u.cost&&!IGNORE_PARSE_RECIPES.includes(u.cost)) parseFixedCost(u.cost,c,totalMap);
         else calculateRecursiveCost(u.name,c,totalMap);
     });
-    
+
     let totalMagic=0;
     dashboardAtoms.forEach(a=>{
         const val=totalMap[a], container=document.getElementById(`vslot-${clean(a)}`);if(!container)return;
         const e=container.querySelector('.cost-val'), nameEl=container.querySelector('.cost-name');
-        
+
         if(a==="갓오타/메시브"){
             if(val.갓오타>0 || val.메시브>0){
                 e.innerHTML=`<div style="display:flex; width:100%; height:100%;">
                     <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; border-right:1px solid rgba(236,72,153,0.3);">
-                        <span style="font-size:clamp(1.5rem, 4vh, 2.5rem); font-weight:900; color:var(--grade-rare); line-height:1; margin-bottom:4px; text-shadow:0 0 10px rgba(251,191,36,0.5);">${val.갓오타}</span>
-                        <span style="font-size:clamp(0.7rem, 1.2vh, 0.9rem); color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">갓오타</span>
+                        <span style="font-size:1.8rem; font-weight:900; color:var(--grade-rare); line-height:1; margin-bottom:4px; text-shadow:0 0 10px rgba(251,191,36,0.5);">${val.갓오타}</span>
+                        <span style="font-size:0.7rem; color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">갓오타</span>
                     </div>
                     <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-                        <span style="font-size:clamp(1.5rem, 4vh, 2.5rem); font-weight:900; color:var(--grade-unique); line-height:1; margin-bottom:4px; text-shadow:0 0 10px rgba(239,68,68,0.5);">${val.메시브}</span>
-                        <span style="font-size:clamp(0.7rem, 1.2vh, 0.9rem); color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">메시브</span>
+                        <span style="font-size:1.8rem; font-weight:900; color:var(--grade-unique); line-height:1; margin-bottom:4px; text-shadow:0 0 10px rgba(239,68,68,0.5);">${val.메시브}</span>
+                        <span style="font-size:0.7rem; color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">메시브</span>
                     </div>
                 </div>`;
                 nameEl.style.display='none';
@@ -314,162 +226,131 @@ function updateMagicDashboard(){
                 e.innerHTML=EMPTY_SVG;
                 nameEl.style.display='block';
             }
-        } else if(val>0){ 
+        } else if(val>0){
             e.innerText=Math.ceil(val);
             nameEl.style.display='block';
             container.classList.add('active');
-            totalMagic+=val; 
+            totalMagic+=val;
         } else {
             e.innerHTML=EMPTY_SVG;
             nameEl.style.display='block';
         }
     });
-    
-    const magicTotalEl = document.getElementById('hdr-val-magic');
-    if(magicTotalEl){
-        magicTotalEl.innerText = Math.ceil(totalMagic);
-        if(totalMagic > 0) magicTotalEl.parentElement.classList.add('active');
-        else magicTotalEl.parentElement.classList.remove('active');
-    }
+
+    const magicTotalEl=document.querySelector('#slot-total-magic .cost-val');
+    if(magicTotalEl){magicTotalEl.innerText=Math.ceil(totalMagic);magicTotalEl.parentElement.classList.toggle('active',totalMagic>0);}
 }
 
-function buildIntuitiveLineage(uid, visited = new Set(), isRoot = false, conditionStr = '', depth = 0) {
-    const u = unitMap.get(uid);
-    if (!u) return `<div class="ln-node"><div class="ln-badge">${uid} ${conditionStr ? `<span class="badge-cond">${conditionStr}</span>` : ''}</div></div>`;
-    
+function buildTree(uid,visited=new Set(),isRoot=false,conditionStr='',depth=0){
+    const u=unitMap.get(uid);
+    if(!u) return `<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge">${uid} ${conditionStr?`<span class="badge-cond">${conditionStr}</span>`:''}</div></div></li>`;
+
     const nameDisp = u.name;
     const color = gradeColorsRaw[u.grade] || "var(--text)";
-    
-    if (visited.has(uid)) return `<div class="ln-node"><div class="ln-badge" style="opacity:0.5; border-color:var(--text-muted); color:var(--text-muted);">${nameDisp} ${conditionStr ? `<span class="badge-cond">${conditionStr}</span>` : ''} <span style="font-size:0.8rem; margin-left:4px;">(중복)</span></div></div>`;
-    
-    const newV = new Set(visited); newV.add(uid); 
-    let ch = '';
-    
-    if (u.recipe && !IGNORE_PARSE_RECIPES.includes(u.recipe)) {
-        u.recipe.split(/\+(?![^()]*\))/).forEach(part => {
-            const match = part.trim().match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
-            if (match) {
-                const childUid = getUnitId(match[1]);
+
+    if(visited.has(uid)) return `<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted);opacity:0.5;">${nameDisp} ${conditionStr?`<span class="badge-cond">${conditionStr}</span>`:''} <span style="font-size:0.8rem; margin-left:4px;">(중복)</span></div></div></li>`;
+
+    const newV=new Set(visited); newV.add(uid);
+    let ch='';
+
+    if(u.recipe&&!IGNORE_PARSE_RECIPES.includes(u.recipe)){
+        u.recipe.split(/\+(?![^()]*\))/).forEach(part=>{
+            const match=part.trim().match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
+            if(match){
+                const childUid=getUnitId(match[1]);
                 let condTxt = match[2] ? `(${match[2]})` : '';
                 let qtyTxt = match[3] ? `[${match[3]}]` : '[1]';
                 let combined = `${condTxt}${qtyTxt}`;
-                const target = unitMap.get(childUid);
-                
-                if (target && target.id !== u.id) {
-                    ch += buildIntuitiveLineage(target.id, newV, false, combined, depth + 1);
+                const target=unitMap.get(childUid);
+
+                if(target&&target.id!==u.id) {
+                    ch+=buildTree(target.id,newV,false,combined,depth+1);
                 } else {
-                    ch += `<div class="ln-node"><div class="ln-badge" style="color:var(--text-muted);">${match[1].trim()} ${combined ? `<span class="badge-cond">${combined}</span>` : ''}</div></div>`;
+                    ch+=`<li class="tree-li"><div class="tree-node-wrapper"><div class="unit-badge" style="color:var(--text-muted);">${match[1].trim()} ${combined?`<span class="badge-cond">${combined}</span>`:''}</div></div></li>`;
                 }
             } else {
-                const childUid = getUnitId(part), target = unitMap.get(childUid);
-                if (target && target.id !== u.id) ch += buildIntuitiveLineage(target.id, newV, false, '', depth + 1);
+                const childUid=getUnitId(part), target=unitMap.get(childUid);
+                if(target&&target.id!==u.id) ch+=buildTree(target.id,newV,false,'',depth+1);
             }
         });
     }
-    
-    return `
-    <div class="ln-block">
-        <div class="ln-self">
-            <div class="ln-badge ${isRoot ? 'root-badge' : ''}" style="color:${color}; border-color:${color}60;">
-                ${nameDisp} ${conditionStr ? `<span class="badge-cond">${conditionStr}</span>` : ''}
-                ${isRoot && u.cost && !IGNORE_PARSE_RECIPES.includes(u.cost) ? `<div class="ln-cost">비용: ${u.cost.replace(/0\.3333/g, '1').replace(/0\.6666/g, '2')}</div>` : ''}
+
+    const ulStyle=depth===0?'block':'none', mark=depth===0?'▼':'▶', bulletDisplay=depth===0?'block':'none';
+
+    return `<li class="tree-li">
+        <div class="tree-node-wrapper">
+            <div class="unit-badge" style="color:${color};" onclick="toggleTreeNode(this)">
+                ${nameDisp} ${conditionStr?`<span class="badge-cond">${conditionStr}</span>`:''} ${ch?`<span class="toggle-mark">${mark}</span>`:''}
             </div>
         </div>
-        ${ch ? `<div class="ln-children">${ch}</div>` : ''}
-    </div>`;
-}
-
-function isMaterialFor(targetId, parentId, visited = new Set()) {
-    if(visited.has(parentId)) return false;
-    visited.add(parentId);
-    
-    const parent = unitMap.get(parentId);
-    if(!parent || !parent.recipe || IGNORE_PARSE_RECIPES.includes(parent.recipe)) return false;
-    
-    let found = false;
-    const parts = parent.recipe.split(/\+(?![^()]*\))/);
-    
-    for(let part of parts) {
-        const match = part.trim().match(/^([^(\[]+)/);
-        if(match) {
-            const childUid = getUnitId(match[1].trim());
-            if(childUid === targetId) { found = true; break; }
-            else if(isMaterialFor(targetId, childUid, visited)) { found = true; break; }
-        }
-    }
-    return found;
+        ${(u.cost&&!IGNORE_PARSE_RECIPES.includes(u.cost))?`<div class="bullet-cost" style="display:${bulletDisplay};">비용: ${u.cost.replace(/0\.3333/g, '1').replace(/0\.6666/g, '2')}</div>`:''}
+        ${ch?`<ul class="tree-ul ${isRoot?'root-ul':''}" style="display:${ulStyle};">${ch}</ul>`:''}
+    </li>`;
 }
 
 function renderLineageBoard() {
     const board = document.getElementById('lineageBoard');
     if (!board) return;
-    
+
     if (activeUnits.size === 0) {
-        board.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold;">좌측 목록에서 계보를 확인할 유닛을 선택하세요.</div>';
+        board.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold;">좌측 유닛도감에서 계보를 확인할 유닛을 선택하세요.</div>';
         return;
     }
-    
+
     let h = '<div style="display:flex;flex-direction:column;gap:12px;">';
     activeUnits.forEach((qty, id) => {
         const u = unitMap.get(id);
         if (!u) return;
-        
+
         let upperHtml = '';
-        const endUnits = Array.from(unitMap.values());
-        const parents = endUnits.filter(p => p.id !== u.id && isMaterialFor(u.id, p.id));
-        
-        if (parents.length > 0) {
-            parents.sort((a,b) => GRADE_ORDER.indexOf(a.grade) - GRADE_ORDER.indexOf(b.grade));
-            
-            upperHtml += `
-            <div class="upper-lineage-box">
-                <div class="ul-title"><i class="fas fa-level-up-alt" style="color:var(--g);"></i> 상위 계보 연동 <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal; margin-left:4px;">(해당 유닛을 필요로 하는 상위 유닛 목록)</span></div>
-                <div class="ul-list">`;
-            parents.forEach(p => { 
-                upperHtml += `<div class="unit-badge" style="color:${gradeColorsRaw[p.grade]}; border-color:${gradeColorsRaw[p.grade]}50;" onclick="event.stopPropagation(); viewSingleLineage('${p.id}')">${p.name}</div>`; 
-            });
-            upperHtml += `</div></div>`;
+        if (["Legend","Hidden","Hell","SuperHidden"].includes(u.grade)) {
+            const parents = Array.from(new Set(Array.from(unitMap.values()))).filter(p => ["Hidden","SuperHidden"].includes(p.grade) && p.id !== u.id && p.recipe && p.recipe.includes(u.name));
+            if (parents.length > 0) {
+                parents.sort((a,b) => GRADE_ORDER.indexOf(a.grade) - GRADE_ORDER.indexOf(b.grade));
+                upperHtml += `<div style="margin-bottom:12px;"><div style="color:var(--grade-rare); font-size:0.85rem; margin-bottom:6px;">> 상위 조합 가능</div><div style="display:flex; flex-wrap:wrap; gap:6px;">`;
+                parents.forEach(p => {
+                    upperHtml += `<div class="unit-badge" style="color:${gradeColorsRaw[p.grade]}; padding:4px 8px; font-size:0.8rem;" onclick="event.stopPropagation(); toggleUnitSelection('${p.id}')">${p.name}</div>`;
+                });
+                upperHtml += `</div></div>`;
+            }
         }
-        
+
         h += `<div class="analysis-card" style="margin-bottom:0; width:100%; border-left-color:var(--g); background:var(--badge-bg);">
                 <h3 style="border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                     <div><span style="color:${gradeColorsRaw[u.grade]}; font-size:1.05rem;">${u.name}</span> <span style="font-size:0.85rem; color:var(--text-muted); margin-left:6px;">[수량: ${qty}]</span></div>
+                    <button class="btn-small" data-expanded="false" onclick="toggleAllTree(this)">모두 펼치기</button>
                 </h3>
                 ${upperHtml}
-                <div class="ln-wrapper">${buildIntuitiveLineage(u.id, new Set(), true, '', 0)}</div>
+                <ul class="tree-ul root-ul" style="display:block; padding-left:0;">${buildTree(u.id, new Set(), true, '', 0)}</ul>
               </div>`;
     });
     h += '</div>';
     board.innerHTML = h;
 }
 
+function toggleAllTree(btn){const card=btn.closest('.analysis-card'),isExpanded=btn.getAttribute('data-expanded')==='true';if(isExpanded){const rootNode=card.querySelector('.tree-ul.root-ul > .tree-li');if(rootNode){const firstLevelUl=rootNode.querySelector(':scope > .tree-ul');if(firstLevelUl){firstLevelUl.querySelectorAll('.tree-ul').forEach(el=>el.style.display='none');firstLevelUl.querySelectorAll('.bullet-cost').forEach(el=>el.style.display='none');firstLevelUl.querySelectorAll('.toggle-mark').forEach(el=>el.innerText='▶')}}btn.innerText="모두 펼치기";}else{card.querySelectorAll('.tree-ul').forEach(el=>el.style.display='block');card.querySelectorAll('.bullet-cost').forEach(el=>el.style.display='block');card.querySelectorAll('.toggle-mark').forEach(el=>el.innerText='▼');btn.innerText="모두 접기";}btn.setAttribute('data-expanded',!isExpanded)}
+function toggleTreeNode(el){const p=el.closest('.tree-li'),c=p.querySelector(':scope>.bullet-cost'),t=p.querySelector(':scope>.tree-ul'),m=p.querySelector(':scope>.tree-node-wrapper .toggle-mark');if(t)t.style.display=t.style.display==='none'?'block':'none';if(c)c.style.display=c.style.display==='none'?'block':'none';if(m)m.innerText=m.innerText==='▶'?'▼':'▶'}
 function resetAll(){ activeUnits.clear(); essenceUnits.clear(); document.getElementById('searchInput').value = ''; updateAllPanels(); }
 
 function renderTabs(){
-    let h=''; 
+    let h='';
     TAB_CATEGORIES.forEach((cat,idx)=>{
         let hasSelected = false;
-        let catTotalQty = 0;
         activeUnits.forEach((qty, id) => {
             const u = unitMap.get(id);
-            if(u && u.category === cat.key) {
-                hasSelected = true;
-                catTotalQty += qty;
-            }
+            if(u && u.category === cat.key) hasSelected = true;
         });
-        
+
         const activeClass = idx === _activeTabIdx ? 'active' : '';
         const glowClass = hasSelected ? 'has-active' : '';
-        
+
         const symColor = hasSelected ? 'var(--g)' : 'var(--text-sub)';
         const symBorder = hasSelected ? 'var(--g-border)' : 'var(--border-light)';
         const symGlow = hasSelected ? 'text-shadow:0 0 5px var(--g-glow); box-shadow:0 0 5px var(--g-faint);' : '';
 
-        const qtyText = catTotalQty > 0 ? `<span style="color:var(--g); font-weight:900; margin-left:4px;">(${catTotalQty})</span>` : '';
-
         h+=`<button class="tab-btn ${activeClass} ${glowClass}" onclick="selectTab(${idx})">
                 <span style="font-family:var(--font-mono); font-size:0.75rem; color:${symColor}; border:1px solid ${symBorder}; padding:2px 5px; border-radius:3px; background:rgba(0,0,0,0.3); ${symGlow}">${cat.sym}</span>
-                <span>${cat.name}${qtyText}</span>
+                <span>${cat.name}</span>
             </button>`;
     });
     document.getElementById('codexTabs').innerHTML=h;
@@ -477,20 +358,20 @@ function renderTabs(){
 
 function formatRecipeVertical(item) {
     if (!item.recipe || IGNORE_PARSE_RECIPES.includes(item.recipe)) return `<div style="color:var(--text-muted);font-size:0.8rem;display:flex;align-items:center;height:100%;">정보 없음</div>`;
-    
+
     let html = '<div style="display:flex;flex-wrap:wrap;gap:4px;width:100%;">';
     item.recipe.split(/\+(?![^()]*\))/).forEach((part) => {
         const match = part.trim().match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
-        
+
         if (match) {
-            const rawKo = match[1].trim(); 
+            const rawKo = match[1].trim();
             const u = unitMap.get(getUnitId(rawKo));
-            
+
             let condTxt = match[2] ? `(${match[2]})` : '';
             let qtyTxt = match[3] ? `[${match[3]}]` : '[1]';
-            
+
             const color = u && gradeColorsRaw[u.grade] ? gradeColorsRaw[u.grade] : "var(--text)";
-            
+
             html+=`
                 <div style="border:1px solid var(--border-light); border-radius:4px; padding:2px 6px; background:var(--slot-bg); color:${color}; font-size:0.75rem; font-weight:bold; display:flex; align-items:center; gap:4px; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,0.3);">
                     ${rawKo} ${condTxt || match[3] ? `<span class="badge-cond" style="padding:1px 4px; font-size:0.7rem;">${condTxt}${qtyTxt}</span>` : ''}
@@ -509,17 +390,17 @@ function findBestUnitMatch(namePart) {
     if (!cleanName) return null;
     let exact = null;
     let partials = [];
-    
+
     for (let u of unitMap.values()) {
         const uClean = clean(u.name);
         if (uClean === cleanName) {
             exact = u;
-            break; 
+            break;
         } else if (uClean.includes(cleanName)) {
             partials.push(u);
         }
     }
-    
+
     if (exact) return exact;
     if (partials.length > 0) {
         partials.sort((a, b) => a.name.length - b.name.length);
@@ -538,7 +419,7 @@ function processSearchAutoSelect(query) {
             const namePart = match[1].trim();
             let qty = parseInt(match[2]);
             qty = Math.max(1, Math.min(qty, 16));
-            
+
             const bestU = findBestUnitMatch(namePart);
             if (bestU) {
                 if (bestU.grade === "SuperHidden") qty = 1;
@@ -548,48 +429,42 @@ function processSearchAutoSelect(query) {
             }
         }
     });
-    
+
     if (isUpdated) updateAllPanels();
 }
 
-function filterUnits() { 
+function filterUnits() {
     const q = document.getElementById('searchInput').value.trim();
     if (q.includes('*')) {
         processSearchAutoSelect(q);
     }
-    renderCurrentTabContent(); 
+    renderCurrentTabContent();
 }
 
 function renderCurrentTabContent() {
     const catKey = TAB_CATEGORIES[_activeTabIdx].key;
     const q = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase().trim() : '';
-    
-    let items = Array.from(unitMap.values());
+
+    let items = Array.from(new Set(Array.from(unitMap.values()))).filter(u => ["SuperHidden","Hidden","Legend"].includes(u.grade));
     let searchMultipliers = {};
-    
-    if (_isLineageView) {
-        items = items.filter(u => u.grade === _activeGradeFilter);
-    } else {
-        items = items.filter(u => u.category === catKey);
-    }
-    
+
     if (q) {
         const queries = q.split(/[\/,]/).map(s => s.trim()).filter(s => s.length > 0);
         items = items.filter(u => {
             let matched = false;
             const searchStr = `${u.name} ${u.recipe} ${u.grade} ${u.category} ${GRADE_SHORT[u.grade]}`.toLowerCase();
-            
+
             for(let query of queries) {
                 let namePart = query;
                 let multi = 1;
-                
+
                 if(query.includes('*')) {
                     const parts = query.split('*');
                     namePart = parts[0].trim();
                     let m = parseInt(parts[1]);
                     if(!isNaN(m)) multi = Math.max(1, Math.min(m, 16));
                 }
-                
+
                 if(searchStr.includes(clean(namePart))) {
                     matched = true;
                     const bestU = findBestUnitMatch(namePart);
@@ -600,29 +475,31 @@ function renderCurrentTabContent() {
             }
             return matched;
         });
+    } else {
+        items = items.filter(u => u.category === catKey);
     }
-    
-    items.sort((a,b) => { 
+
+    items.sort((a,b) => {
         if(a.grade !== b.grade) return GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade);
-        return calculateTotalCostScore(b.cost) - calculateTotalCostScore(a.cost); 
+        return calculateTotalCostScore(b.cost) - calculateTotalCostScore(a.cost);
     });
-    
+
     let h='<div style="display:flex;flex-direction:column;gap:4px;">';
-    
-    if (items.length === 0) {
-        h += `<div style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold; font-size:1.05rem;">해당 조건의 유닛이 없습니다.</div>`;
+
+    if (items.length === 0 && q !== '') {
+        h += `<div style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold; font-size:1.05rem;">검색 결과가 없습니다.</div>`;
     }
-    
+
     items.forEach((item, index) => {
         const isActive = activeUnits.has(item.id), qty = activeUnits.get(item.id) || 0;
         const unitEssence = getUnitEssenceTotal(item.id);
         const nameDisp = item.name;
         const multi = searchMultipliers[item.id] || 1;
-        
+
         const cardBg = isActive ? 'var(--g-faint)' : 'var(--card-bg)', cardBorder = isActive ? 'var(--g-border)' : 'var(--border)';
         const badgeClass = item.grade === "SuperHidden" ? "badge-essence sh" : "badge-essence";
         const essenceBox = unitEssence > 0 ? `<div class="${badgeClass}">정수 [${unitEssence}]</div>` : '';
-        
+
         let rightControls = `<div class="uc-ctrl" onclick="event.stopPropagation()"><div class="uc-ctrl-box">${essenceBox}`;
         if (item.grade !== "SuperHidden") rightControls += `<div class="ctrl-qty"><button class="ctrl-btn minus" onclick="changeUnitQty('${item.id}', -1)">−</button><div class="ctrl-val">${qty}</div><button class="ctrl-btn plus" onclick="changeUnitQty('${item.id}', 1)">+</button></div>`;
         rightControls += `</div></div>`;
@@ -642,16 +519,16 @@ function renderCurrentTabContent() {
 }
 
 function renderDashboardAtoms(){
-    DOM.magicDashboard.innerHTML = ''; 
-    dashboardAtoms.forEach(a=>{ 
+    DOM.magicDashboard.innerHTML=`<div class="cost-slot total" id="slot-total-magic"><div class="cost-val"></div><div class="cost-name">총매직코스트</div></div><div class="cost-slot total" id="slot-total-essence"><div class="cost-val" id="essence-total-val"></div><div class="cost-name">총정수코스트</div></div><div class="cost-slot"><div class="cost-val" id="val-coral" style="color:#FF6B6B;"></div><div class="cost-name">코랄</div></div><div class="cost-slot"><div class="cost-val" id="val-aiur" style="color:var(--grade-rare);"></div><div class="cost-name">아이어</div></div><div class="cost-slot"><div class="cost-val" id="val-zerus" style="color:var(--grade-legend);"></div><div class="cost-name">제루스</div></div>`;
+    dashboardAtoms.forEach(a=>{
         const isSkill = (a === "갓오타/메시브");
         const isMagic = !isSkill;
-        
-        const d=document.createElement('div'); 
-        d.className='cost-slot'+(isMagic?' is-magic-slot':'')+(isSkill?' is-skill-slot':''); 
-        d.id=`vslot-${clean(a)}`; 
-        d.innerHTML=`<div class="cost-val"></div><div class="cost-name" id="name-${clean(a)}">${a}</div>`; 
-        DOM.magicDashboard.appendChild(d); 
+
+        const d=document.createElement('div');
+        d.className='cost-slot'+(isMagic?' is-magic-slot':'')+(isSkill?' is-skill-slot':'');
+        d.id=`vslot-${clean(a)}`;
+        d.innerHTML=`<div class="cost-val"></div><div class="cost-name" id="name-${clean(a)}">${a}</div>`;
+        DOM.magicDashboard.appendChild(d);
     });
 }
 
@@ -659,7 +536,7 @@ function resetMagicDashboard(){
     document.querySelectorAll('#magicDashboard .cost-slot .cost-val').forEach(e => { e.innerHTML=EMPTY_SVG; e.style.display=""; });
     document.querySelectorAll('#magicDashboard .cost-slot .cost-name').forEach(e => e.style.display='block');
     document.querySelectorAll('#magicDashboard .cost-slot').forEach(e => e.classList.remove('active'));
-    
+
     dashboardAtoms.forEach(a=>{
         const el = document.getElementById(`name-${clean(a)}`);
         if(el) el.innerHTML = a;
@@ -676,17 +553,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.lang = 'ko';
     document.documentElement.setAttribute('data-theme', 'dark');
 
-    UNIT_DATABASE.forEach((kArr) => { 
+    UNIT_DATABASE.forEach((kArr) => {
         const g = gradeMap[kArr[1]] || "Magic", cat = raceMap[kArr[2]] || "TBio";
-        const u={ id:clean(kArr[0]), name:kArr[0], grade:g, category:cat, recipe:kArr[3], cost:kArr[4] }; 
-        unitMap.set(clean(kArr[0]), u); 
+        const u={ id:clean(kArr[0]), name:kArr[0], grade:g, category:cat, recipe:kArr[3], cost:kArr[4] };
+        unitMap.set(clean(kArr[0]), u);
     });
 
     DOM.magicDashboard=document.getElementById('magicDashboard');
-    renderDashboardAtoms(); 
-    document.getElementById('mainLayout').classList.add('visible'); 
+    renderDashboardAtoms();
+    document.getElementById('mainLayout').classList.add('visible');
     selectTab(0);
-    updateMagicDashboard(); 
+    updateMagicDashboard();
     renderLineageBoard();
 
     setTimeout(() => { const intro = document.getElementById('introCinematic'); if(intro) { intro.classList.add('intro-exit'); setTimeout(() => intro.style.display = 'none', 800); } }, 3200);
@@ -698,12 +575,12 @@ function openJewelModal(){document.getElementById('jewelModal').classList.add('a
 function closeJewelModal(e){if(!e||e.target===document.getElementById('jewelModal'))document.getElementById('jewelModal').classList.remove('active');}
 
 function renderJewelGrid(){
-    const g=document.getElementById('jewelGrid'); if(g.innerHTML!=='') { g.innerHTML=''; } 
+    const g=document.getElementById('jewelGrid'); if(g.innerHTML!=='') { g.innerHTML=''; }
     let h=''; const url="https://raw.githubusercontent.com/sldbox/site/main/image/jw/";
-    
+
     JEWEL_DATABASE.forEach((koArr) => {
         const kr=koArr[0], krLeg=koArr[1], krMyth=koArr[2], c=koArr[3]||"#fff", imgName=koArr[4]||kr;
-        
+
         let mythHtml = '';
         if (krMyth && krMyth.trim() !== "") {
             mythHtml = `
@@ -713,7 +590,7 @@ function renderJewelGrid(){
                 </div>
             `;
         }
-        
+
         h+=`<div class="jewel-item">
             <div class="jewel-header">
                 <div class="jewel-img-wrap" style="border-color:${c}80; color:${c}; box-shadow:inset 0 0 15px rgba(0,0,0,0.8), 0 0 15px ${c}40;">
