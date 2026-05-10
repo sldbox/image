@@ -1,0 +1,20 @@
+{
+  "name": "개복디 넥서스",
+  "short_name": "넥서스",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#030508",
+  "theme_color": "#00e5ff",
+  "icons": [
+    {
+      "src": "https://sldbox.github.io/site/image/logo/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://sldbox.github.io/site/image/logo/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

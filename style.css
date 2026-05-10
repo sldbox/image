@@ -1,6 +1,6 @@
 /*
 =============================================================================
-[파일 설명서] style.css
+[파일 설명서] style.css (다중 모드 및 레이아웃 제어 개선 - 자동저장, 내보내기, 제작자 크레딧 탑재)
 =============================================================================
 */
 
@@ -8,24 +8,24 @@
     --void: #030508; --panel: #0a0f16; --panel-b: #0d1520; --surface: #111;
     --g: #00e5ff; --g-dim: #008899; --g-faint: rgba(0,229,255,0.08); --g-border: rgba(0,229,255,0.3); --g-glow: rgba(0,229,255,0.6);
     --scan-line: rgba(0,229,255,0.03);
-    --grade-magic: #87CEEB; --grade-rare: #FBBF24; --grade-epic: #FB923C; --grade-unique: #EF4444; 
+    --grade-magic: #87CEEB; --grade-rare: #FBBF24; --grade-epic: #FB923C; --grade-unique: #EF4444;
     --grade-hell: #EC4899; --grade-legend: #A78BFA; --grade-hidden: #34D399; --grade-super: #FFD700;
     --text: #e8f4f8; --text-sub: #7eaabe; --text-muted: #425e70;
     --border: rgba(0,229,255,0.2); --border-light: rgba(0,229,255,0.1); --card-bg: rgba(0,0,0,0.6); --card-hover: #121c29;
     --slot-bg: #05080c; --ctrl-bg: #000; --ctrl-btn-bg: #0c141d; --ctrl-btn-hover: #1e2d40; --ctrl-val-bg: #05080c;
     --badge-bg: rgba(0,0,0,0.7); --node-bg: #0d1520; --header-blur-bg: rgba(4,7,12,0.92);
-    --tab-hover: rgba(0,229,255,0.08); 
+    --tab-hover: rgba(0,229,255,0.08);
     --jewel-card: rgba(255,255,255,0.05); --btn-color: #fff;
     --panel-hdr-bg: rgba(0,0,0,0.7); --tabs-wrap-bg: rgba(0,0,0,0.5);
-    --font-body: 'Inter', 'Nanum Gothic', sans-serif; 
-    --font-mono: 'Share Tech Mono', monospace; 
+    --font-body: 'Inter', 'Nanum Gothic', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
     --font-display: 'Orbitron', 'Song Myung', sans-serif;
     --radius: 8px;
 
     /* 4분할 동적 레이아웃 제어 변수 */
     --col-codex: 1fr;
     --col-dash: 1fr;
-    --col-deduct: 0fr; 
+    --col-deduct: 0fr;
     --col-jewel: 0fr;
 }
 
@@ -35,8 +35,6 @@ body{background:var(--void);color:var(--text);font-family:var(--font-body);min-h
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--g-dim);border-radius:4px;box-shadow:inset 0 0 5px rgba(0,0,0,0.5)}
 @media (hover: hover) and (pointer: fine) { ::-webkit-scrollbar-thumb:hover{background:var(--g)} }
 *{scrollbar-width:thin;scrollbar-color:var(--g-dim) transparent}
-
-svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* --- PC 전용 커스텀 컨텍스트 메뉴 --- */
 .context-menu { position: fixed; background: rgba(10, 15, 22, 0.95); border: 1px solid var(--g); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.9), 0 0 15px rgba(0,229,255,0.2); z-index: 30000; padding: 6px 0; min-width: 170px; overflow: hidden; backdrop-filter: blur(10px); font-family: var(--font-body); }
@@ -72,11 +70,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 /* --- 동적 윈도우 스위칭 레이아웃 --- */
 @media (min-width: 1200px) and (orientation: landscape) {
     html, body { overflow: hidden; height: 100%; margin: 0; padding: 0; }
-    .main-layout { 
-        display: grid; 
-        grid-template-columns: var(--col-codex) var(--col-dash) var(--col-deduct) var(--col-jewel); 
-        grid-template-rows: minmax(0, 1fr); 
-        gap: 12px; padding: 16px 20px; height: 100vh; overflow: hidden; 
+    .main-layout {
+        display: grid;
+        grid-template-columns: var(--col-codex) var(--col-dash) var(--col-deduct) var(--col-jewel);
+        grid-template-rows: minmax(0, 1fr);
+        gap: 12px; padding: 16px 20px; height: 100vh; overflow: hidden;
         max-width: 1600px; margin: 0 auto; width: 100%;
         transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1), grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -91,7 +89,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 
     .col-center { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0; z-index: 5; transition: opacity 0.3s ease, transform 0.4s ease; opacity: 1; transform: scale(1); pointer-events: auto; visibility: visible;}
     .main-layout.view-jewel .col-center { opacity: 0; transform: scale(0.95); pointer-events: none; visibility: hidden; }
-    
+
     .col-right { grid-column: 3; grid-row: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; transition: opacity 0.3s ease, transform 0.4s ease; opacity: 0; transform: translateX(20px); pointer-events: none; visibility: hidden; }
     .main-layout.view-deduct .col-right { opacity: 1; transform: translateX(0); pointer-events: auto; visibility: visible; }
     .main-layout.view-jewel .col-right { opacity: 0; transform: translateX(20px); pointer-events: none; visibility: hidden; }
@@ -111,7 +109,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
     .main-layout.view-deduct .col-right { display: flex !important; }
     .main-layout.view-jewel .panel-codex, .main-layout.view-jewel .col-center, .main-layout.view-jewel .col-right { display: none !important; }
     .main-layout.view-jewel .panel-jewel { display: flex !important; min-height: calc(100vh - 20px); }
-    .main-layout.mode-expert .panel-codex { display: none !important; } 
+    .main-layout.mode-expert .panel-codex { display: none !important; }
 }
 
 /* --- 하이브리드 검색 및 로스터 컨트롤 --- */
@@ -164,7 +162,6 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 
 /* --- 헤더 & 버튼 --- */
 .header-btn-group { display: flex; gap: 6px; align-items: center; }
-/* 모바일 세로 묶임 방지 및 스케일 유지 속성 강제 추가 (white-space, flex-shrink) */
 .btn-hdr-sm { padding: 0 24px; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: var(--text-sub); font-size: 0.95rem; font-weight: 800; cursor: pointer; border-radius: 6px; transition: 0.2s; white-space: nowrap !important; word-break: keep-all; flex-shrink: 0; font-family: var(--font-body); display: flex; align-items: center; justify-content: center; }
 .btn-hdr-sm.neon { color: var(--g); border-color: var(--g-border); }
 .btn-hdr-sm:hover { background: var(--g-faint); border-color: var(--g); color: var(--text); box-shadow: 0 0 8px var(--g-faint); }
@@ -179,7 +176,6 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .header-scanline { position:absolute; top:0; left:-100%; width:50%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,229,255,0.2), transparent); animation: headerScan 3s linear infinite; }
 @keyframes headerScan { to { left:200%; } }
 
-/* [오류 수정] 타이틀 세로 정렬 방지 */
 .nexus-main-title { white-space: nowrap !important; flex-shrink: 0; font-family: var(--font-display); font-weight: 900; font-size: 1.1rem; color: var(--text); text-shadow: 0 0 10px var(--g-glow); letter-spacing: 1px; }
 
 .ph-icon{font-family:var(--font-mono);font-size:.8rem;color:var(--g);background:rgba(0,229,255,0.1);border:1px solid var(--g-dim);border-radius:4px;padding:3px 8px;flex-shrink:0; box-shadow:0 0 8px var(--g-glow);}
@@ -248,7 +244,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .cost-val{font-family:var(--font-display);font-size:clamp(1.5rem, 4vh, 3.5rem);font-weight:900;color:var(--text-muted);line-height:1;transition:color .3s; width:100%; height:100%; display:flex; align-items:center; justify-content:center; min-height:0;}
 .cost-slot.active .cost-val, .cost-slot.total .cost-val{color:var(--g);text-shadow:0 0 15px rgba(0,229,255,0.5);}
 .cost-slot.is-magic-slot.active .cost-val{color:var(--grade-magic);text-shadow:0 0 15px rgba(135,206,235,0.5);}
-.cost-slot.is-skill-slot.active .cost-val{color:var(--text);} 
+.cost-slot.is-skill-slot.active .cost-val{color:var(--text);}
 .cost-name{font-size:clamp(0.7rem, 1.5vh, 0.9rem);color:var(--text-sub);margin-top:clamp(2px, 1vh, 8px);font-weight:800;text-align:center;line-height:1.2;word-break:keep-all;width:100%;letter-spacing:0.5px; padding-bottom:clamp(2px, 1vh, 6px);}
 
 /* --- 차감 맵핑 레이아웃 --- */
@@ -268,7 +264,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .d-sep { color:var(--text-sub); font-size:1rem; font-family:var(--font-mono); }
 .d-req { width:30px; text-align:right; font-family:var(--font-mono); font-size:1.1rem; font-weight:900; color:var(--text-muted); transition:0.3s; padding-right:4px; }
 
-/* --- 쥬얼 도감 카드 디자인 (3D 틸트 속성 추가) --- */
+/* --- 쥬얼 도감 카드 디자인 --- */
 .jewel-item { background:var(--jewel-card); border:1px solid var(--border-light); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 5px 15px rgba(0,0,0,0.5); transition:transform 0.2s, box-shadow 0.3s; transform-style: preserve-3d; }
 .jewel-item:hover { transform:translateY(-5px) scale(1.02); box-shadow:0 15px 30px rgba(0,0,0,0.9); border-color:var(--border); z-index:10; }
 .jewel-header { display:flex; flex-direction:column; align-items:center; padding:24px; border-bottom:1px solid rgba(255,255,255,0.05); background:linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%); transform: translateZ(10px); }
@@ -287,7 +283,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 @keyframes spinSparkle { 100% { transform:rotate(360deg); } }
 
 /* --- [개선] 모바일 최적화 강제 텍스트 압축 레이아웃 --- */
-@media (max-width:719px){ 
+@media (max-width:719px){
     .mode-selector { padding: 10px; }
     .mode-selector h1 { font-size: 2rem !important; }
     .btn-tutorial-start { font-size: 0.95rem; padding: 10px 18px; margin-bottom: 20px; }
@@ -295,38 +291,64 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
     .ms-card { padding: 24px 20px; min-height: auto; flex: 1 1 100%; max-width: 100%; width: 100%; }
     .ms-card h2 { font-size: 1.6rem !important; margin-bottom: 8px !important; }
     .ms-card p { font-size: 0.95rem !important; }
-    
+
     .creator-badge { bottom: 15px; padding: 8px 16px; font-size: 0.8rem; }
     .cb-label { display: none; }
 
-    /* 헤더 여백 및 높이 축소 */
+    /* [오류 수정] 상단 메인 헤더 레이아웃을 2단(세로)으로 분리 및 조작 버튼 줄바꿈 허용 */
+    .panel-codex .panel-header > div:first-child {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 12px 16px !important;
+        height: auto !important;
+    }
+    .panel-codex .panel-header > div:first-child > div:nth-child(2) {
+        width: 100%;
+        justify-content: space-between; /* 타이틀과 '모드 변경'을 양 끝으로 배치 */
+    }
+    .panel-codex .panel-header > div:first-child > div:nth-child(3) {
+        width: 100%;
+        flex-wrap: wrap !important; /* 공간이 부족하면 버튼이 두 번째 줄로 밀리도록 허용 */
+        justify-content: flex-start;
+        gap: 6px !important;
+    }
+
+    /* 헤더 컨트롤 버튼 스케일 조정 및 가변 너비 */
+    .btn-hdr-sm {
+        flex: 1 1 calc(50% - 6px); /* 4개의 버튼을 2개씩 2줄로 꽉 차게 자동 배치 */
+        padding: 0 4px !important;
+        font-size: 0.8rem !important;
+        height: 34px !important;
+        min-width: max-content;
+    }
+
+    /* 일반적인 패널 헤더 여백 및 높이 축소 */
     .panel-header { padding: 4px 8px; min-height: 38px; gap: 4px; align-items: center; justify-content: flex-start; }
     .ph-title { font-size: 0.95rem !important; }
     .ph-icon { padding: 2px 5px; font-size: 0.75rem; }
     .ph-sep { display: none; }
-    
-    /* 헤더 컨트롤 버튼 스케일 강제 압축 */
-    .btn-hdr-sm { padding: 0 8px !important; font-size: 0.75rem !important; height: 28px !important; }
-    .btn-toggle-layout { padding: 4px 6px !important; font-size: 0.7rem !important; gap: 4px !important; }
-    .btn-text-link { font-size: 0.75rem; margin-left: auto; }
+
+    .btn-toggle-layout { padding: 4px 8px !important; font-size: 0.75rem !important; gap: 4px !important; }
+    .btn-text-link { font-size: 0.8rem; margin-left: auto; }
 
     .tab-btn { padding: 6px 8px; font-size: 0.8rem; gap: 3px; }
     .codex-tabs-wrap { padding: 6px; }
 
     /* 코스트 슬롯 낭비 여백 대폭 축소 */
-    .magic-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 4px; } 
-    .cost-slot { min-height: 42px; padding: 2px; } 
-    .cost-val { font-size: 1.05rem; line-height: 1; } 
-    .cost-name { font-size: 0.6rem; margin-top: 2px; letter-spacing: -0.5px; line-height: 1.2; text-align: center; word-break: keep-all; white-space: normal; transform: scale(0.9); } 
-    
+    .magic-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 6px; }
+    .cost-slot { min-height: 55px; padding: 4px; }
+    .cost-val { font-size: 1.2rem; line-height: 1; }
+    .cost-name { font-size: 0.65rem; margin-top: 4px; letter-spacing: -0.5px; line-height: 1.2; text-align: center; word-break: keep-all; white-space: normal; transform: scale(0.95); }
+
     /* 유닛 카드 레이아웃 밀도 증가 */
-    .uc-wrap { padding: 6px 8px; gap: 6px; }
+    .uc-wrap { padding: 8px 10px; gap: 8px; }
     .uc-name-row { font-size: 0.95rem; margin-bottom: 2px; }
     .uc-ctrl { width: 50px; padding-left: 4px; }
     .smart-stepper { height: 28px; }
     .smart-stepper button { font-size: 0.9rem; }
     .smart-stepper .ss-val { font-size: 0.9rem; }
-    
+
     /* 차감 데시보드 그룹/그리드 압축 */
     .deduct-group { padding: 10px; margin-bottom: 8px; }
     .deduct-group-title { font-size: 0.95rem; padding-bottom: 8px; margin-bottom: 10px; }

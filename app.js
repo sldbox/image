@@ -1,7 +1,7 @@
 /*
 =============================================================================
 [파일 설명서] app.js (하이브리드 커맨드 엔진, 튜토리얼 및 자동저장/내보내기 탑재)
-[신규 업데이트] PC/모바일 최적화 (단축키, 커스텀 우클릭, 3D 틸트, 햅틱 피드백 적용)
+[신규 업데이트] PWA 앱 구동 지원, 모바일 스와이프 제스처, JSON 백업/복구, 마우스 트래킹 및 Shift+클릭 기능 탑재
 =============================================================================
 */
 
@@ -29,11 +29,11 @@ const EMPTY_SVG = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" s
 
 function getUnitId(rawName){ const c=clean(rawName); const u=unitMap.get(c); return u ? u.id : c; }
 
-// --- [신규] 햅틱 피드백 엔진 ---
+// --- 햅틱 피드백 엔진 ---
 function triggerHaptic() { if (typeof navigator !== 'undefined' && navigator.vibrate) { navigator.vibrate(15); } }
 
 // =========================================================
-// 실시간 자동 저장 & 복구 시스템
+// 실시간 자동 저장 & 복구 시스템 & JSON 파일 백업
 // =========================================================
 function saveData() {
     const data = {
@@ -54,6 +54,38 @@ function loadData() {
             console.warn("저장된 데이터 복구 중 오류가 발생했습니다.");
         }
     }
+}
+
+// [신규] JSON 파일 백업 다운로드
+window.exportSaveDataJSON = function() {
+    const raw = localStorage.getItem('nexusSaveData');
+    if(!raw || raw.length < 10) { showToast("<span class=\"t-icon\">⚠</span> 저장된 데이터가 없습니다.", true); return; }
+    const blob = new Blob([raw], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `nexus_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    showToast("<span class=\"t-icon\">💾</span> 백업 파일이 다운로드되었습니다.");
+}
+
+// [신규] JSON 파일 복구 업로드창 띄우기
+window.importSaveDataJSON = function() { document.getElementById('importFile').click(); }
+
+// [신규] 파일 읽고 데이터에 덮어쓰기
+window.handleFileImport = function(e) {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        try {
+            const json = JSON.parse(evt.target.result);
+            if(json.active !== undefined || json.owned !== undefined) {
+                localStorage.setItem('nexusSaveData', evt.target.result);
+                activeUnits.clear(); essenceUnits.clear(); ownedUnits.clear();
+                loadData(); updateAllPanels();
+                showToast("<span class=\"t-icon\">📂</span> 데이터 복구가 완료되었습니다.");
+            } else { throw new Error(); }
+        } catch(err) { showToast("<span class=\"t-icon\">⚠</span> 잘못된 형식의 파일입니다.", true); }
+    };
+    reader.readAsText(file); e.target.value = '';
 }
 
 // =========================================================
@@ -177,7 +209,7 @@ function initMode(mode, showToastMsg = true) {
 
 
 // =========================================================
-// 검색 및 커맨드 엔진 (Search & Command) & [신규] 디바운싱 강화
+// 검색 및 커맨드 엔진 (Search & Command) 
 // =========================================================
 let searchTimeout = null;
 
@@ -190,7 +222,7 @@ function setupSearchEngine() {
     inputEl.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         const val = e.target.value;
-        searchTimeout = setTimeout(() => performSearch(val), 150); // 디바운싱 성능 강화 (150ms)
+        searchTimeout = setTimeout(() => performSearch(val), 150); 
     });
 
     inputEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); processCommand(e.target.value); } });
@@ -280,18 +312,14 @@ function showToast(msg, isError = false) {
 
 
 // =========================================================
-// [신규] PC 전용 키보드 단축키 (Hotkeys) & 우클릭 메뉴 & 3D 틸트
+// PC 전용 키보드 단축키 (Hotkeys) & 우클릭 메뉴 & 3D 틸트
 // =========================================================
-
-// 단축키 엔진
 window.addEventListener('keydown', e => {
-    // 1. `/` (슬래시) 또는 Ctrl+F : 검색창 포커스
     if ((e.key === '/' || (e.ctrlKey && e.key.toLowerCase() === 'f')) && document.activeElement.tagName !== 'INPUT') {
         e.preventDefault();
         const searchEl = document.getElementById('unitSearchInput');
         if (searchEl && searchEl.offsetParent !== null) searchEl.focus();
     }
-    // 2. Esc : 열려있는 툴팁 닫기, 우클릭 메뉴 닫기, 검색창 내용 지우기
     if (e.key === 'Escape') {
         hideRecipeTooltip();
         closeContextMenu();
@@ -302,14 +330,12 @@ window.addEventListener('keydown', e => {
             searchEl.blur();
         }
     }
-    // 3. 숫자 1~6 : 탭 즉시 전환
     if (!e.ctrlKey && !e.altKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
         const num = parseInt(e.key);
         if (num >= 1 && num <= TAB_CATEGORIES.length) selectTab(num - 1);
     }
 });
 
-// 커스텀 우클릭 메뉴 엔진
 document.addEventListener('contextmenu', e => {
     const card = e.target.closest('.unit-card');
     if (card) {
@@ -318,14 +344,13 @@ document.addEventListener('contextmenu', e => {
         showContextMenu(e, unitId);
         return;
     }
-    // 스마트 스테퍼나 인풋이 아니면 기본 우클릭 차단
     if (!e.target.closest('.smart-stepper') && !e.target.closest('input')) e.preventDefault();
 });
 
 function showContextMenu(e, unitId) {
     const cm = document.getElementById('customContextMenu');
     const u = unitMap.get(unitId);
-    if(!u || u.grade === "슈퍼히든") return; // 슈퍼히든은 1개 고정이므로 제외
+    if(!u || u.grade === "슈퍼히든") return; 
     
     cm.innerHTML = `
         <div class="cm-header">${u.name} 빠른 조작</div>
@@ -338,7 +363,6 @@ function showContextMenu(e, unitId) {
     `;
     
     cm.style.display = 'block';
-    // 화면 넘어감 방지
     const x = Math.min(e.pageX, window.innerWidth - 180);
     const y = Math.min(e.pageY, window.innerHeight - cm.offsetHeight - 20);
     cm.style.left = x + 'px';
@@ -351,9 +375,8 @@ function closeContextMenu() {
 }
 document.addEventListener('click', closeContextMenu);
 
-// 3D 틸트 (마우스 입체 효과) 엔진
 function applyTilt(e, elem) {
-    if(window.innerWidth < 1200) return; // PC 해상도에서만 작동
+    if(window.innerWidth < 1200) return; 
     const rect = elem.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -361,7 +384,6 @@ function applyTilt(e, elem) {
     const yc = rect.height / 2;
     const dx = x - xc;
     const dy = y - yc;
-    // 과하지 않게 미세한 각도로 조절
     elem.style.transform = `perspective(1000px) rotateY(${dx / 15}deg) rotateX(${-dy / 15}deg) translateZ(10px)`;
 }
 function resetTilt(elem) {
@@ -411,20 +433,24 @@ function calculateTotalCostScore(costStr){
     let score=0; costStr.split(',').forEach(p=>{const m=p.match(/\[(\d+(?:\.\d+)?)\]/);if(m)score+=parseFloat(m[1]);else score+=1}); return score;
 }
 
-// 스마트 수량 컨트롤 엔진 (햅틱 추가)
+// 스마트 수량 컨트롤 엔진 (Shift+클릭 다중 증감 지원)
 let repeatTimer = null, repeatDelayTimer = null;
 function startSmartChange(id, delta, type, event) {
     if(event) { event.preventDefault(); event.stopPropagation(); }
     stopSmartChange(); 
-    
-    triggerHaptic(); // 터치 시 햅틱 피드백 발생
+    triggerHaptic(); 
+
+    // [신규] Shift 누를 시 5개 단위 이동
+    let shiftMulti = (event && event.shiftKey) ? 5 : 1;
+    let finalDelta = delta * shiftMulti;
 
     const action = () => {
         if(type === 'active') { 
-            if(!activeUnits.has(id) && delta > 0) toggleUnitSelection(id, 1);
-            else if(activeUnits.has(id)) setUnitQty(id, (activeUnits.get(id) || 1) + delta); 
+            let current = activeUnits.get(id) || 0;
+            if(current === 0 && finalDelta > 0) toggleUnitSelection(id, finalDelta);
+            else setUnitQty(id, current + finalDelta); 
         } 
-        else { setOwnedQty(id, (ownedUnits.get(id) || 0) + delta); }
+        else { setOwnedQty(id, (ownedUnits.get(id) || 0) + finalDelta); }
     };
     action();
     repeatDelayTimer = setTimeout(() => { repeatTimer = setInterval(() => { triggerHaptic(); action(); }, 80); }, 400);
@@ -432,18 +458,30 @@ function startSmartChange(id, delta, type, event) {
 function stopSmartChange() { clearTimeout(repeatDelayTimer); clearInterval(repeatTimer); repeatDelayTimer = null; repeatTimer = null; }
 document.addEventListener('mouseup', stopSmartChange); document.addEventListener('touchend', stopSmartChange); document.addEventListener('contextmenu', stopSmartChange); 
 
-// 툴팁 동적 연동
+// [신규] 툴팁 글로벌 마우스 트래커
+let tooltipTracker = (e) => {
+    const tt = document.getElementById('recipeTooltip');
+    if(!tt || !tt.classList.contains('active')) return;
+    let x = e.pageX, y = e.pageY;
+    if(x + 280 > window.innerWidth) x = window.innerWidth - 290;
+    tt.style.left = Math.max(10, x + 15) + 'px'; tt.style.top = (y + 15) + 'px';
+};
+document.addEventListener('mousemove', tooltipTracker);
+
 function showRecipeTooltip(id, event, isDeduction = false) {
-    if(event) event.stopPropagation();
+    if(event && event.type !== 'mousemove') event.stopPropagation();
     const u = unitMap.get(id); if(!u) return;
     let multi = 1;
     if(isDeduction) { const reqEl = document.getElementById(`d-req-${id}`); if(reqEl) { let reqVal = parseInt(reqEl.innerText); if(reqVal > 1) multi = reqVal; } }
     const tt = document.getElementById('recipeTooltip');
     tt.innerHTML = `<div class="tooltip-header" style="color:${gradeColorsRaw[u.grade]}">${u.name} 조합법 ${multi > 1 ? `<span style="font-size:0.8rem; color:var(--text-sub);">(${multi}개 기준)</span>` : ''}</div><div class="tooltip-body">${formatRecipeHorizontal(u, multi)}</div><div class="tooltip-footer">화면을 터치하거나 외부 클릭 시 닫힙니다.</div>`;
     tt.classList.add('active');
-    let x = event.pageX || (event.touches && event.touches[0].pageX), y = event.pageY || (event.touches && event.touches[0].pageY);
+    
+    // 초기 위치 강제 설정 (클릭 지점 우선)
+    let x = event.pageX || (event.touches && event.touches[0].pageX) || window.innerWidth/2;
+    let y = event.pageY || (event.touches && event.touches[0].pageY) || window.innerHeight/2;
     if(x + 280 > window.innerWidth) x = window.innerWidth - 290;
-    tt.style.left = Math.max(10, x) + 'px'; tt.style.top = (y + 15) + 'px';
+    tt.style.left = Math.max(10, x + 15) + 'px'; tt.style.top = (y + 15) + 'px';
 }
 function hideRecipeTooltip() { const tt = document.getElementById('recipeTooltip'); if(tt) tt.classList.remove('active'); }
 document.addEventListener('click', hideRecipeTooltip); document.addEventListener('touchstart', hideRecipeTooltip);
@@ -489,7 +527,6 @@ function calculateIntermediateRequirements() {
     return { reqMap, reasonMap };
 }
 
-// 신규 로스터 랜더링
 function renderActiveRoster() {
     const roster = document.getElementById('activeRoster');
     if(!roster) return;
@@ -547,7 +584,6 @@ function toggleUnitSelection(id, forceQty){
 
 function setUnitQty(id, val) {
     let q = parseInt(val);
-    // [신규] 값 0 입력 시 배열에서 아예 삭제되도록 수정
     if (q === 0 || isNaN(q) || q < 1) {
         if (activeUnits.has(id)) { activeUnits.delete(id); essenceUnits.delete(id); }
         updateAllPanels();
@@ -565,7 +601,9 @@ function handleWheel(e, id) {
     const u = unitMap.get(id); if (!u || u.grade === "슈퍼히든") return;
     e.preventDefault(); 
     let qty = activeUnits.get(id) || 1;
-    if (e.deltaY < 0) qty++; else qty--; 
+    let shiftMulti = e.shiftKey ? 5 : 1;
+    let delta = e.deltaY < 0 ? shiftMulti : -shiftMulti; 
+    qty += delta;
     
     if (qty > 16) qty = 16; 
     if (qty < 1) {
@@ -589,7 +627,10 @@ function handleOwnedWheel(e, id) {
     const inEl = document.getElementById(`d-in-${id}`); let maxQty = 99;
     if(inEl && inEl.hasAttribute('data-req')) { const reqVal = parseInt(inEl.getAttribute('data-req')); if(reqVal > 0) maxQty = reqVal; }
     let qty = ownedUnits.get(id) || 0;
-    if (e.deltaY < 0) qty++; else qty--;
+    let shiftMulti = e.shiftKey ? 5 : 1;
+    let delta = e.deltaY < 0 ? shiftMulti : -shiftMulti;
+    qty += delta;
+
     if (qty < 0) qty = 0; if (qty > maxQty) qty = maxQty;
     if (ownedUnits.get(id) !== qty) { ownedUnits.set(id, qty); updateAllPanels(); }
 }
@@ -927,6 +968,21 @@ document.addEventListener('DOMContentLoaded', () => {
         
         setupSearchEngine();
         checkInitialMode();
+
+        // [신규] 모바일 제스처 스와이프 등록
+        let touchStartX = 0; let touchEndX = 0;
+        const swipeArea = document.getElementById('tabContent');
+        if(swipeArea) {
+            swipeArea.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+            swipeArea.addEventListener('touchend', e => { 
+                touchEndX = e.changedTouches[0].screenX; 
+                const diff = touchEndX - touchStartX;
+                if (Math.abs(diff) > 70) { 
+                    if (diff > 0 && _activeTabIdx > 0) selectTab(_activeTabIdx - 1); 
+                    else if (diff < 0 && _activeTabIdx < TAB_CATEGORIES.length - 1) selectTab(_activeTabIdx + 1); 
+                }
+            }, {passive: true});
+        }
 
     } catch (err) { console.error("[오류] 넥서스 초기화 중 에러 발생:", err); }
 });

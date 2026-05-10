@@ -8,6 +8,9 @@
     <link rel="icon" href="https://sldbox.github.io/site/image/logo/icon.png" type="image/png">
     <link rel="shortcut icon" href="https://sldbox.github.io/site/image/logo/icon.png" type="image/png">
     <link rel="apple-touch-icon" href="https://sldbox.github.io/site/image/logo/icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#030508">
+
     <meta name="description" content="개복디 넥서스 - 히든조합&정수 계산 HUB">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://sldbox.github.io/site/">
@@ -73,7 +76,9 @@
                     <span style="color:var(--g-dim);">|</span>
                     <button class="btn-text-link" onclick="openModeSelector()">⚙️ 모드 변경</button>
                 </div>
-                <div style="display:flex; gap:8px; position:relative; z-index:2; align-items: stretch;">
+                <div style="display:flex; gap:6px; position:relative; z-index:2; align-items: stretch;">
+                    <button class="btn-hdr-sm" onclick="exportSaveDataJSON()" style="color:var(--text-sub); border-color:var(--border);" title="데이터 백업">💾 백업</button>
+                    <button class="btn-hdr-sm" onclick="importSaveDataJSON()" style="color:var(--text-sub); border-color:var(--border);" title="데이터 복구">📂 복구</button>
                     <button class="btn-hdr-sm" onclick="exportRoster()" style="color:var(--g); border-color:var(--g-border); background:rgba(0,229,255,0.05);">📋 로스터 복사</button>
                     <button class="btn-hdr-sm neon" onclick="resetCodex()">⟲ 선택 초기화</button>
                 </div>
@@ -163,7 +168,21 @@
     </div>
 </div>
 
+<input type="file" id="importFile" accept=".json" style="display:none;" onchange="handleFileImport(event)">
+
 <script src="data.js"></script>
 <script src="app.js"></script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                console.log('Nexus PWA App Installed.');
+            }).catch(err => {
+                console.error('PWA Install Failed:', err);
+            });
+        });
+    }
+</script>
 </body>
 </html>
