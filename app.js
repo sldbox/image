@@ -1,7 +1,7 @@
 /*
 =============================================================================
 [파일 설명서] app.js (하이브리드 커맨드 엔진, 튜토리얼 탑재)
-[신규 업데이트] 3D 틸트 성능 최적화 및 불필요한 마우스 트래킹 제거
+[최신 업데이트] 우클릭 메뉴, 단축키, 툴팁 트래커 제거 (성능 최적화 버전)
 =============================================================================
 */
 
@@ -233,18 +233,11 @@ function showToast(msg, isError = false) {
 
 
 // =========================================================
-// PC 전용 키보드 단축키 (Hotkeys) & 우클릭 메뉴
-// [개선] 성능 부하를 유발하는 3D 틸트 효과 제거
+// 공통 리스너 및 유틸리티
 // =========================================================
 window.addEventListener('keydown', e => {
-    if ((e.key === '/' || (e.ctrlKey && e.key.toLowerCase() === 'f')) && document.activeElement.tagName !== 'INPUT') {
-        e.preventDefault();
-        const searchEl = document.getElementById('unitSearchInput');
-        if (searchEl && searchEl.offsetParent !== null) searchEl.focus();
-    }
     if (e.key === 'Escape') {
         hideRecipeTooltip();
-        closeContextMenu();
         const searchEl = document.getElementById('unitSearchInput');
         if (document.activeElement === searchEl) {
             searchEl.value = '';
@@ -252,47 +245,7 @@ window.addEventListener('keydown', e => {
             searchEl.blur();
         }
     }
-    if (!e.ctrlKey && !e.altKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
-        const num = parseInt(e.key);
-        if (num >= 1 && num <= TAB_CATEGORIES.length) selectTab(num - 1);
-    }
 });
-
-document.addEventListener('contextmenu', e => {
-    const card = e.target.closest('.unit-card');
-    if (card) {
-        e.preventDefault();
-        const unitId = card.id.replace('card-', '');
-        showContextMenu(e, unitId);
-        return;
-    }
-    if (!e.target.closest('.smart-stepper') && !e.target.closest('input')) e.preventDefault();
-});
-
-function showContextMenu(e, unitId) {
-    const cm = document.getElementById('customContextMenu');
-    const u = unitMap.get(unitId);
-    if(!u || u.grade === "슈퍼히든") return; 
-    
-    cm.innerHTML = `
-        <div class="cm-header">${u.name} 빠른 조작</div>
-        <div class="cm-item" onclick="setUnitQty('${unitId}', 16); closeContextMenu();">
-            <span style="color:var(--g); font-weight:900;">MAX</span> (16개) 채우기
-        </div>
-        <div class="cm-item" onclick="setUnitQty('${unitId}', 0); closeContextMenu();">
-            <span style="color:var(--grade-unique); font-weight:900;">0</span> 으로 초기화
-        </div>
-    `;
-    
-    cm.style.display = 'block';
-    const x = Math.min(e.pageX, window.innerWidth - 180);
-    const y = Math.min(e.pageY, window.innerHeight - cm.offsetHeight - 20);
-    cm.style.left = x + 'px';
-    cm.style.top = y + 'px';
-}
-
-function closeContextMenu() { const cm = document.getElementById('customContextMenu'); if(cm) cm.style.display = 'none'; }
-document.addEventListener('click', closeContextMenu);
 
 // =========================================================
 // 코어 데이터 사전 파싱 
@@ -352,17 +305,7 @@ function startSmartChange(id, delta, type, event) {
     repeatDelayTimer = setTimeout(() => { repeatTimer = setInterval(() => { triggerHaptic(); action(); }, 80); }, 400);
 }
 function stopSmartChange() { clearTimeout(repeatDelayTimer); clearInterval(repeatTimer); repeatDelayTimer = null; repeatTimer = null; }
-document.addEventListener('mouseup', stopSmartChange); document.addEventListener('touchend', stopSmartChange); document.addEventListener('contextmenu', stopSmartChange); 
-
-// 툴팁 글로벌 마우스 트래커
-let tooltipTracker = (e) => {
-    const tt = document.getElementById('recipeTooltip');
-    if(!tt || !tt.classList.contains('active')) return;
-    let x = e.pageX, y = e.pageY;
-    if(x + 280 > window.innerWidth) x = window.innerWidth - 290;
-    tt.style.left = Math.max(10, x + 15) + 'px'; tt.style.top = (y + 15) + 'px';
-};
-document.addEventListener('mousemove', tooltipTracker);
+document.addEventListener('mouseup', stopSmartChange); document.addEventListener('touchend', stopSmartChange); 
 
 function showRecipeTooltip(id, event, isDeduction = false) {
     if(event && event.type !== 'mousemove') event.stopPropagation();
