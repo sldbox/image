@@ -1,6 +1,6 @@
 /*
 =============================================================================
-[파일 설명서] style.css (다중 모드 및 레이아웃 제어 개선 - 자동저장, 내보내기, 제작자 크레딧 탑재)
+[파일 설명서] style.css
 =============================================================================
 */
 
@@ -178,6 +178,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .panel-header{padding:clamp(4px, 1vh, 8px) 20px; min-height:clamp(44px, 6vh, 54px); align-items:stretch; background:rgba(0,0,0,0.8);border-bottom:1px solid var(--border);display:flex;gap:12px;flex-shrink:0;position:relative; border-top-left-radius:var(--radius); border-top-right-radius:var(--radius);}
 .header-scanline { position:absolute; top:0; left:-100%; width:50%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,229,255,0.2), transparent); animation: headerScan 3s linear infinite; }
 @keyframes headerScan { to { left:200%; } }
+
+/* [오류 수정] 타이틀 세로 정렬 방지 */
+.nexus-main-title { white-space: nowrap !important; flex-shrink: 0; font-family: var(--font-display); font-weight: 900; font-size: 1.1rem; color: var(--text); text-shadow: 0 0 10px var(--g-glow); letter-spacing: 1px; }
+
 .ph-icon{font-family:var(--font-mono);font-size:.8rem;color:var(--g);background:rgba(0,229,255,0.1);border:1px solid var(--g-dim);border-radius:4px;padding:3px 8px;flex-shrink:0; box-shadow:0 0 8px var(--g-glow);}
 .ph-title{font-family:var(--font-display);font-weight:900;font-size:1.1rem;color:var(--text);letter-spacing:1px; line-height: 1.2; white-space: nowrap !important; word-break: keep-all; flex-shrink: 0;}
 .ph-sep { color:var(--border-light); margin:0 4px; flex-shrink: 0; }
@@ -282,7 +286,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .mythic-sparkle { display:inline-block; animation:spinSparkle 3s linear infinite; }
 @keyframes spinSparkle { 100% { transform:rotate(360deg); } }
 
-/* --- 모바일 최적화 강제 텍스트 압축 레이아웃 --- */
+/* --- [개선] 모바일 최적화 강제 텍스트 압축 레이아웃 --- */
 @media (max-width:719px){ 
     .mode-selector { padding: 10px; }
     .mode-selector h1 { font-size: 2rem !important; }
@@ -295,37 +299,47 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
     .creator-badge { bottom: 15px; padding: 8px 16px; font-size: 0.8rem; }
     .cb-label { display: none; }
 
-    .panel-header { padding: 6px 12px; min-height: 44px; gap: 6px; align-items: center; justify-content: flex-start; }
+    /* 헤더 여백 및 높이 축소 */
+    .panel-header { padding: 4px 8px; min-height: 38px; gap: 4px; align-items: center; justify-content: flex-start; }
     .ph-title { font-size: 0.95rem !important; }
     .ph-icon { padding: 2px 5px; font-size: 0.75rem; }
     .ph-sep { display: none; }
     
-    /* 헤더 컨트롤 버튼 스케일 조정 강제화 */
-    .btn-hdr-sm { padding: 0 10px !important; font-size: 0.8rem !important; height: 32px !important; }
-    .btn-toggle-layout { padding: 4px 8px !important; font-size: 0.75rem !important; gap: 4px !important; }
-    .btn-text-link { font-size: 0.75rem; }
+    /* 헤더 컨트롤 버튼 스케일 강제 압축 */
+    .btn-hdr-sm { padding: 0 8px !important; font-size: 0.75rem !important; height: 28px !important; }
+    .btn-toggle-layout { padding: 4px 6px !important; font-size: 0.7rem !important; gap: 4px !important; }
+    .btn-text-link { font-size: 0.75rem; margin-left: auto; }
 
     .tab-btn { padding: 6px 8px; font-size: 0.8rem; gap: 3px; }
     .codex-tabs-wrap { padding: 6px; }
 
-    .magic-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 6px; } 
-    .cost-slot { min-height: 55px; padding: 4px; } 
-    .cost-val { font-size: 1.2rem; line-height: 1; } 
-    .cost-name { font-size: 0.65rem; margin-top: 4px; letter-spacing: -0.5px; line-height: 1.2; text-align: center; word-break: keep-all; white-space: normal; transform: scale(0.95); } 
+    /* 코스트 슬롯 낭비 여백 대폭 축소 */
+    .magic-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 4px; } 
+    .cost-slot { min-height: 42px; padding: 2px; } 
+    .cost-val { font-size: 1.05rem; line-height: 1; } 
+    .cost-name { font-size: 0.6rem; margin-top: 2px; letter-spacing: -0.5px; line-height: 1.2; text-align: center; word-break: keep-all; white-space: normal; transform: scale(0.9); } 
     
-    .uc-wrap { padding: 8px 10px; gap: 8px; }
-    .uc-name-row { font-size: 1rem; }
-    .uc-ctrl { width: 60px; padding-left: 6px; }
-    .smart-stepper { height: 34px; }
-    .smart-stepper button { font-size: 1rem; }
-    .smart-stepper .ss-val { font-size: 1rem; }
+    /* 유닛 카드 레이아웃 밀도 증가 */
+    .uc-wrap { padding: 6px 8px; gap: 6px; }
+    .uc-name-row { font-size: 0.95rem; margin-bottom: 2px; }
+    .uc-ctrl { width: 50px; padding-left: 4px; }
+    .smart-stepper { height: 28px; }
+    .smart-stepper button { font-size: 0.9rem; }
+    .smart-stepper .ss-val { font-size: 0.9rem; }
     
-    .deduct-slot { flex: 1 1 45%; max-width: none; }
-    .d-name { font-size: 0.8rem; padding: 6px; }
-    .d-inputs { padding: 4px; }
+    /* 차감 데시보드 그룹/그리드 압축 */
+    .deduct-group { padding: 10px; margin-bottom: 8px; }
+    .deduct-group-title { font-size: 0.95rem; padding-bottom: 8px; margin-bottom: 10px; }
+    .deduct-grid { gap: 6px; }
+    .deduct-slot { flex: 1 1 45%; max-height: 100px; }
+    .d-name { font-size: 0.75rem; padding: 4px; }
+    .d-inputs { padding: 4px; gap: 4px; }
+    .d-req { font-size: 0.95rem; }
 
-    #expertSearchContainer .search-input { font-size: 1rem !important; padding: 14px !important; }
-    .expert-main-title { font-size: 1.6rem !important; margin-bottom: 10px; }
+    /* 검색 모드 인풋창 및 여백 축소 */
+    #expertSearchContainer .search-wrap { padding: 8px 12px; margin-bottom: 8px; }
+    #expertSearchContainer .search-input { font-size: 0.95rem !important; padding: 10px !important; }
+    .expert-main-title { font-size: 1.4rem !important; margin-bottom: 8px; }
 
     .tut-tooltip { width: 90vw; padding: 20px; }
     .tut-text { font-size: 0.95rem; }
