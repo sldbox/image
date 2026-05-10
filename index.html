@@ -100,7 +100,7 @@
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="ph-icon" style="color:var(--grade-epic); border-color:var(--grade-epic);">❖</span>
                     <span class="ph-title" style="text-shadow:0 0 15px rgba(251,146,60,0.8), 0 0 5px rgba(251,146,60,0.5);">코스트 데시보드</span>
-                    <span style="color:var(--border-light); margin:0 4px;">|</span>
+                    <span class="ph-sep">|</span>
                     <button class="btn-text-link" onclick="openModeSelector()">⚙️ 모드 변경</button>
                     <button class="btn-text-link" onclick="exportRoster()" style="color:var(--g); margin-left:4px;">📋 로스터 복사</button>
                 </div>
@@ -152,8 +152,7 @@
 
 <div id="recipeTooltip" class="recipe-tooltip"></div>
 <div id="toastContainer" class="toast-container"></div>
-
-<div id="tutOverlay" class="tut-overlay" style="display:none;">
+<div id="customContextMenu" class="context-menu" style="display:none;"></div> <div id="tutOverlay" class="tut-overlay" style="display:none;">
     <div id="tutHighlight" class="tut-highlight"></div>
     <div id="tutTooltip" class="tut-tooltip">
         <div id="tutText" class="tut-text"></div>

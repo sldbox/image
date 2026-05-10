@@ -1,6 +1,7 @@
 /*
 =============================================================================
 [파일 설명서] app.js (하이브리드 커맨드 엔진, 튜토리얼 및 자동저장/내보내기 탑재)
+[신규 업데이트] PC/모바일 최적화 (단축키, 커스텀 우클릭, 3D 틸트, 햅틱 피드백 적용)
 =============================================================================
 */
 
@@ -28,8 +29,11 @@ const EMPTY_SVG = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" s
 
 function getUnitId(rawName){ const c=clean(rawName); const u=unitMap.get(c); return u ? u.id : c; }
 
+// --- [신규] 햅틱 피드백 엔진 ---
+function triggerHaptic() { if (typeof navigator !== 'undefined' && navigator.vibrate) { navigator.vibrate(15); } }
+
 // =========================================================
-// [신규] 실시간 자동 저장 & 복구 시스템 (Auto-Save/Load)
+// 실시간 자동 저장 & 복구 시스템
 // =========================================================
 function saveData() {
     const data = {
@@ -53,19 +57,12 @@ function loadData() {
 }
 
 // =========================================================
-// [신규] 클립보드 로스터 내보내기 (Export)
+// 클립보드 로스터 내보내기
 // =========================================================
 function exportRoster() {
-    if(activeUnits.size === 0) { 
-        showToast(`<span class="t-icon">⚠</span> 선택된 유닛이 없습니다.`, true); 
-        return; 
-    }
-    
+    if(activeUnits.size === 0) { showToast(`<span class="t-icon">⚠</span> 선택된 유닛이 없습니다.`, true); return; }
     let txt = "[개복디 넥서스 - 목표 로스터]\n────────────────────\n";
-    activeUnits.forEach((qty, id) => {
-        const u = unitMap.get(id);
-        if(u) txt += `▪ ${u.name} ×${qty}\n`;
-    });
+    activeUnits.forEach((qty, id) => { const u = unitMap.get(id); if(u) txt += `▪ ${u.name} ×${qty}\n`; });
     txt += "────────────────────\n";
     
     const magicTotalEl = document.querySelector('#slot-total-magic .cost-val');
@@ -79,14 +76,11 @@ function exportRoster() {
     
     navigator.clipboard.writeText(txt).then(() => {
         showToast(`<span class="t-icon">📋</span> 목표 로스터가 클립보드에 복사되었습니다!`);
-    }).catch(() => {
-        showToast(`<span class="t-icon">⚠</span> 복사 권한이 없거나 지원하지 않는 브라우저입니다.`, true);
-    });
+    }).catch(() => { showToast(`<span class="t-icon">⚠</span> 복사 권한이 없거나 지원하지 않는 브라우저입니다.`, true); });
 }
 
-
 // =========================================================
-// 인터랙티브 가이드 엔진 (Tutorial Engine)
+// 인터랙티브 가이드 엔진 (Tutorial)
 // =========================================================
 const TutorialEngine = {
     isActive: false, stepIndex: 0,
@@ -101,7 +95,7 @@ const TutorialEngine = {
         {
             setup: () => {},
             target: () => document.getElementById('magicDashboard'),
-            text: "<strong style='color:var(--grade-epic); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 2. 코스트 실시간 합산</strong>입력하신 유닛(전쟁광 2개)을 만들기 위해 필요한 <strong>모든 하위 재료 코스트</strong>가 이곳에 실시간으로 자동 합산됩니다!<br><br>복잡한 계산 없이 한눈에 필요 재료를 파악할 수 있습니다.",
+            text: "<strong style='color:var(--grade-epic); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 2. 코스트 실시간 합산</strong>입력하신 유닛(전쟁광 2개)을 만들기 위해 필요한 <strong>모든 하위 재료 코스트</strong>가 이곳에 실시간으로 자동 합산됩니다!<br><br>복잡한 계산 없이 한눈에 필요 재료 파악이 가능합니다.",
             position: 'top', requireAction: 'next'
         },
         {
@@ -119,113 +113,43 @@ const TutorialEngine = {
         {
             setup: () => {},
             target: () => document.getElementById('deductionBoard'),
-            text: "<strong style='color:var(--grade-unique); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 5. 남은 코스트 자동 계산</strong>이곳은 <strong style='color:var(--grade-unique)'>[차감 데시보드]</strong>입니다.<br><br>이곳의 각 재료 우측에 <span style='color:var(--text-muted); font-weight:bold; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;'>+ / -</span> 버튼을 눌러 보유 수량을 입력해 보세요. 입력하신 수량만큼 메인 데시보드에서 <strong>자동으로 차감(마이너스)</strong>되어 '최종적으로 더 뽑아야 할 코스트'만 남게 됩니다.<br><br>🎉 <strong>모든 튜토리얼이 완료되었습니다!</strong>",
+            text: "<strong style='color:var(--grade-unique); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 5. 남은 코스트 자동 계산</strong>이곳은 <strong style='color:var(--grade-unique)'>[차감 데시보드]</strong>입니다.<br><br>이곳의 각 재료 우측에 <span style='color:var(--text-muted); font-weight:bold; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;'>+ / -</span> 버튼을 눌러 보유 수량을 입력해 보세요. <strong>자동으로 차감(마이너스)</strong>되어 뽑아야 할 코스트만 남습니다.<br><br>🎉 <strong>모든 튜토리얼이 완료되었습니다!</strong>",
             position: 'left', requireAction: 'finish'
         }
     ],
 
     start: function() {
-        this.isActive = true;
-        this.stepIndex = 0;
-        document.getElementById('tutOverlay').style.display = 'block';
-        document.getElementById('modeSelector').classList.remove('active');
-        document.body.style.overflow = 'hidden'; 
-        this.renderStep();
+        this.isActive = true; this.stepIndex = 0; document.getElementById('tutOverlay').style.display = 'block'; document.getElementById('modeSelector').classList.remove('active'); document.body.style.overflow = 'hidden'; this.renderStep();
     },
-
-    next: function() {
-        if(!this.isActive) return;
-        this.stepIndex++;
-        if(this.stepIndex >= this.steps.length) {
-            this.end();
-        } else {
-            this.renderStep();
-        }
-    },
-
-    end: function() {
-        this.isActive = false;
-        document.getElementById('tutOverlay').style.display = 'none';
-        document.body.style.overflow = '';
-        resetCodex();
-        openModeSelector();
-    },
-
+    next: function() { if(!this.isActive) return; this.stepIndex++; if(this.stepIndex >= this.steps.length) { this.end(); } else { this.renderStep(); } },
+    end: function() { this.isActive = false; document.getElementById('tutOverlay').style.display = 'none'; document.body.style.overflow = ''; resetCodex(); openModeSelector(); },
     renderStep: function() {
-        const step = this.steps[this.stepIndex];
-        if(step.setup) step.setup();
-
+        const step = this.steps[this.stepIndex]; if(step.setup) step.setup();
         setTimeout(() => {
-            const targetEl = step.target();
-            if(!targetEl) { this.next(); return; }
-
-            const hl = document.getElementById('tutHighlight');
-            const tt = document.getElementById('tutTooltip');
-            const rect = targetEl.getBoundingClientRect();
-
+            const targetEl = step.target(); if(!targetEl) { this.next(); return; }
+            const hl = document.getElementById('tutHighlight'); const tt = document.getElementById('tutTooltip'); const rect = targetEl.getBoundingClientRect();
             const p = window.innerWidth < 720 ? 4 : 10;
-            hl.style.top = (rect.top - p) + 'px';
-            hl.style.left = (rect.left - p) + 'px';
-            hl.style.width = (rect.width + p*2) + 'px';
-            hl.style.height = (rect.height + p*2) + 'px';
-
-            document.getElementById('tutText').innerHTML = step.text;
-            const btnNext = document.getElementById('tutBtnNext');
+            hl.style.top = (rect.top - p) + 'px'; hl.style.left = (rect.left - p) + 'px'; hl.style.width = (rect.width + p*2) + 'px'; hl.style.height = (rect.height + p*2) + 'px';
+            document.getElementById('tutText').innerHTML = step.text; const btnNext = document.getElementById('tutBtnNext');
             
-            if(step.requireAction === 'next') {
-                btnNext.style.display = 'block';
-                btnNext.innerText = '다음 단계 ➔';
-                btnNext.onclick = () => this.next();
-            } else if(step.requireAction === 'finish') {
-                btnNext.style.display = 'block';
-                btnNext.innerText = '가이드 종료 ✔';
-                btnNext.onclick = () => this.end();
-            } else {
-                btnNext.style.display = 'none';
-            }
+            if(step.requireAction === 'next') { btnNext.style.display = 'block'; btnNext.innerText = '다음 단계 ➔'; btnNext.onclick = () => this.next(); } 
+            else if(step.requireAction === 'finish') { btnNext.style.display = 'block'; btnNext.innerText = '가이드 종료 ✔'; btnNext.onclick = () => this.end(); } 
+            else { btnNext.style.display = 'none'; }
 
-            let pos = step.position;
-            if (window.innerWidth < 900 && (pos === 'left' || pos === 'right')) { pos = 'bottom'; }
-            
-            tt.className = 'tut-tooltip ' + pos;
-            tt.style.top = 'auto'; tt.style.bottom = 'auto'; tt.style.left = 'auto'; tt.style.right = 'auto';
+            let pos = step.position; if (window.innerWidth < 900 && (pos === 'left' || pos === 'right')) { pos = 'bottom'; }
+            tt.className = 'tut-tooltip ' + pos; tt.style.top = 'auto'; tt.style.bottom = 'auto'; tt.style.left = 'auto'; tt.style.right = 'auto';
 
-            if(pos === 'bottom') {
-                tt.style.top = (rect.bottom + p + 20) + 'px';
-                tt.style.left = Math.max(10, rect.left + rect.width/2 - 170) + 'px';
-            } else if(pos === 'top') {
-                tt.style.bottom = (window.innerHeight - rect.top + p + 20) + 'px';
-                tt.style.left = Math.max(10, rect.left + rect.width/2 - 170) + 'px';
-            } else if(pos === 'right') {
-                tt.style.left = (rect.right + p + 20) + 'px';
-                tt.style.top = Math.max(10, rect.top + rect.height/2 - 100) + 'px';
-            } else if(pos === 'left') {
-                tt.style.right = (window.innerWidth - rect.left + p + 20) + 'px';
-                tt.style.top = Math.max(10, rect.top + rect.height/2 - 100) + 'px';
-            }
+            if(pos === 'bottom') { tt.style.top = (rect.bottom + p + 20) + 'px'; tt.style.left = Math.max(10, rect.left + rect.width/2 - 170) + 'px'; } 
+            else if(pos === 'top') { tt.style.bottom = (window.innerHeight - rect.top + p + 20) + 'px'; tt.style.left = Math.max(10, rect.left + rect.width/2 - 170) + 'px'; } 
+            else if(pos === 'right') { tt.style.left = (rect.right + p + 20) + 'px'; tt.style.top = Math.max(10, rect.top + rect.height/2 - 100) + 'px'; } 
+            else if(pos === 'left') { tt.style.right = (window.innerWidth - rect.left + p + 20) + 'px'; tt.style.top = Math.max(10, rect.top + rect.height/2 - 100) + 'px'; }
 
-            setTimeout(() => {
-                const tBox = tt.getBoundingClientRect();
-                if(tBox.right > window.innerWidth) tt.style.left = (window.innerWidth - tBox.width - 20) + 'px';
-                if(tBox.bottom > window.innerHeight) tt.style.top = (window.innerHeight - tBox.height - 20) + 'px';
-                if(tBox.left < 0) tt.style.left = '20px';
-                if(tBox.top < 0) tt.style.top = '20px';
-            }, 10);
-
+            setTimeout(() => { const tBox = tt.getBoundingClientRect(); if(tBox.right > window.innerWidth) tt.style.left = (window.innerWidth - tBox.width - 20) + 'px'; if(tBox.bottom > window.innerHeight) tt.style.top = (window.innerHeight - tBox.height - 20) + 'px'; if(tBox.left < 0) tt.style.left = '20px'; if(tBox.top < 0) tt.style.top = '20px'; }, 10);
             if(step.onRender) step.onRender();
-
         }, 350); 
     },
-    
-    handleEvent: function(actionType) {
-        if(!this.isActive) return;
-        const step = this.steps[this.stepIndex];
-        if(step.requireAction === actionType) {
-            setTimeout(() => this.next(), 600); 
-        }
-    }
+    handleEvent: function(actionType) { if(!this.isActive) return; const step = this.steps[this.stepIndex]; if(step.requireAction === actionType) { setTimeout(() => this.next(), 600); } }
 };
-
 window.addEventListener('resize', () => { if(TutorialEngine.isActive) TutorialEngine.renderStep(); });
 
 
@@ -234,50 +158,30 @@ window.addEventListener('resize', () => { if(TutorialEngine.isActive) TutorialEn
 // =========================================================
 function checkInitialMode() {
     const savedMode = localStorage.getItem('nexusPreferredMode');
-    if (savedMode) {
-        initMode(savedMode, false);
-    } else {
-        document.getElementById('modeSelector').classList.add('active');
-    }
+    if (savedMode) initMode(savedMode, false); else document.getElementById('modeSelector').classList.add('active');
 }
 
-function openModeSelector() {
-    document.getElementById('modeSelector').classList.add('active');
-}
+function openModeSelector() { document.getElementById('modeSelector').classList.add('active'); }
 
 function initMode(mode, showToastMsg = true) {
-    _currentAppMode = mode;
-    localStorage.setItem('nexusPreferredMode', mode);
+    _currentAppMode = mode; localStorage.setItem('nexusPreferredMode', mode);
     document.getElementById('modeSelector').classList.remove('active');
-    
-    const layout = document.getElementById('mainLayout');
-    const searchWrap = document.getElementById('searchWrap');
+    const layout = document.getElementById('mainLayout'), searchWrap = document.getElementById('searchWrap');
     
     layout.classList.remove('mode-expert', 'view-jewel');
-    
-    if(mode === 'expert') {
-        layout.classList.add('mode-expert');
-        document.getElementById('expertSearchContainer').appendChild(searchWrap);
-        if(showToastMsg) showToast("검색 모드가 활성화되었습니다.");
-    } else if(mode === 'classic') {
-        document.getElementById('classicSearchContainer').appendChild(searchWrap);
-        if(showToastMsg) showToast("도감 모드가 활성화되었습니다.");
-    } else if(mode === 'jewel') {
-        layout.classList.add('view-jewel');
-        if(showToastMsg) showToast("쥬얼 도감 모드가 활성화되었습니다.");
-    }
-    
+    if(mode === 'expert') { layout.classList.add('mode-expert'); document.getElementById('expertSearchContainer').appendChild(searchWrap); if(showToastMsg) showToast("검색 모드가 활성화되었습니다."); } 
+    else if(mode === 'classic') { document.getElementById('classicSearchContainer').appendChild(searchWrap); if(showToastMsg) showToast("도감 모드가 활성화되었습니다."); } 
+    else if(mode === 'jewel') { layout.classList.add('view-jewel'); if(showToastMsg) showToast("쥬얼 도감 모드가 활성화되었습니다."); }
     if(mode !== 'jewel' && _currentViewMode === 'deduct') switchLayout('codex');
 }
 
+
 // =========================================================
-// 검색 및 커맨드 엔진 (Search & Command)
+// 검색 및 커맨드 엔진 (Search & Command) & [신규] 디바운싱 강화
 // =========================================================
 let searchTimeout = null;
 
-const ALIAS_MAP = {
-    "타커": "타이커스", "타이": "타이커스", "닥템": "암흑기사", "다칸": "암흑집정관", "스투": "스투코프", "디젯": "디제스터", "메십": "메시브", "마랩": "마스터랩"
-};
+const ALIAS_MAP = { "타커": "타이커스", "타이": "타이커스", "닥템": "암흑기사", "다칸": "암흑집정관", "스투": "스투코프", "디젯": "디제스터", "메십": "메시브", "마랩": "마스터랩" };
 
 function setupSearchEngine() {
     const inputEl = document.getElementById('unitSearchInput');
@@ -286,60 +190,30 @@ function setupSearchEngine() {
     inputEl.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         const val = e.target.value;
-        searchTimeout = setTimeout(() => performSearch(val), 200);
+        searchTimeout = setTimeout(() => performSearch(val), 150); // 디바운싱 성능 강화 (150ms)
     });
 
-    inputEl.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') {
-            e.preventDefault();
-            processCommand(e.target.value);
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        const sr = document.getElementById('searchResults');
-        if(sr && !e.target.closest('#searchWrap')) sr.classList.remove('active');
-    });
+    inputEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); processCommand(e.target.value); } });
+    document.addEventListener('click', (e) => { const sr = document.getElementById('searchResults'); if(sr && !e.target.closest('#searchWrap')) sr.classList.remove('active'); });
 }
 
-function isSubsequence(query, target) {
-    let qIdx = 0;
-    for(let i = 0; i < target.length; i++) {
-        if(target[i] === query[qIdx]) qIdx++;
-        if(qIdx === query.length) return true;
-    }
-    return false;
-}
-
+function isSubsequence(query, target) { let qIdx = 0; for(let i = 0; i < target.length; i++) { if(target[i] === query[qIdx]) qIdx++; if(qIdx === query.length) return true; } return false; }
 function findUnitFlexible(rawName) {
-    let qClean = clean(rawName);
-    if(!qClean) return null;
-    
+    let qClean = clean(rawName); if(!qClean) return null;
     for(let [id, u] of unitMap) { if(clean(u.name) === qClean || id === qClean) return u; }
-    
-    let aliased = ALIAS_MAP[rawName];
-    if(!aliased) { for(let key in ALIAS_MAP) { if(clean(key) === qClean) { aliased = ALIAS_MAP[key]; break; } } }
+    let aliased = ALIAS_MAP[rawName]; if(!aliased) { for(let key in ALIAS_MAP) { if(clean(key) === qClean) { aliased = ALIAS_MAP[key]; break; } } }
     if(aliased) { for(let [id, u] of unitMap) { if(clean(u.name) === clean(aliased)) return u; } }
-    
     for(let [id, u] of unitMap) { if(clean(u.name).includes(qClean)) return u; }
     for(let [id, u] of unitMap) { if(isSubsequence(qClean, clean(u.name))) return u; }
-    
     return null;
 }
 
 function performSearch(query) {
-    const sr = document.getElementById('searchResults');
-    if(!query.trim()) { sr.classList.remove('active'); return; }
+    const sr = document.getElementById('searchResults'); if(!query.trim()) { sr.classList.remove('active'); return; }
+    const parts = query.split('/'); let currentQuery = parts[parts.length - 1].trim(); if(!currentQuery) { sr.classList.remove('active'); return; }
 
-    const parts = query.split('/');
-    let currentQuery = parts[parts.length - 1].trim();
-    if(!currentQuery) { sr.classList.remove('active'); return; }
-
-    let searchName = currentQuery.split('*')[0].trim();
-    let qClean = clean(searchName);
-
-    let exactMatches = [];
-    let partialMatches = [];
+    let searchName = currentQuery.split('*')[0].trim(); let qClean = clean(searchName);
+    let exactMatches = []; let partialMatches = [];
 
     unitMap.forEach(u => {
         let uClean = clean(u.name);
@@ -349,7 +223,6 @@ function performSearch(query) {
 
     exactMatches.sort((a,b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
     partialMatches.sort((a,b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
-    
     let combined = [...new Set([...exactMatches, ...partialMatches])].slice(0, 10);
 
     if(combined.length > 0) {
@@ -370,74 +243,137 @@ function performSearch(query) {
 }
 
 function applySearchAutocomplete(unitName) {
-    const inputEl = document.getElementById('unitSearchInput');
-    let parts = inputEl.value.split('/');
-    parts[parts.length - 1] = unitName;
-    inputEl.value = parts.join('/') + '*1';
-    inputEl.focus();
-    document.getElementById('searchResults').classList.remove('active');
+    const inputEl = document.getElementById('unitSearchInput'); let parts = inputEl.value.split('/'); parts[parts.length - 1] = unitName;
+    inputEl.value = parts.join('/') + '*1'; inputEl.focus(); document.getElementById('searchResults').classList.remove('active');
 }
 
 function processCommand(val) {
     if(!val.trim()) return;
-    
-    const commands = val.split('/');
-    let successCount = 0;
+    const commands = val.split('/'); let successCount = 0;
     
     commands.forEach(cmd => {
-        let targetName = cmd.trim();
-        let qty = 1;
-        
-        if(cmd.includes('*')) {
-            const parts = cmd.split('*');
-            targetName = parts[0].trim();
-            let parsedQty = parseInt(parts[1]);
-            if(!isNaN(parsedQty) && parsedQty > 0) qty = parsedQty;
-        }
-
+        let targetName = cmd.trim(); let qty = 1;
+        if(cmd.includes('*')) { const parts = cmd.split('*'); targetName = parts[0].trim(); let parsedQty = parseInt(parts[1]); if(!isNaN(parsedQty) && parsedQty > 0) qty = parsedQty; }
         const match = findUnitFlexible(targetName);
 
         if(match) {
-            let currentQty = activeUnits.get(match.id) || 0;
-            let newQty = currentQty + qty;
-            
-            if(newQty > 16 && match.grade !== "슈퍼히든") newQty = 16;
-            if(match.grade === "슈퍼히든") newQty = 1;
-
-            activeUnits.set(match.id, newQty);
-            essenceUnits.add(match.id);
-            successCount++;
+            let currentQty = activeUnits.get(match.id) || 0; let newQty = currentQty + qty;
+            if(newQty > 16 && match.grade !== "슈퍼히든") newQty = 16; if(match.grade === "슈퍼히든") newQty = 1;
+            activeUnits.set(match.id, newQty); essenceUnits.add(match.id); successCount++;
         }
     });
 
     if(successCount > 0) {
-        updateAllPanels();
-        showToast(`<span class="t-icon">⚡</span> ${successCount}건의 커맨드 등록 완료`);
-        
-        const inputEl = document.getElementById('unitSearchInput');
-        if(inputEl) inputEl.value = '';
+        updateAllPanels(); showToast(`<span class="t-icon">⚡</span> ${successCount}건의 커맨드 등록 완료`);
+        const inputEl = document.getElementById('unitSearchInput'); if(inputEl) inputEl.value = '';
         document.getElementById('searchResults').classList.remove('active');
-        
         if(_currentViewMode === 'deduct') switchLayout('codex');
-
         TutorialEngine.handleEvent('enter');
-    } else {
-        showToast(`<span class="t-icon">⚠</span> 유효한 유닛을 찾을 수 없습니다.`, true);
-    }
+    } else { showToast(`<span class="t-icon">⚠</span> 유효한 유닛을 찾을 수 없습니다.`, true); }
 }
 
 function showToast(msg, isError = false) {
-    const container = document.getElementById('toastContainer');
-    if(!container) return;
-    
-    const t = document.createElement('div');
-    t.className = 'toast' + (isError ? ' error' : '');
-    t.innerHTML = msg;
-    
-    container.appendChild(t);
-    setTimeout(() => { if(t.parentElement) t.remove(); }, 1800);
+    const container = document.getElementById('toastContainer'); if(!container) return;
+    const t = document.createElement('div'); t.className = 'toast' + (isError ? ' error' : ''); t.innerHTML = msg;
+    container.appendChild(t); setTimeout(() => { if(t.parentElement) t.remove(); }, 1800);
 }
 
+
+// =========================================================
+// [신규] PC 전용 키보드 단축키 (Hotkeys) & 우클릭 메뉴 & 3D 틸트
+// =========================================================
+
+// 단축키 엔진
+window.addEventListener('keydown', e => {
+    // 1. `/` (슬래시) 또는 Ctrl+F : 검색창 포커스
+    if ((e.key === '/' || (e.ctrlKey && e.key.toLowerCase() === 'f')) && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+        const searchEl = document.getElementById('unitSearchInput');
+        if (searchEl && searchEl.offsetParent !== null) searchEl.focus();
+    }
+    // 2. Esc : 열려있는 툴팁 닫기, 우클릭 메뉴 닫기, 검색창 내용 지우기
+    if (e.key === 'Escape') {
+        hideRecipeTooltip();
+        closeContextMenu();
+        const searchEl = document.getElementById('unitSearchInput');
+        if (document.activeElement === searchEl) {
+            searchEl.value = '';
+            document.getElementById('searchResults').classList.remove('active');
+            searchEl.blur();
+        }
+    }
+    // 3. 숫자 1~6 : 탭 즉시 전환
+    if (!e.ctrlKey && !e.altKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
+        const num = parseInt(e.key);
+        if (num >= 1 && num <= TAB_CATEGORIES.length) selectTab(num - 1);
+    }
+});
+
+// 커스텀 우클릭 메뉴 엔진
+document.addEventListener('contextmenu', e => {
+    const card = e.target.closest('.unit-card');
+    if (card) {
+        e.preventDefault();
+        const unitId = card.id.replace('card-', '');
+        showContextMenu(e, unitId);
+        return;
+    }
+    // 스마트 스테퍼나 인풋이 아니면 기본 우클릭 차단
+    if (!e.target.closest('.smart-stepper') && !e.target.closest('input')) e.preventDefault();
+});
+
+function showContextMenu(e, unitId) {
+    const cm = document.getElementById('customContextMenu');
+    const u = unitMap.get(unitId);
+    if(!u || u.grade === "슈퍼히든") return; // 슈퍼히든은 1개 고정이므로 제외
+    
+    cm.innerHTML = `
+        <div class="cm-header">${u.name} 빠른 조작</div>
+        <div class="cm-item" onclick="setUnitQty('${unitId}', 16); closeContextMenu();">
+            <span style="color:var(--g); font-weight:900;">MAX</span> (16개) 채우기
+        </div>
+        <div class="cm-item" onclick="setUnitQty('${unitId}', 0); closeContextMenu();">
+            <span style="color:var(--grade-unique); font-weight:900;">0</span> 으로 초기화
+        </div>
+    `;
+    
+    cm.style.display = 'block';
+    // 화면 넘어감 방지
+    const x = Math.min(e.pageX, window.innerWidth - 180);
+    const y = Math.min(e.pageY, window.innerHeight - cm.offsetHeight - 20);
+    cm.style.left = x + 'px';
+    cm.style.top = y + 'px';
+}
+
+function closeContextMenu() {
+    const cm = document.getElementById('customContextMenu');
+    if(cm) cm.style.display = 'none';
+}
+document.addEventListener('click', closeContextMenu);
+
+// 3D 틸트 (마우스 입체 효과) 엔진
+function applyTilt(e, elem) {
+    if(window.innerWidth < 1200) return; // PC 해상도에서만 작동
+    const rect = elem.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const xc = rect.width / 2;
+    const yc = rect.height / 2;
+    const dx = x - xc;
+    const dy = y - yc;
+    // 과하지 않게 미세한 각도로 조절
+    elem.style.transform = `perspective(1000px) rotateY(${dx / 15}deg) rotateX(${-dy / 15}deg) translateZ(10px)`;
+}
+function resetTilt(elem) {
+    elem.style.transform = `perspective(1000px) rotateY(0) rotateX(0) translateZ(0)`;
+}
+document.addEventListener('mousemove', e => {
+    if(window.innerWidth < 1200) return;
+    const card = e.target.closest('.unit-card') || e.target.closest('.jewel-item');
+    document.querySelectorAll('.unit-card, .jewel-item').forEach(el => { if(el !== card) resetTilt(el); });
+    if(card) applyTilt(e, card);
+});
+document.addEventListener('mouseleave', () => { document.querySelectorAll('.unit-card, .jewel-item').forEach(resetTilt); }, true);
 
 // =========================================================
 // 코어 데이터 사전 파싱 
@@ -448,10 +384,7 @@ function initializeCacheEngine() {
         if(u.cost && !IGNORE_PARSE_RECIPES.includes(u.cost)) {
             u.cost.split(',').forEach(p => {
                 const m = p.match(/(.+?)\[(\d+(?:\.\d+)?)\]/);
-                let name = m ? m[1].trim() : p.trim();
-                let qty = m ? parseFloat(m[2]) : 1;
-                let cName = clean(name);
-                let type = 'atom', key = cName;
+                let name = m ? m[1].trim() : p.trim(); let qty = m ? parseFloat(m[2]) : 1; let cName = clean(name); let type = 'atom', key = cName;
                 if(cName.includes('메시브') || cName.includes('디제스터')) { type='special'; key='메시브'; }
                 else if(cName.includes('갓오브타임') || cName.includes('갓오타')) { type='special'; key='갓오타'; }
                 else if(cName.includes('땅거미지뢰')) { key='땅거미지뢰'; }
@@ -478,17 +411,23 @@ function calculateTotalCostScore(costStr){
     let score=0; costStr.split(',').forEach(p=>{const m=p.match(/\[(\d+(?:\.\d+)?)\]/);if(m)score+=parseFloat(m[1]);else score+=1}); return score;
 }
 
-// 스마트 수량 컨트롤 엔진
+// 스마트 수량 컨트롤 엔진 (햅틱 추가)
 let repeatTimer = null, repeatDelayTimer = null;
 function startSmartChange(id, delta, type, event) {
     if(event) { event.preventDefault(); event.stopPropagation(); }
     stopSmartChange(); 
+    
+    triggerHaptic(); // 터치 시 햅틱 피드백 발생
+
     const action = () => {
-        if(type === 'active') { if(!activeUnits.has(id)) return; setUnitQty(id, (activeUnits.get(id) || 1) + delta); } 
+        if(type === 'active') { 
+            if(!activeUnits.has(id) && delta > 0) toggleUnitSelection(id, 1);
+            else if(activeUnits.has(id)) setUnitQty(id, (activeUnits.get(id) || 1) + delta); 
+        } 
         else { setOwnedQty(id, (ownedUnits.get(id) || 0) + delta); }
     };
     action();
-    repeatDelayTimer = setTimeout(() => { repeatTimer = setInterval(action, 80); }, 400);
+    repeatDelayTimer = setTimeout(() => { repeatTimer = setInterval(() => { triggerHaptic(); action(); }, 80); }, 400);
 }
 function stopSmartChange() { clearTimeout(repeatDelayTimer); clearInterval(repeatTimer); repeatDelayTimer = null; repeatTimer = null; }
 document.addEventListener('mouseup', stopSmartChange); document.addEventListener('touchend', stopSmartChange); document.addEventListener('contextmenu', stopSmartChange); 
@@ -500,7 +439,7 @@ function showRecipeTooltip(id, event, isDeduction = false) {
     let multi = 1;
     if(isDeduction) { const reqEl = document.getElementById(`d-req-${id}`); if(reqEl) { let reqVal = parseInt(reqEl.innerText); if(reqVal > 1) multi = reqVal; } }
     const tt = document.getElementById('recipeTooltip');
-    tt.innerHTML = `<div class="tooltip-header" style="color:${gradeColorsRaw[u.grade]}">${u.name} 조합법 ${multi > 1 ? `<span style="font-size:0.8rem; color:var(--text-sub);">(${multi}개 기준)</span>` : ''}</div><div class="tooltip-body">${formatRecipeHorizontal(u, multi)}</div><div class="tooltip-footer">화면을 터치하면 닫힙니다.</div>`;
+    tt.innerHTML = `<div class="tooltip-header" style="color:${gradeColorsRaw[u.grade]}">${u.name} 조합법 ${multi > 1 ? `<span style="font-size:0.8rem; color:var(--text-sub);">(${multi}개 기준)</span>` : ''}</div><div class="tooltip-body">${formatRecipeHorizontal(u, multi)}</div><div class="tooltip-footer">화면을 터치하거나 외부 클릭 시 닫힙니다.</div>`;
     tt.classList.add('active');
     let x = event.pageX || (event.touches && event.touches[0].pageX), y = event.pageY || (event.touches && event.touches[0].pageY);
     if(x + 280 > window.innerWidth) x = window.innerWidth - 290;
@@ -573,34 +512,21 @@ function renderActiveRoster() {
     }
 }
 
-// 렌더링 분리 업데이트 관리자 (자동 저장 포함)
 function updateAllPanels() { 
-    updateMagicDashboard(); 
-    updateEssence(); 
-    updateTabsUI(); 
-    updateTabContentUI(); 
-    updateDeductionBoard(); 
-    renderActiveRoster(); 
-    saveData(); // 데이터 변경 시마다 자동 저장
+    updateMagicDashboard(); updateEssence(); updateTabsUI(); updateTabContentUI(); updateDeductionBoard(); renderActiveRoster(); saveData();
 }
 function resetCodex() { activeUnits.clear(); essenceUnits.clear(); updateAllPanels(); showToast("선택된 유닛이 초기화되었습니다."); saveData(); }
 function resetOwned() { ownedUnits.clear(); updateAllPanels(); showToast("보유 유닛이 초기화되었습니다."); saveData(); }
 
-// 레이아웃 스위칭 컨트롤러
 function switchLayout(mode) {
-    const layout = document.getElementById('mainLayout');
-    const btnCodex = document.getElementById('btnViewCodex');
-    const btnDeduct = document.getElementById('btnViewDeduct');
+    const layout = document.getElementById('mainLayout'); const btnCodex = document.getElementById('btnViewCodex'); const btnDeduct = document.getElementById('btnViewDeduct');
     if (!layout) return;
-
-    _currentViewMode = mode;
-    layout.classList.remove('view-deduct');
+    _currentViewMode = mode; layout.classList.remove('view-deduct');
     
     if (mode === 'deduct') {
         layout.classList.add('view-deduct');
         if(btnCodex) btnCodex.classList.remove('active');
         if(btnDeduct) btnDeduct.classList.add('active');
-        
         TutorialEngine.handleEvent('click_deduct');
     } else {
         if(btnCodex) btnCodex.classList.add('active');
@@ -620,9 +546,16 @@ function toggleUnitSelection(id, forceQty){
 }
 
 function setUnitQty(id, val) {
-    if (!activeUnits.has(id)) return;
+    let q = parseInt(val);
+    // [신규] 값 0 입력 시 배열에서 아예 삭제되도록 수정
+    if (q === 0 || isNaN(q) || q < 1) {
+        if (activeUnits.has(id)) { activeUnits.delete(id); essenceUnits.delete(id); }
+        updateAllPanels();
+        return;
+    }
+    
     const u = unitMap.get(id); if (!u || u.grade === "슈퍼히든") return;
-    let q = parseInt(val); if (isNaN(q) || q < 1) q = 1; if (q > 16) q = 16;
+    if (q > 16) q = 16;
     activeUnits.set(id, q); updateAllPanels();
     TutorialEngine.handleEvent('click_unit');
 }
@@ -633,7 +566,12 @@ function handleWheel(e, id) {
     e.preventDefault(); 
     let qty = activeUnits.get(id) || 1;
     if (e.deltaY < 0) qty++; else qty--; 
-    if (qty > 16) qty = 16; if (qty < 1) qty = 1;
+    
+    if (qty > 16) qty = 16; 
+    if (qty < 1) {
+        activeUnits.delete(id); essenceUnits.delete(id); updateAllPanels(); return;
+    }
+    
     if (activeUnits.get(id) !== qty) { activeUnits.set(id, qty); updateAllPanels(); TutorialEngine.handleEvent('click_unit'); }
 }
 
@@ -978,8 +916,6 @@ document.addEventListener('DOMContentLoaded', () => {
         UNIT_DATABASE.forEach((kArr) => { const g = kArr[1] || "매직", cat = kArr[2] || "테바"; unitMap.set(clean(kArr[0]), { id:clean(kArr[0]), name:kArr[0], grade:g, category:cat, recipe:kArr[3], cost:kArr[4] }); });
         
         initializeCacheEngine();
-        
-        // 데이터 로드
         loadData();
         
         renderDashboardAtoms(); 
@@ -989,14 +925,12 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAllPanels();
         renderJewelGrid();
         
-        // 검색 엔진 설정 및 초기 진입 모드 체크
         setupSearchEngine();
         checkInitialMode();
 
     } catch (err) { console.error("[오류] 넥서스 초기화 중 에러 발생:", err); }
 });
 
-document.addEventListener('contextmenu',e=>e.preventDefault());
+// 기본 단축키 방지 등
 document.addEventListener('dragstart',e=>e.preventDefault());
 document.addEventListener('selectstart',e=>{if(!e.target.closest('.smart-stepper') && !e.target.closest('input')) e.preventDefault()});
-window.addEventListener('keydown',e=>{if(e.keyCode===123||(e.ctrlKey&&e.shiftKey&&[73,74,67].includes(e.keyCode))||(e.ctrlKey&&e.keyCode===85))e.preventDefault()});
