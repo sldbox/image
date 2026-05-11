@@ -1,7 +1,7 @@
 /*
 =============================================================================
 [파일 설명서] app.js (하이브리드 커맨드 엔진, 튜토리얼 탑재)
-[최신 업데이트] 우클릭 메뉴, 단축키, 툴팁 트래커 제거 (성능 최적화 버전)
+[최신 업데이트] 버튼 위치 고정, 명칭 정리, 튜토리얼 엔진 전면 리빌딩 완료
 =============================================================================
 */
 
@@ -33,84 +33,396 @@ function getUnitId(rawName){ const c=clean(rawName); const u=unitMap.get(c); ret
 function triggerHaptic() { if (typeof navigator !== 'undefined' && navigator.vibrate) { navigator.vibrate(15); } }
 
 // --- 데이터 초기화 모듈 ---
-function resetCodex() { activeUnits.clear(); essenceUnits.clear(); updateAllPanels(); showToast("선택된 유닛이 초기화되었습니다."); }
+function resetCodex(silent = false) { activeUnits.clear(); essenceUnits.clear(); updateAllPanels(); if(!silent) showToast("선택된 유닛이 초기화되었습니다."); }
 function resetOwned() { ownedUnits.clear(); updateAllPanels(); showToast("보유 유닛이 초기화되었습니다."); }
 
 // =========================================================
-// 인터랙티브 가이드 엔진 (Tutorial)
+// 인터랙티브 가이드 엔진 v5.0
+// ─ 패널을 대상 옆에 앵커링 (4방향 자동 충돌 회피)
+// ─ 모바일 세로: 하단 드로어 고정
+// ─ 화살표: SVG 기반 연결선으로 대상과 패널 연결
+// ─ 성능: rAF 1회, 폴링 최소화, flash CSS-only
 // =========================================================
 const TutorialEngine = {
-    isActive: false, stepIndex: 0,
+    isActive: false,
+    stepIndex: 0,
+    _listeners: [],
+    _watchTimer: null,
+    _flashTimer: null,
+
+    // 패널 폭 (CSS 와 맞춤)
+    PANEL_W: 280,
+    PANEL_GAP: 16,   // 하이라이트 테두리 ~ 패널 사이 간격
+    HL_PAD: 8,       // 하이라이트 패딩
+
     steps: [
-        {
-            setup: () => { resetCodex(); initMode('expert', false); },
-            target: () => document.querySelector('#expertSearchContainer .search-wrap'),
-            text: "<strong style='color:var(--g); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 1. 초고속 커맨드 입력</strong>명령어 텍스트로 유닛을 한 번에 등록하는 <strong style='color:var(--g)'>[검색 모드]</strong>입니다.<br><br>가운데 검색창에 <strong style='color:#000; background:var(--g); padding:2px 6px; border-radius:4px;'>전쟁광*2</strong> 를 입력하고 키보드의 <strong>[Enter ↵]</strong> 를 쳐보세요!",
-            position: 'bottom', requireAction: 'enter',
-            onRender: () => { const input = document.getElementById('unitSearchInput'); if(input) { input.value=''; input.focus(); } }
+        {   // INTRO
+            id: 'intro',
+            setup: () => { resetCodex(true); },
+            target: () => document.querySelector('.ms-card.classic'),
+            prefer: 'bottom',          // 패널 선호 방향
+            badge: 'GUIDE START', badgeColor: 'cyan',
+            title: '개복디 넥서스 가이드',
+            titleColor: 'var(--grade-rare)',
+            body: `이 가이드는 <strong style="color:var(--grade-rare);">도감 모드</strong>를 중심으로<br>
+유닛 추가 → 코스트 확인 → 차감 계산까지<br>
+<strong>직접 따라하며</strong> 익히는 실습형 튜토리얼입니다.`,
+            action: `👇 <strong style="color:var(--grade-rare);">[도감 모드]</strong> 카드를 직접 클릭하세요!`,
+            requireAction: 'click_classic_card', pulseTarget: true,
         },
-        {
+        {   // STEP 1
+            id: 'tab_select',
+            setup: () => {},
+            target: () => document.getElementById('codexTabsWrap'),
+            prefer: 'bottom',
+            badge: 'STEP 1 / 6', badgeColor: 'cyan',
+            title: '종족 탭 선택',
+            titleColor: 'var(--grade-rare)',
+            body: `왼쪽 패널 상단의 <strong>종족 탭</strong>을 클릭하면<br>해당 종족의 유닛 카드가 표시됩니다.`,
+            action: `👆 아무 <strong>종족 탭</strong>이나 클릭하세요!`,
+            requireAction: 'click_tab', pulseTarget: true,
+        },
+        {   // STEP 2
+            id: 'unit_click',
+            setup: () => {},
+            target: () => document.getElementById('tabContent'),
+            prefer: 'right',
+            badge: 'STEP 2 / 6', badgeColor: 'cyan',
+            title: '유닛 추가하기',
+            titleColor: 'var(--grade-rare)',
+            body: `유닛 목록에서 원하는 카드를 <strong>클릭</strong>하여<br>
+코스트 계산에 추가하세요.<br>
+<span class="tut-mini-tip">✔ 클릭 시 카드가 <span style="color:var(--g);">청록색</span>으로 활성화</span>`,
+            action: `👆 아무 <strong>유닛 카드</strong>나 클릭하세요!`,
+            requireAction: 'click_unit', pulseTarget: false,
+        },
+        {   // STEP 3
+            id: 'dashboard_view',
             setup: () => {},
             target: () => document.getElementById('magicDashboard'),
-            text: "<strong style='color:var(--grade-epic); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 2. 코스트 실시간 합산</strong>입력하신 유닛(전쟁광 2개)을 만들기 위해 필요한 <strong>모든 하위 재료 코스트</strong>가 이곳에 실시간 자동 합산됩니다!<br><br>복잡한 계산 없이 한눈에 필요 재료 파악이 가능합니다.",
-            position: 'top', requireAction: 'next'
+            prefer: 'right',
+            badge: 'STEP 3 / 6', badgeColor: 'epic',
+            title: '코스트 대시보드',
+            titleColor: 'var(--grade-epic)',
+            body: `선택한 유닛에 필요한 <strong>모든 재료 코스트</strong>가<br>
+여기에 자동 합산됩니다!<br>
+<span class="tut-mini-tip">✔ 빛나는 숫자 = 필요한 재료 수량</span>`,
+            action: null,
+            requireAction: 'next', nextLabel: '확인했습니다 ➔',
+            pulseTarget: true,
+            onRender: () => {
+                setTimeout(() => {
+                    document.querySelectorAll('.cost-slot.active').forEach((s, i) =>
+                        setTimeout(() => { s.classList.add('tut-flash'); setTimeout(() => s.classList.remove('tut-flash'), 900); }, i * 60)
+                    );
+                }, 300);
+            },
         },
-        {
-            setup: () => { initMode('classic', false); },
-            target: () => document.querySelector('.panel-codex'),
-            text: "<strong style='color:var(--grade-rare); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 3. 직관적인 도감 등록</strong>왼쪽 패널이 활성화되는 이곳은 <strong style='color:var(--grade-rare)'>[도감 모드]</strong>입니다.<br><br>종족 탭에서 원하시는 아무 <strong>유닛 카드나 1번 클릭</strong>하여 직접 추가해 보세요!",
-            position: 'right', requireAction: 'click_unit'
-        },
-        {
+        {   // STEP 4
+            id: 'deduct_toggle',
             setup: () => {},
-            target: () => document.getElementById('btnViewDeduct'),
-            text: "<strong style='color:var(--g); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 4. 차감 모드 전환</strong>현재 내가 게임 내에서 <strong>이미 보유하고 있는 재료</strong>를 빼고 계산하고 싶다면?<br><br>우측 상단의 <strong>[차감 모드]</strong> 버튼을 클릭해 보세요!",
-            position: 'bottom', requireAction: 'click_deduct'
+            target: () => document.getElementById('btnToggleMode'),
+            prefer: 'bottom',
+            badge: 'STEP 4 / 6', badgeColor: 'cyan',
+            title: '차감 모드 전환',
+            titleColor: 'var(--g)',
+            body: `보유한 재료를 제외하고<br>
+남은 코스트만 계산하려면?<br>
+<span class="tut-mini-tip">💡 클릭 시 오른쪽 차감 패널이 열립니다</span>`,
+            action: `👆 <strong style="color:var(--g);">[차감 모드 전환]</strong> 버튼을 클릭!`,
+            requireAction: 'click_deduct', pulseTarget: true,
         },
-        {
+        {   // STEP 5
+            id: 'owned_plus',
             setup: () => {},
-            target: () => document.getElementById('deductionBoard'),
-            text: "<strong style='color:var(--grade-unique); font-size:1.2rem; display:block; margin-bottom:8px;'>STEP 5. 남은 코스트 자동 계산</strong>이곳은 <strong style='color:var(--grade-unique)'>[차감 데시보드]</strong>입니다.<br><br>각 재료 우측에 <span style='color:var(--text-muted); font-weight:bold; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;'>+ / -</span> 버튼을 눌러 보유 수량을 입력해 보세요. <strong>자동 차감(마이너스)</strong>되어 뽑아야 할 코스트만 남습니다.<br><br>🎉 <strong>모든 튜토리얼 완료!</strong>",
-            position: 'left', requireAction: 'finish'
-        }
+            target: () =>
+                document.querySelector('.deduct-slot.is-visible .owned-stepper button:last-child')
+                || document.getElementById('deductionBoard'),
+            prefer: 'left',
+            badge: 'STEP 5 / 6', badgeColor: 'unique',
+            title: '보유 수량 입력',
+            titleColor: 'var(--grade-unique)',
+            body: `차감 대시보드에서 보유 재료의<br>
+<strong style="color:var(--grade-rare);">[+] 버튼</strong>을 눌러<br>
+보유 수량을 입력해보세요.<br>
+<span class="tut-mini-tip">✔ 즉시 왼쪽 코스트 숫자가 줄어듭니다</span>`,
+            action: `👆 재료의 <strong style="color:var(--grade-rare);">[+]</strong> 를 클릭!`,
+            requireAction: 'click_plus', pulseTarget: true,
+        },
+        {   // STEP 6
+            id: 'deduct_result',
+            setup: () => {},
+            target: () => document.getElementById('magicDashboard'),
+            prefer: 'right',
+            badge: 'STEP 6 / 6', badgeColor: 'cyan',
+            title: '실시간 차감 반영 ✦',
+            titleColor: 'var(--g)',
+            body: `보유 수량만큼 <strong style="color:var(--g);">코스트 숫자가 줄었습니다!</strong><br><br>
+<div class="tut-formula">
+  <div class="tf-hdr"><span>필요</span><span>−</span><span style="color:var(--grade-rare);">보유</span><span>=</span><span style="color:var(--g);">잔여</span></div>
+  <div class="tf-eg"><span>16개</span><span>−</span><span style="color:var(--grade-rare);">4개</span><span>=</span><span class="tf-result">12개</span></div>
+</div><br>
+<span class="tut-mini-tip">✔ [+]를 더 눌러 추가 차감 가능</span>`,
+            action: null,
+            requireAction: 'next', nextLabel: '이해했습니다! ➔',
+            pulseTarget: true,
+            onRender: () => {
+                const flash = () => document.querySelectorAll('.cost-slot.active').forEach((s, i) =>
+                    setTimeout(() => { s.classList.add('tut-flash'); setTimeout(() => s.classList.remove('tut-flash'), 900); }, i * 55)
+                );
+                setTimeout(flash, 200);
+                TutorialEngine._flashTimer = setTimeout(flash, 2600);
+            },
+        },
+        {   // DONE
+            id: 'finish',
+            setup: () => {},
+            target: null,   // 대상 없음 → 화면 중앙
+            prefer: 'center',
+            badge: 'COMPLETE ✦', badgeColor: 'gold',
+            title: '튜토리얼 완료! 🎉',
+            titleColor: 'var(--g)',
+            body: `<div class="tut-summary">
+  <div class="tut-si"><span>📖</span><span>도감 모드 — 유닛 카드 클릭 등록</span></div>
+  <div class="tut-si"><span>📊</span><span>코스트 대시보드 — 재료 자동 합산</span></div>
+  <div class="tut-si"><span>⊖</span><span>차감 모드 — 보유 수량 입력 후 차감</span></div>
+  <div class="tut-si"><span>✦</span><span>잔여 코스트 실시간 반영 확인</span></div>
+</div>`,
+            action: null,
+            requireAction: 'finish', pulseTarget: false,
+        },
     ],
 
-    start: function() {
-        this.isActive = true; this.stepIndex = 0; document.getElementById('tutOverlay').style.display = 'block'; document.getElementById('modeSelector').classList.remove('active'); document.body.style.overflow = 'hidden'; this.renderStep();
+    // ── Public API ─────────────────────────────────────────
+    start() {
+        this.isActive = true;
+        this.stepIndex = 0;
+        document.getElementById('modeSelector').classList.add('active');
+        document.getElementById('tutOverlay').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        this._renderStep();
     },
-    next: function() { if(!this.isActive) return; this.stepIndex++; if(this.stepIndex >= this.steps.length) { this.end(); } else { this.renderStep(); } },
-    end: function() { this.isActive = false; document.getElementById('tutOverlay').style.display = 'none'; document.body.style.overflow = ''; resetCodex(); openModeSelector(); },
-    renderStep: function() {
-        const step = this.steps[this.stepIndex]; if(step.setup) step.setup();
-        setTimeout(() => {
-            const targetEl = step.target(); if(!targetEl) { this.next(); return; }
-            const hl = document.getElementById('tutHighlight'); const tt = document.getElementById('tutTooltip'); const rect = targetEl.getBoundingClientRect();
-            const p = window.innerWidth < 720 ? 4 : 10;
-            hl.style.top = (rect.top - p) + 'px'; hl.style.left = (rect.left - p) + 'px'; hl.style.width = (rect.width + p*2) + 'px'; hl.style.height = (rect.height + p*2) + 'px';
-            document.getElementById('tutText').innerHTML = step.text; const btnNext = document.getElementById('tutBtnNext');
-            
-            if(step.requireAction === 'next') { btnNext.style.display = 'block'; btnNext.innerText = '다음 단계 ➔'; btnNext.onclick = () => this.next(); } 
-            else if(step.requireAction === 'finish') { btnNext.style.display = 'block'; btnNext.innerText = '가이드 종료 ✔'; btnNext.onclick = () => this.end(); } 
-            else { btnNext.style.display = 'none'; }
 
-            let pos = step.position; if (window.innerWidth < 900 && (pos === 'left' || pos === 'right')) { pos = 'bottom'; }
-            tt.className = 'tut-tooltip ' + pos; tt.style.top = 'auto'; tt.style.bottom = 'auto'; tt.style.left = 'auto'; tt.style.right = 'auto';
-
-            if(pos === 'bottom') { tt.style.top = (rect.bottom + p + 20) + 'px'; tt.style.left = Math.max(10, rect.left + rect.width/2 - 170) + 'px'; } 
-            else if(pos === 'top') { tt.style.bottom = (window.innerHeight - rect.top + p + 20) + 'px'; tt.style.left = Math.max(10, rect.left + rect.width/2 - 170) + 'px'; } 
-            else if(pos === 'right') { tt.style.left = (rect.right + p + 20) + 'px'; tt.style.top = Math.max(10, rect.top + rect.height/2 - 100) + 'px'; } 
-            else if(pos === 'left') { tt.style.right = (window.innerWidth - rect.left + p + 20) + 'px'; tt.style.top = Math.max(10, rect.top + rect.height/2 - 100) + 'px'; }
-
-            setTimeout(() => { const tBox = tt.getBoundingClientRect(); if(tBox.right > window.innerWidth) tt.style.left = (window.innerWidth - tBox.width - 20) + 'px'; if(tBox.bottom > window.innerHeight) tt.style.top = (window.innerHeight - tBox.height - 20) + 'px'; if(tBox.left < 0) tt.style.left = '20px'; if(tBox.top < 0) tt.style.top = '20px'; }, 10);
-            if(step.onRender) step.onRender();
-        }, 350); 
+    next() {
+        if (!this.isActive) return;
+        this._cleanListeners();
+        if (this._flashTimer) { clearTimeout(this._flashTimer); this._flashTimer = null; }
+        this.stepIndex++;
+        if (this.stepIndex >= this.steps.length) { this.end(); return; }
+        this._renderStep();
     },
-    handleEvent: function(actionType) { if(!this.isActive) return; const step = this.steps[this.stepIndex]; if(step.requireAction === actionType) { setTimeout(() => this.next(), 600); } }
+
+    end() {
+        this.isActive = false;
+        this._cleanListeners();
+        if (this._flashTimer) { clearTimeout(this._flashTimer); this._flashTimer = null; }
+        const ov = document.getElementById('tutOverlay');
+        if (ov) ov.style.display = 'none';
+        document.body.style.overflow = '';
+        resetCodex(true);
+        // ① 항상 메인(모드 선택) 화면으로 복귀
+        openModeSelector();
+    },
+
+    handleEvent(actionType) {
+        if (!this.isActive) return;
+        const step = this.steps[this.stepIndex];
+        if (step && step.requireAction === actionType) setTimeout(() => this.next(), 400);
+    },
+
+    // ── 렌더링 ────────────────────────────────────────────
+    _renderStep() {
+        try {
+            const step = this.steps[this.stepIndex];
+            if (!step) { this.end(); return; }
+            if (step.setup) step.setup();
+            setTimeout(() => this._doRender(step), step.id === 'intro' ? 60 : 380);
+        } catch (e) { console.error('[Tut]', e); this.end(); }
+    },
+
+    _doRender(step) {
+        const hl    = document.getElementById('tutHighlight');
+        const panel = document.getElementById('tutPanel');
+        const bar   = document.getElementById('tutProgressBar');
+        const lbl   = document.getElementById('tutStepLabel');
+        const badge = document.getElementById('tutBadge');
+        const title = document.getElementById('tutTitle');
+        const body  = document.getElementById('tutBody');
+        const act   = document.getElementById('tutAction');
+        const btnN  = document.getElementById('tutBtnNext');
+
+        if (!panel) return;
+
+        // 진행 바
+        const total = this.steps.length;
+        if (bar) bar.style.width = ((this.stepIndex + 1) / total * 100) + '%';
+        if (lbl) lbl.textContent = ['INTRO','1/6','2/6','3/6','4/6','5/6','6/6','DONE'][this.stepIndex] || '';
+
+        // 콘텐츠 업데이트
+        if (badge) { badge.textContent = step.badge || ''; badge.className = 'tut-badge tut-badge--' + (step.badgeColor || 'cyan'); }
+        if (title) { title.innerHTML = step.title || ''; title.style.color = step.titleColor || 'var(--text)'; }
+        if (body)  body.innerHTML  = step.body  || '';
+        if (act)   { act.innerHTML = step.action || ''; act.style.display = step.action ? 'block' : 'none'; }
+
+        // 버튼
+        if (step.requireAction === 'next') {
+            btnN.style.display = 'inline-flex';
+            btnN.textContent = step.nextLabel || '다음 단계 ➔';
+            btnN.onclick = () => this.next();
+        } else if (step.requireAction === 'finish') {
+            btnN.style.display = 'inline-flex';
+            btnN.textContent = '도감 모드로 시작하기 ✔';
+            btnN.onclick = () => { this.end(); setTimeout(() => initMode('classic', true), 150); };
+        } else {
+            btnN.style.display = 'none';
+        }
+
+        // 하이라이트 & 패널 위치
+        let targetEl = null;
+        try { targetEl = step.target ? step.target() : null; } catch (e) {}
+
+        if (targetEl) {
+            this._positionHighlight(hl, targetEl, step.pulseTarget);
+            // 패널을 대상 옆에 앵커링 (한 rAF 후 — 패널 실제 크기 확정 뒤)
+            requestAnimationFrame(() => this._anchorPanel(panel, targetEl, step.prefer || 'right'));
+        } else {
+            hl.style.display = 'none';
+            // 대상 없음 → 화면 중앙
+            panel.style.cssText = `
+                position:fixed; top:50%; left:50%;
+                transform:translate(-50%,-50%);
+                opacity:1; transition:opacity 0.25s;
+            `;
+        }
+
+        this._setupActionListeners(step);
+        if (step.onRender) step.onRender();
+    },
+
+    // 하이라이트 위치
+    _positionHighlight(hl, el, pulse) {
+        if (!el) { hl.style.display = 'none'; return; }
+        const r = el.getBoundingClientRect();
+        const p = this.HL_PAD;
+        hl.style.cssText = `
+            display:block;
+            top:${r.top - p}px; left:${r.left - p}px;
+            width:${r.width + p * 2}px; height:${r.height + p * 2}px;
+        `;
+        hl.className = 'tut-highlight' + (pulse ? ' pulse' : '');
+    },
+
+    // 패널 앵커링 — 4방향 시도, 뷰포트 안에 들어오는 방향 자동 선택
+    _anchorPanel(panel, el, prefer) {
+        const isMobile = window.innerWidth < 700 || (window.innerWidth < window.innerHeight && window.innerWidth < 900);
+        if (isMobile) {
+            // 모바일: 하단 드로어
+            panel.style.cssText = `
+                position:fixed; left:0; right:0; bottom:0;
+                width:100%; max-height:52vh;
+                border-radius:16px 16px 0 0;
+                transform:none; opacity:1;
+                transition:opacity 0.22s;
+            `;
+            return;
+        }
+
+        const r    = el.getBoundingClientRect();
+        const p    = this.HL_PAD;
+        const gap  = this.PANEL_GAP;
+        const pw   = this.PANEL_W;
+        const ph   = panel.offsetHeight || 360;
+        const vw   = window.innerWidth;
+        const vh   = window.innerHeight;
+        const margin = 12;
+
+        // 각 방향의 가용 공간
+        const space = {
+            right:  vw - (r.right  + p + gap),
+            left:   r.left  - p - gap,
+            bottom: vh - (r.bottom + p + gap),
+            top:    r.top   - p - gap,
+        };
+
+        // 선호 방향 우선, 공간 부족 시 최대 공간 방향 사용
+        const dirs = [prefer, 'right', 'left', 'bottom', 'top'].filter(Boolean);
+        let chosen = dirs.find(d => {
+            if (d === 'right'  || d === 'left')   return space[d] >= pw + margin;
+            if (d === 'bottom' || d === 'top')     return space[d] >= ph * 0.6;
+            return false;
+        }) || dirs[0];
+
+        let top, left;
+
+        if (chosen === 'right') {
+            left = r.right + p + gap;
+            top  = r.top + r.height / 2 - ph / 2;
+        } else if (chosen === 'left') {
+            left = r.left - p - gap - pw;
+            top  = r.top + r.height / 2 - ph / 2;
+        } else if (chosen === 'bottom') {
+            top  = r.bottom + p + gap;
+            left = r.left + r.width / 2 - pw / 2;
+        } else { // top
+            top  = r.top - p - gap - ph;
+            left = r.left + r.width / 2 - pw / 2;
+        }
+
+        // 뷰포트 클램핑
+        top  = Math.max(margin, Math.min(top,  vh - ph   - margin));
+        left = Math.max(margin, Math.min(left, vw - pw   - margin));
+
+        panel.style.cssText = `
+            position:fixed;
+            top:${top}px; left:${left}px;
+            width:${pw}px;
+            transform:none; opacity:1;
+            transition:opacity 0.22s, top 0.28s cubic-bezier(0.4,0,0.2,1), left 0.28s cubic-bezier(0.4,0,0.2,1);
+        `;
+    },
+
+    // ── 리스너 ────────────────────────────────────────────
+    _addListener(el, ev, fn) { el.addEventListener(ev, fn); this._listeners.push({el, ev, fn}); },
+
+    _cleanListeners() {
+        this._listeners.forEach(({el, ev, fn}) => { try { el.removeEventListener(ev, fn); } catch (e) {} });
+        this._listeners = [];
+        if (this._watchTimer) { clearInterval(this._watchTimer); this._watchTimer = null; }
+        document.querySelectorAll('.tab-btn[data-tut-bound]').forEach(b => b.removeAttribute('data-tut-bound'));
+    },
+
+    _setupActionListeners(step) {
+        if (step.requireAction === 'click_classic_card') {
+            const c = document.querySelector('.ms-card.classic');
+            if (c) this._addListener(c, 'click', () => this.handleEvent('click_classic_card'));
+        }
+        if (step.requireAction === 'click_tab') {
+            const bind = () => document.querySelectorAll('.tab-btn:not([data-tut-bound])').forEach(b => {
+                b.setAttribute('data-tut-bound', '1');
+                this._addListener(b, 'click', () => this.handleEvent('click_tab'));
+            });
+            bind();
+            this._watchTimer = setInterval(bind, 500);
+        }
+        if (step.requireAction === 'click_deduct') {
+            const b = document.getElementById('btnToggleMode');
+            if (b) this._addListener(b, 'click', () => this.handleEvent('click_deduct'));
+        }
+    },
 };
-window.addEventListener('resize', () => { if(TutorialEngine.isActive) TutorialEngine.renderStep(); });
+
+// resize / orientation 변경 시 패널 재배치
+let _tutResizeTimer = null;
+window.addEventListener('resize', () => {
+    if (!TutorialEngine.isActive) return;
+    clearTimeout(_tutResizeTimer);
+    _tutResizeTimer = setTimeout(() => {
+        const step = TutorialEngine.steps[TutorialEngine.stepIndex];
+        if (step) TutorialEngine._doRender(step);
+    }, 120);
+});
 
 
-// =========================================================
 // 초기 진입 및 모드 컨트롤
 // =========================================================
 function checkInitialMode() {
@@ -128,7 +440,9 @@ function initMode(mode, showToastMsg = true) {
     if(mode === 'expert') { layout.classList.add('mode-expert'); document.getElementById('expertSearchContainer').appendChild(searchWrap); if(showToastMsg) showToast("검색 모드가 활성화되었습니다."); } 
     else if(mode === 'classic') { document.getElementById('classicSearchContainer').appendChild(searchWrap); if(showToastMsg) showToast("도감 모드가 활성화되었습니다."); } 
     else if(mode === 'jewel') { layout.classList.add('view-jewel'); if(showToastMsg) showToast("쥬얼 도감 모드가 활성화되었습니다."); }
-    if(mode !== 'jewel' && _currentViewMode === 'deduct') switchLayout('codex');
+    
+    // 모드 진입 시 강제 레이아웃 업데이트
+    switchLayout(_currentViewMode === 'deduct' ? 'deduct' : 'codex');
 }
 
 
@@ -299,7 +613,10 @@ function startSmartChange(id, delta, type, event) {
             if(current === 0 && finalDelta > 0) toggleUnitSelection(id, finalDelta);
             else setUnitQty(id, current + finalDelta); 
         } 
-        else { setOwnedQty(id, (ownedUnits.get(id) || 0) + finalDelta); }
+        else { 
+            setOwnedQty(id, (ownedUnits.get(id) || 0) + finalDelta); 
+            if(finalDelta > 0) TutorialEngine.handleEvent('click_plus');
+        }
     };
     action();
     repeatDelayTimer = setTimeout(() => { repeatTimer = setInterval(() => { triggerHaptic(); action(); }, 80); }, 400);
@@ -389,18 +706,30 @@ function updateAllPanels() {
 }
 
 function switchLayout(mode) {
-    const layout = document.getElementById('mainLayout'); const btnCodex = document.getElementById('btnViewCodex'); const btnDeduct = document.getElementById('btnViewDeduct');
-    if (!layout) return;
-    _currentViewMode = mode; layout.classList.remove('view-deduct');
+    const layout = document.getElementById('mainLayout');
+    const btnToggle = document.getElementById('btnToggleMode');
     
+    if (!layout || !btnToggle) return;
+    _currentViewMode = mode; 
+    
+    // 1. 레이아웃 제어 (DOM 이동 없이 항상 코스트 데시보드에 고정됨)
+    layout.classList.remove('view-deduct');
     if (mode === 'deduct') {
         layout.classList.add('view-deduct');
-        if(btnCodex) btnCodex.classList.remove('active');
-        if(btnDeduct) btnDeduct.classList.add('active');
+        btnToggle.classList.remove('active');
+        btnToggle.innerHTML = '<span class="toggle-icon">◧</span> 입력 모드 전환';
         TutorialEngine.handleEvent('click_deduct');
     } else {
-        if(btnCodex) btnCodex.classList.add('active');
-        if(btnDeduct) btnDeduct.classList.remove('active');
+        btnToggle.classList.add('active');
+        btnToggle.innerHTML = '<span class="toggle-icon">◨</span> 차감 모드 전환';
+    }
+}
+
+function toggleViewMode() {
+    if (_currentViewMode === 'deduct') {
+        switchLayout('codex');
+    } else {
+        switchLayout('deduct');
     }
 }
 
