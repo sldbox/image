@@ -34,7 +34,7 @@
 
 
 let _activeTabIdx = 0;
-let _currentAppMode = 'classic'; // 'expert', 'classic', 'jewel', 'unitcodex'
+let _currentAppMode = 'classic'; // 'expert', 'classic', 'jewel'
 let _currentViewMode = 'codex';
 
 /* =============================================================================
@@ -66,380 +66,8 @@ function getUnitId(rawName){ const c=clean(rawName); const u=unitMap.get(c); ret
 function triggerHaptic() { if (typeof navigator !== 'undefined' && navigator.vibrate) { navigator.vibrate(15); } }
 
 // --- 데이터 초기화 모듈 ---
-function resetCodex(silent = false) { activeUnits.clear(); essenceUnits.clear(); updateAllPanels(); if(!silent) showToast("선택된 유닛이 초기화되었습니다."); }
-function resetOwned() { ownedUnits.clear(); updateAllPanels(); showToast("보유 유닛이 초기화되었습니다."); }
-
-// =========================================================
-// 인터랙티브 가이드 엔진 v5.1 (모바일 터치 완벽 대응, 헤드락 제외)
-// =========================================================
-const TutorialEngine = {
-    isActive: false,
-    stepIndex: 0,
-    _listeners: [],
-    _flashTimer: null,
-
-    PANEL_W: 280,
-    PANEL_GAP: 16,
-    HL_PAD: 8,
-
-    steps: [
-        {
-            id: 'intro',
-            setup: () => { resetCodex(true); },
-            target: () => document.querySelector('.ms-card.classic'),
-            prefer: 'bottom',
-            badge: 'GUIDE START', badgeColor: 'cyan',
-            title: '개복디 넥서스 가이드',
-            titleColor: 'var(--grade-rare)',
-            body: `이 가이드는 <strong style="color:var(--grade-rare);">도감 모드</strong>를 중심으로<br>
-유닛 추가 → 코스트 확인 → 차감 계산까지<br>
-<strong>직접 따라하며</strong> 익히는 실습형 튜토리얼입니다.`,
-            action: `👇 <strong style="color:var(--grade-rare);">[도감 모드]</strong> 카드를 직접 클릭하세요!`,
-            requireAction: 'click_classic_card', pulseTarget: true,
-        },
-        {
-            id: 'tab_select',
-            setup: () => {},
-            target: () => document.getElementById('codexTabsWrap'),
-            prefer: 'bottom',
-            badge: 'STEP 1 / 6', badgeColor: 'cyan',
-            title: '종족 탭 선택',
-            titleColor: 'var(--grade-rare)',
-            body: `왼쪽 패널 상단의 <strong>종족 탭</strong>을 클릭하면<br>해당 종족의 유닛 카드가 표시됩니다.`,
-            action: `👆 아무 <strong>종족 탭</strong>이나 클릭하세요!`,
-            requireAction: 'click_tab', pulseTarget: true,
-        },
-        {
-            id: 'unit_click',
-            setup: () => {},
-            target: () => document.getElementById('tabContent'),
-            prefer: 'right',
-            badge: 'STEP 2 / 6', badgeColor: 'cyan',
-            title: '유닛 추가하기',
-            titleColor: 'var(--grade-rare)',
-            body: `유닛 목록에서 원하는 카드를 <strong>클릭</strong>하여<br>
-코스트 계산에 추가하세요.<br>
-<span class="tut-mini-tip">✔ 클릭 시 카드가 <span style="color:var(--g);">청록색</span>으로 활성화</span>`,
-            action: `👆 아무 <strong>유닛 카드</strong>나 클릭하세요!`,
-            requireAction: 'click_unit', pulseTarget: false,
-        },
-        {
-            id: 'dashboard_view',
-            setup: () => {},
-            target: () => document.getElementById('magicDashboard'),
-            prefer: 'right',
-            badge: 'STEP 3 / 6', badgeColor: 'epic',
-            title: '코스트 대시보드',
-            titleColor: 'var(--grade-epic)',
-            body: `선택한 유닛에 필요한 <strong>모든 재료 코스트</strong>가<br>
-여기에 자동 합산됩니다!<br>
-<span class="tut-mini-tip">✔ 빛나는 숫자 = 필요한 재료 수량</span>`,
-            action: null,
-            requireAction: 'next', nextLabel: '확인했습니다 ➔',
-            pulseTarget: true,
-            onRender: () => {
-                setTimeout(() => {
-                    document.querySelectorAll('.cost-slot.active').forEach((s, i) =>
-                        setTimeout(() => { s.classList.add('tut-flash'); setTimeout(() => s.classList.remove('tut-flash'), 900); }, i * 60)
-                    );
-                }, 300);
-            },
-        },
-        {
-            id: 'deduct_toggle',
-            setup: () => {},
-            target: () => document.getElementById('btnToggleMode'),
-            prefer: 'bottom',
-            badge: 'STEP 4 / 6', badgeColor: 'cyan',
-            title: '차감 모드 전환',
-            titleColor: 'var(--g)',
-            body: `보유한 재료를 제외하고<br>
-남은 코스트만 계산하려면?<br>
-<span class="tut-mini-tip">💡 클릭 시 오른쪽 차감 패널이 열립니다</span>`,
-            action: `👆 <strong style="color:var(--g);">[차감 모드 전환]</strong> 버튼을 클릭!`,
-            requireAction: 'click_deduct', pulseTarget: true,
-        },
-        {
-            id: 'owned_plus',
-            setup: () => {},
-            target: () =>
-                document.querySelector('.deduct-slot.is-visible .owned-stepper button:last-child')
-                || document.getElementById('deductionBoard'),
-            prefer: 'left',
-            badge: 'STEP 5 / 6', badgeColor: 'unique',
-            title: '보유 수량 입력',
-            titleColor: 'var(--grade-unique)',
-            body: `차감 대시보드에서 보유 재료의<br>
-<strong style="color:var(--grade-rare);">[+] 버튼</strong>을 눌러<br>
-보유 수량을 입력해보세요.<br>
-<span class="tut-mini-tip">✔ 즉시 왼쪽 코스트 숫자가 줄어듭니다</span>`,
-            action: `👆 재료의 <strong style="color:var(--grade-rare);">[+]</strong> 를 클릭!`,
-            requireAction: 'click_plus', pulseTarget: true,
-        },
-        {
-            id: 'deduct_result',
-            setup: () => {},
-            target: () => document.getElementById('magicDashboard'),
-            prefer: 'right',
-            badge: 'STEP 6 / 6', badgeColor: 'cyan',
-            title: '실시간 차감 반영 ✦',
-            titleColor: 'var(--g)',
-            body: `보유 수량만큼 <strong style="color:var(--g);">코스트 숫자가 줄었습니다!</strong><br><br>
-<div class="tut-formula">
-  <div class="tf-hdr"><span>필요</span><span>−</span><span style="color:var(--grade-rare);">보유</span><span>=</span><span style="color:var(--g);">잔여</span></div>
-  <div class="tf-eg"><span>16개</span><span>−</span><span style="color:var(--grade-rare);">4개</span><span>=</span><span class="tf-result">12개</span></div>
-</div><br>
-<span class="tut-mini-tip">✔ [+]를 더 눌러 추가 차감 가능</span>`,
-            action: null,
-            requireAction: 'next', nextLabel: '이해했습니다! ➔',
-            pulseTarget: true,
-            onRender: () => {
-                const flash = () => document.querySelectorAll('.cost-slot.active').forEach((s, i) =>
-                    setTimeout(() => { s.classList.add('tut-flash'); setTimeout(() => s.classList.remove('tut-flash'), 900); }, i * 55)
-                );
-                setTimeout(flash, 200);
-                TutorialEngine._flashTimer = setTimeout(flash, 2600);
-            },
-        },
-        {
-            id: 'finish',
-            setup: () => {},
-            target: null,
-            prefer: 'center',
-            badge: 'COMPLETE ✦', badgeColor: 'gold',
-            title: '튜토리얼 완료! 🎉',
-            titleColor: 'var(--g)',
-            body: `<div class="tut-summary">
-  <div class="tut-si"><span>📖</span><span>도감 모드 — 유닛 카드 클릭 등록</span></div>
-  <div class="tut-si"><span>📊</span><span>코스트 대시보드 — 재료 자동 합산</span></div>
-  <div class="tut-si"><span>⊖</span><span>차감 모드 — 보유 수량 입력 후 차감</span></div>
-  <div class="tut-si"><span>✦</span><span>잔여 코스트 실시간 반영 확인</span></div>
-</div>`,
-            action: null,
-            requireAction: 'finish', pulseTarget: false,
-        },
-    ],
-
-    start() {
-        this.isActive = true;
-        this.stepIndex = 0;
-        document.getElementById('modeSelector').classList.add('active');
-        document.getElementById('tutOverlay').style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        this._renderStep();
-    },
-
-    next() {
-        if (!this.isActive) return;
-        this._cleanListeners();
-        if (this._flashTimer) { clearTimeout(this._flashTimer); this._flashTimer = null; }
-        this.stepIndex++;
-        if (this.stepIndex >= this.steps.length) { this.end(); return; }
-        this._renderStep();
-    },
-
-    end() {
-        this.isActive = false;
-        this._cleanListeners();
-        if (this._flashTimer) { clearTimeout(this._flashTimer); this._flashTimer = null; }
-        const ov = document.getElementById('tutOverlay');
-        if (ov) ov.style.display = 'none';
-        document.body.style.overflow = '';
-        resetCodex(true);
-        openModeSelector();
-    },
-
-    handleEvent(actionType) {
-        if (!this.isActive) return;
-        const step = this.steps[this.stepIndex];
-        if (step && step.requireAction === actionType) setTimeout(() => this.next(), 400);
-    },
-
-    _renderStep() {
-        try {
-            const step = this.steps[this.stepIndex];
-            if (!step) { this.end(); return; }
-            if (step.setup) step.setup();
-            setTimeout(() => this._doRender(step), step.id === 'intro' ? 60 : 380);
-        } catch (e) { console.error('[Tut]', e); this.end(); }
-    },
-
-    _doRender(step) {
-        const hl    = document.getElementById('tutHighlight');
-        const panel = document.getElementById('tutPanel');
-        const bar   = document.getElementById('tutProgressBar');
-        const lbl   = document.getElementById('tutStepLabel');
-        const badge = document.getElementById('tutBadge');
-        const title = document.getElementById('tutTitle');
-        const body  = document.getElementById('tutBody');
-        const act   = document.getElementById('tutAction');
-        const btnN  = document.getElementById('tutBtnNext');
-
-        if (!panel) return;
-
-        const total = this.steps.length;
-        if (bar) bar.style.width = ((this.stepIndex + 1) / total * 100) + '%';
-        if (lbl) lbl.textContent = ['INTRO','1/6','2/6','3/6','4/6','5/6','6/6','DONE'][this.stepIndex] || '';
-
-        if (badge) { badge.textContent = step.badge || ''; badge.className = 'tut-badge tut-badge--' + (step.badgeColor || 'cyan'); }
-        if (title) { title.innerHTML = step.title || ''; title.style.color = step.titleColor || 'var(--text)'; }
-        if (body)  body.innerHTML  = step.body  || '';
-        if (act)   { act.innerHTML = step.action || ''; act.style.display = step.action ? 'block' : 'none'; }
-
-        if (step.requireAction === 'next') {
-            btnN.style.display = 'inline-flex';
-            btnN.textContent = step.nextLabel || '다음 단계 ➔';
-            btnN.onclick = () => this.next();
-        } else if (step.requireAction === 'finish') {
-            btnN.style.display = 'inline-flex';
-            btnN.textContent = '가이드 완료 ✔';
-            btnN.onclick = () => { this.end(); };
-        } else {
-            btnN.style.display = 'none';
-        }
-
-        let targetEl = null;
-        try { targetEl = step.target ? step.target() : null; } catch (e) {}
-
-        if (targetEl) {
-            this._positionHighlight(hl, targetEl, step.pulseTarget);
-            requestAnimationFrame(() => this._anchorPanel(panel, targetEl, step.prefer || 'right'));
-        } else {
-            hl.style.display = 'none';
-            panel.style.cssText = `
-                position:fixed; top:50%; left:50%;
-                transform:translate(-50%,-50%);
-                opacity:1; transition:opacity 0.25s;
-            `;
-        }
-
-        this._setupActionListeners(step);
-        if (step.onRender) step.onRender();
-    },
-
-    _positionHighlight(hl, el, pulse) {
-        if (!el) { hl.style.display = 'none'; return; }
-        const r = el.getBoundingClientRect();
-        const p = this.HL_PAD;
-        hl.style.cssText = `
-            display:block;
-            top:${r.top - p}px; left:${r.left - p}px;
-            width:${r.width + p * 2}px; height:${r.height + p * 2}px;
-        `;
-        hl.className = 'tut-highlight' + (pulse ? ' pulse' : '');
-    },
-
-    _anchorPanel(panel, el, prefer) {
-        const isMobile = window.innerWidth < 700 || (window.innerWidth < window.innerHeight && window.innerWidth < 900);
-        if (isMobile) {
-            panel.style.cssText = `
-                position:fixed; left:0; right:0; bottom:0;
-                width:100%; max-height:52vh;
-                border-radius:16px 16px 0 0;
-                transform:none; opacity:1;
-                transition:opacity 0.22s;
-            `;
-            return;
-        }
-
-        const r    = el.getBoundingClientRect();
-        const p    = this.HL_PAD;
-        const gap  = this.PANEL_GAP;
-        const pw   = this.PANEL_W;
-        const ph   = panel.offsetHeight || 360;
-        const vw   = window.innerWidth;
-        const vh   = window.innerHeight;
-        const margin = 12;
-
-        const space = {
-            right:  vw - (r.right  + p + gap),
-            left:   r.left  - p - gap,
-            bottom: vh - (r.bottom + p + gap),
-            top:    r.top   - p - gap,
-        };
-
-        const dirs = [prefer, 'right', 'left', 'bottom', 'top'].filter(Boolean);
-        let chosen = dirs.find(d => {
-            if (d === 'right'  || d === 'left')   return space[d] >= pw + margin;
-            if (d === 'bottom' || d === 'top')     return space[d] >= ph * 0.6;
-            return false;
-        }) || dirs[0];
-
-        let top, left;
-
-        if (chosen === 'right') {
-            left = r.right + p + gap;
-            top  = r.top + r.height / 2 - ph / 2;
-        } else if (chosen === 'left') {
-            left = r.left - p - gap - pw;
-            top  = r.top + r.height / 2 - ph / 2;
-        } else if (chosen === 'bottom') {
-            top  = r.bottom + p + gap;
-            left = r.left + r.width / 2 - pw / 2;
-        } else {
-            top  = r.top - p - gap - ph;
-            left = r.left + r.width / 2 - pw / 2;
-        }
-
-        top  = Math.max(margin, Math.min(top,  vh - ph   - margin));
-        left = Math.max(margin, Math.min(left, vw - pw   - margin));
-
-        panel.style.cssText = `
-            position:fixed;
-            top:${top}px; left:${left}px;
-            width:${pw}px;
-            transform:none; opacity:1;
-            transition:opacity 0.22s, top 0.28s cubic-bezier(0.4,0,0.2,1), left 0.28s cubic-bezier(0.4,0,0.2,1);
-        `;
-    },
-
-    _addListener(el, ev, fn) { el.addEventListener(ev, fn, { passive: false }); this._listeners.push({el, ev, fn}); },
-
-    _cleanListeners() {
-        this._listeners.forEach(({el, ev, fn}) => { try { el.removeEventListener(ev, fn); } catch (e) {} });
-        this._listeners = [];
-    },
-
-    _setupActionListeners(step) {
-        // 모바일/태블릿 터치 환경 대응용 이중 바인딩 헬퍼
-        const bindInteraction = (el, evName) => {
-            this._addListener(el, 'click', () => this.handleEvent(evName));
-            this._addListener(el, 'touchend', (e) => { this.handleEvent(evName); });
-        };
-
-        if (step.requireAction === 'click_classic_card') {
-            const c = document.querySelector('.ms-card.classic');
-            if (c) bindInteraction(c, 'click_classic_card');
-        }
-        if (step.requireAction === 'click_tab') {
-            // [오류 수정] 폴링(setInterval) 대신 상위 컨테이너에 이벤트 위임(Event Delegation) 적용
-            const tabsWrap = document.getElementById('codexTabsWrap');
-            if (tabsWrap) {
-                const tabHandler = (e) => {
-                    if (e.target.closest('.tab-btn')) {
-                        this.handleEvent('click_tab');
-                    }
-                };
-                this._addListener(tabsWrap, 'click', tabHandler);
-                this._addListener(tabsWrap, 'touchend', tabHandler);
-            }
-        }
-        if (step.requireAction === 'click_deduct') {
-            const b = document.getElementById('btnToggleMode');
-            if (b) bindInteraction(b, 'click_deduct');
-        }
-    },
-};
-
-let _tutResizeTimer = null;
-window.addEventListener('resize', () => {
-    if (!TutorialEngine.isActive) return;
-    clearTimeout(_tutResizeTimer);
-    _tutResizeTimer = setTimeout(() => {
-        const step = TutorialEngine.steps[TutorialEngine.stepIndex];
-        if (step) TutorialEngine._doRender(step);
-    }, 120);
-});
+function resetCodex(silent = false) { activeUnits.clear(); essenceUnits.clear(); debouncedUpdateAllPanels(); if(!silent) showToast("선택된 유닛이 초기화되었습니다."); }
+function resetOwned() { ownedUnits.clear(); debouncedUpdateAllPanels(); showToast("보유 유닛이 초기화되었습니다."); }
 
 // 초기 진입 및 모드 컨트롤
 function checkInitialMode() {
@@ -450,7 +78,7 @@ function openModeSelector() {
     _currentAppMode = 'classic';
     document.getElementById('modeSelector').classList.add('active');
     const layout = document.getElementById('mainLayout');
-    if (layout) layout.classList.remove('view-jewel', 'view-unitcodex');
+    if (layout) layout.classList.remove('view-jewel');
 }
 
 function initMode(mode, showToastMsg = true) {
@@ -458,24 +86,10 @@ function initMode(mode, showToastMsg = true) {
     document.getElementById('modeSelector').classList.remove('active');
     const layout = document.getElementById('mainLayout'), searchWrap = document.getElementById('searchWrap');
     
-    layout.classList.remove('mode-expert', 'view-jewel', 'view-unitcodex');
+    layout.classList.remove('mode-expert', 'view-jewel');
     if(mode === 'expert') { layout.classList.add('mode-expert'); document.getElementById('expertSearchContainer').appendChild(searchWrap); if(showToastMsg) showToast("검색 모드가 활성화되었습니다."); } 
     else if(mode === 'classic') { document.getElementById('classicSearchContainer').appendChild(searchWrap); if(showToastMsg) showToast("도감 모드가 활성화되었습니다."); } 
     else if(mode === 'jewel') { layout.classList.add('view-jewel'); if(showToastMsg) showToast("쥬얼 도감 모드가 활성화되었습니다."); }
-    else if(mode === 'unitcodex') { 
-        layout.classList.add('view-unitcodex'); 
-        // 상태 초기화 후 재렌더
-        _ucActiveTab = '전체';
-        _ucSearchQuery = '';
-        const tabsWrap = document.getElementById('unitCodexTabsWrap');
-        const grid = document.getElementById('unitCodexGrid');
-        const searchInput = document.getElementById('unitCodexSearch');
-        if(tabsWrap) tabsWrap.innerHTML = '';
-        if(grid) grid.innerHTML = '';
-        if(searchInput) searchInput.value = '';
-        renderUnitCodexGrid(); 
-        if(showToastMsg) showToast("유닛 도감 모드가 활성화되었습니다."); 
-    }
     
     switchLayout(_currentViewMode === 'deduct' ? 'deduct' : 'codex');
 }
@@ -505,14 +119,15 @@ function setupSearchEngine() {
     document.addEventListener('click', (e) => { const sr = document.getElementById('searchResults'); if(sr && !e.target.closest('#searchWrap')) sr.classList.remove('active'); });
 }
 
-function isSubsequence(query, target) { let qIdx = 0; for(let i = 0; i < target.length; i++) { if(target[i] === query[qIdx]) qIdx++; if(qIdx === query.length) return true; } return false; }
 function findUnitFlexible(rawName) {
     let qClean = clean(rawName); if(!qClean) return null;
-    for(let [id, u] of unitMap) { if(clean(u.name) === qClean || id === qClean) return u; }
-    let aliased = ALIAS_MAP[rawName]; if(!aliased) { for(let key in ALIAS_MAP) { if(clean(key) === qClean) { aliased = ALIAS_MAP[key]; break; } } }
-    if(aliased) { for(let [id, u] of unitMap) { if(clean(u.name) === clean(aliased)) return u; } }
-    for(let [id, u] of unitMap) { if(clean(u.name).includes(qClean)) return u; }
-    for(let [id, u] of unitMap) { if(isSubsequence(qClean, clean(u.name))) return u; }
+    let aliased = ALIAS_MAP[rawName] || ALIAS_MAP[qClean]; 
+    if(aliased) qClean = clean(aliased);
+    
+    for(let [id, u] of unitMap) { 
+        let uClean = clean(u.name);
+        if(uClean === qClean || id === qClean || uClean.includes(qClean)) return u; 
+    }
     return null;
 }
 
@@ -521,17 +136,17 @@ function performSearch(query) {
     const parts = query.split('/'); let currentQuery = parts[parts.length - 1].trim(); if(!currentQuery) { sr.classList.remove('active'); return; }
 
     let searchName = currentQuery.split('*')[0].trim(); let qClean = clean(searchName);
-    let exactMatches = []; let partialMatches = [];
+    let matchedUnits = [];
 
     unitMap.forEach(u => {
         let uClean = clean(u.name);
-        if(uClean === qClean || u.name === searchName) exactMatches.push(u);
-        else if(uClean.includes(qClean) || isSubsequence(qClean, uClean)) partialMatches.push(u);
+        if(uClean.includes(qClean) || (ALIAS_MAP[searchName] && uClean === clean(ALIAS_MAP[searchName]))) {
+            matchedUnits.push(u);
+        }
     });
 
-    exactMatches.sort((a,b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
-    partialMatches.sort((a,b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
-    let combined = [...new Set([...exactMatches, ...partialMatches])].slice(0, 10);
+    matchedUnits.sort((a,b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
+    let combined = matchedUnits.slice(0, 10);
 
     if(combined.length > 0) {
         sr.innerHTML = combined.map(u => `
@@ -572,11 +187,10 @@ function processCommand(val) {
     });
 
     if(successCount > 0) {
-        updateAllPanels(); showToast(`<span class="t-icon">⚡</span> ${successCount}건의 커맨드 등록 완료`);
+        debouncedUpdateAllPanels(); showToast(`<span class="t-icon">⚡</span> ${successCount}건의 커맨드 등록 완료`);
         const inputEl = document.getElementById('unitSearchInput'); if(inputEl) inputEl.value = '';
         document.getElementById('searchResults').classList.remove('active');
         if(_currentViewMode === 'deduct') switchLayout('codex');
-        TutorialEngine.handleEvent('enter');
     } else { showToast(`<span class="t-icon">⚠</span> 유효한 유닛을 찾을 수 없습니다.`, true); }
 }
 
@@ -655,7 +269,6 @@ function startSmartChange(id, delta, type, event) {
         } 
         else { 
             setOwnedQty(id, (ownedUnits.get(id) || 0) + finalDelta); 
-            if(finalDelta > 0) TutorialEngine.handleEvent('click_plus');
         }
     };
     action();
@@ -747,7 +360,6 @@ function updateMagicDashboard(){
         }
     });
 
-    // [개선 반영] innerHTML 남용을 줄이고 텍스트(innerText) 타겟팅으로 reflow 병목 최소화
     let totalMagic=0;
     dashboardAtoms.forEach(a=>{
         const val=totalMap[a], owned=ownedMap[a];
@@ -838,8 +450,18 @@ function renderActiveRoster() {
     else roster.innerHTML = html;
 }
 
-function updateAllPanels() { 
-    updateMagicDashboard(); updateEssence(); updateTabsUI(); updateTabContentUI(); updateDeductionBoard(); renderActiveRoster();
+// 스로틀링된 DOM 업데이트
+let updateTimer = null;
+function debouncedUpdateAllPanels() {
+    if (updateTimer) cancelAnimationFrame(updateTimer);
+    updateTimer = requestAnimationFrame(() => {
+        updateMagicDashboard(); 
+        updateEssence(); 
+        updateTabsUI(); 
+        updateTabContentUI(); 
+        updateDeductionBoard(); 
+        renderActiveRoster();
+    });
 }
 
 function switchLayout(mode) {
@@ -854,7 +476,6 @@ function switchLayout(mode) {
         layout.classList.add('view-deduct');
         btnToggle.classList.remove('active');
         btnToggle.innerHTML = '<span class="toggle-icon">◧</span> 입력 모드 전환';
-        TutorialEngine.handleEvent('click_deduct');
     } else {
         btnToggle.classList.add('active');
         btnToggle.innerHTML = '<span class="toggle-icon">◨</span> 차감 모드 전환';
@@ -876,21 +497,19 @@ function toggleUnitSelection(id, forceQty){
         const u = unitMap.get(id); const initQty = (u && u.grade === "슈퍼히든") ? 1 : (forceQty || 1);
         activeUnits.set(id, initQty); essenceUnits.add(id);
     }
-    updateAllPanels();
-    TutorialEngine.handleEvent('click_unit');
+    debouncedUpdateAllPanels();
 }
 
 function setUnitQty(id, val) {
     let q = parseInt(val);
     if (q === 0 || isNaN(q) || q < 1) {
         if (activeUnits.has(id)) { activeUnits.delete(id); essenceUnits.delete(id); }
-        updateAllPanels();
+        debouncedUpdateAllPanels();
         return;
     }
     const u = unitMap.get(id); if (!u || u.grade === "슈퍼히든") return;
     if (q > 16) q = 16;
-    activeUnits.set(id, q); updateAllPanels();
-    TutorialEngine.handleEvent('click_unit');
+    activeUnits.set(id, q); debouncedUpdateAllPanels();
 }
 
 function handleWheel(e, id) {
@@ -903,8 +522,8 @@ function handleWheel(e, id) {
     qty += delta;
     
     if (qty > 16) qty = 16; 
-    if (qty < 1) { activeUnits.delete(id); essenceUnits.delete(id); updateAllPanels(); return; }
-    if (activeUnits.get(id) !== qty) { activeUnits.set(id, qty); updateAllPanels(); TutorialEngine.handleEvent('click_unit'); }
+    if (qty < 1) { activeUnits.delete(id); essenceUnits.delete(id); debouncedUpdateAllPanels(); return; }
+    if (activeUnits.get(id) !== qty) { activeUnits.set(id, qty); debouncedUpdateAllPanels(); }
 }
 
 function setOwnedQty(id, val) {
@@ -913,7 +532,7 @@ function setOwnedQty(id, val) {
     let maxQty = 99;
     if(inEl && inEl.hasAttribute('data-req')) { const reqVal = parseInt(inEl.getAttribute('data-req')); if(reqVal > 0) maxQty = reqVal; }
     if (q > maxQty) q = maxQty;
-    ownedUnits.set(id, q); updateAllPanels();
+    ownedUnits.set(id, q); debouncedUpdateAllPanels();
 }
 
 function handleOwnedWheel(e, id) {
@@ -926,7 +545,7 @@ function handleOwnedWheel(e, id) {
     qty += delta;
 
     if (qty < 0) qty = 0; if (qty > maxQty) qty = maxQty;
-    if (ownedUnits.get(id) !== qty) { ownedUnits.set(id, qty); updateAllPanels(); }
+    if (ownedUnits.get(id) !== qty) { ownedUnits.set(id, qty); debouncedUpdateAllPanels(); }
 }
 
 function renderDeductionBoard() {
@@ -1151,7 +770,6 @@ function updateTabContentUI() {
 }
 
 function renderDashboardAtoms(){
-    // [개선 반영] 비어있는 SVG 삽입부를 정적으로 변경
     DOM.magicDashboard.innerHTML=`<div class="cost-slot total" id="slot-total-magic"><div class="cost-val"></div><div class="cost-name">총 매직 코스트</div></div><div class="cost-slot total" id="slot-total-essence"><div class="cost-val" id="essence-total-val"></div><div class="cost-name">총 정수 코스트</div></div><div class="cost-slot"><div class="cost-val" id="val-coral" style="color:#FF6B6B;"></div><div class="cost-name">코랄</div></div><div class="cost-slot"><div class="cost-val" id="val-aiur" style="color:var(--grade-rare);"></div><div class="cost-name">아이어</div></div><div class="cost-slot"><div class="cost-val" id="val-zerus" style="color:var(--grade-legend);"></div><div class="cost-name">제루스</div></div>`;
     dashboardAtoms.forEach(a=>{
         const isSkill = (a === "갓오타/메시브"), isMagic = !isSkill;
@@ -1181,11 +799,10 @@ function renderJewelGrid(){
             : '';
         const delay = (idx * 0.04).toFixed(2);
 
+        // jewel-hex 회전 애니메이션 태그 제거됨
         h += `<div class="jewel-item" style="--jw-color:${c};--jw-color-a:${cA};--jw-color-b:${cB};--jw-shadow:${cShadow};--jw-glow:radial-gradient(ellipse 80% 60% at 50% 0%,${cA} 0%,transparent 70%);animation:jwFadeIn 0.45s ${delay}s both ease-out;">
             <div class="jewel-banner">
                 <div class="jewel-banner-bg"></div>
-                <div class="jewel-hex"></div>
-                <div class="jewel-hex-inner"></div>
                 <div class="jewel-img-wrap">
                     <img src="${url}${imgName}.png" alt="${kr}" onerror="this.style.opacity='0'">
                 </div>
@@ -1199,97 +816,6 @@ function renderJewelGrid(){
         </div>`;
     });
     g.innerHTML = h;
-}
-
-// =========================================================
-// 유닛 도감 엔진
-// =========================================================
-let _ucActiveTab = '전체';
-let _ucSearchQuery = '';
-const UC_IMG_BASE = 'https://sldbox.github.io/site/image/ctg/';
-
-function renderUnitCodexGrid() {
-    const grid = document.getElementById('unitCodexGrid');
-    const tabsWrap = document.getElementById('unitCodexTabsWrap');
-    if (!grid) return;
-
-    // 탭 초기 렌더
-    if (tabsWrap && tabsWrap.innerHTML === '') {
-        const allTabs = ['전체', ...TAB_CATEGORIES.map(c => c.key)];
-        tabsWrap.innerHTML = allTabs.map(t => 
-            `<button class="uc-codex-tab-btn${t === _ucActiveTab ? ' active' : ''}" onclick="selectUnitCodexTab('${t}')">${t}</button>`
-        ).join('');
-    }
-
-    _renderUnitCodexCards();
-}
-
-function selectUnitCodexTab(tabKey) {
-    _ucActiveTab = tabKey;
-    // 탭 버튼 active 갱신
-    document.querySelectorAll('.uc-codex-tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent === tabKey);
-    });
-    _renderUnitCodexCards();
-}
-
-function filterUnitCodex(query) {
-    _ucSearchQuery = query;
-    _renderUnitCodexCards();
-}
-
-function _renderUnitCodexCards() {
-    const grid = document.getElementById('unitCodexGrid');
-    if (!grid) return;
-
-    // 슈퍼히든 · 히든 · 레전드만 표시
-    const SHOW_GRADES = ["슈퍼히든", "히든", "레전드"];
-
-    let items = Array.from(unitMap.values()).filter(u => SHOW_GRADES.includes(u.grade));
-    if (_ucActiveTab !== '전체') items = items.filter(u => u.category === _ucActiveTab);
-    if (_ucSearchQuery.trim()) {
-        const q = _ucSearchQuery.trim().toLowerCase();
-        items = items.filter(u => u.name.includes(q) || clean(u.name).includes(q));
-    }
-
-    items.sort((a, b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
-
-    if (items.length === 0) {
-        grid.innerHTML = `<div class="uc-codex-empty">조건에 맞는 유닛이 없습니다.</div>`;
-        return;
-    }
-
-    let h = '';
-    items.forEach((item, idx) => {
-        const color = gradeColorsRaw[item.grade] || 'var(--text)';
-        const colorBg = color + '12';
-        const imgUrl = `${UC_IMG_BASE}${encodeURIComponent(item.name)}.png`;
-        // IGNORE_PARSE_RECIPES 공통 상수 사용
-        const recipeText = (item.recipe && !IGNORE_PARSE_RECIPES.includes(item.recipe))
-            ? item.recipe : '조합 정보 없음';
-        const delay = (idx * 0.025).toFixed(2);
-
-        h += `<div class="uc-codex-card" id="uccard-${item.id}"
-                style="--uc-color:${color};--uc-bg:${colorBg};animation-delay:${delay}s;display:none;">
-            <div class="uc-codex-img-wrap">
-                <img src="${imgUrl}" alt="${item.name}"
-                    onload="this.closest('.uc-codex-card').style.display='flex';"
-                    onerror="this.closest('.uc-codex-card').style.display='none';">
-                <div class="uc-codex-grade-bar"></div>
-            </div>
-            <div class="uc-codex-info">
-                <span class="uc-codex-grade-badge" style="color:${color};border-color:${color}55;">${item.grade}</span>
-                <div class="uc-codex-name">${item.name}</div>
-                <div class="uc-codex-cat">${item.category}</div>
-                <div class="uc-codex-recipe">
-                    <div class="uc-codex-recipe-lbl">조합 조건</div>
-                    <div class="uc-codex-recipe-val">${recipeText}</div>
-                </div>
-            </div>
-        </div>`;
-    });
-
-    grid.innerHTML = h;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1307,7 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDeductionBoard(); 
         renderTabs();
         selectTab(0); 
-        updateAllPanels();
+        debouncedUpdateAllPanels();
         renderJewelGrid();
         
         setupSearchEngine();
