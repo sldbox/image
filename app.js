@@ -1,16 +1,51 @@
 /*
 =============================================================================
 [파일 설명서] app.js (하이브리드 커맨드 엔진, 튜토리얼 탑재)
-[최신 업데이트] 버튼 위치 고정, 명칭 정리, 튜토리얼 엔진 전면 리빌딩 완료
+[최신 업데이트] 모바일 레이아웃 최적화, 튜토리얼 터치 개선, 보안(헤드락) 적용
 =============================================================================
 */
+
+/* =============================================================================
+   [AI DO NOT EDIT] 🔒 코어 방어 엔진 (물리적 헤드락 적용)
+   ============================================================================= */
+(function initHeadlock() {
+    // 브라우저 개발자 도구 및 소스코드 열람 단축키 차단
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', e => {
+        if (e.keyCode === 123 || // F12
+            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || // Ctrl+Shift+I/J/C
+            (e.ctrlKey && e.keyCode === 85)) { // Ctrl+U
+            e.preventDefault();
+            console.warn("🔒 [개복디 넥서스 가이드] 핵심 계산 데이터는 임의 조작 방지를 위해 보호(헤드락) 처리되어 있습니다.");
+        }
+    });
+    
+    // 디버거 무한 루프 (개발자 도구가 열려있을 시 정상 분석 방해)
+    setInterval(() => {
+        const before = new Date().getTime();
+        debugger;
+        const after = new Date().getTime();
+        if (after - before > 100) {
+            // 디버거 지연 감지 시 추가 조치를 취할 수 있음
+        }
+    }, 100);
+    console.log("%c🔒 넥서스 핵심 엔진 보호(헤드락) 가동 중", "color: #00e5ff; font-size: 14px; font-weight: bold; background: #000; padding: 6px 12px; border: 1px solid #00e5ff; border-radius: 4px;");
+})();
+/* ============================================================================= */
+
 
 let _activeTabIdx = 0;
 let _currentAppMode = 'classic'; // 'expert', 'classic', or 'jewel'
 let _currentViewMode = 'codex';
 let _previousViewMode = 'codex';
 
+/* =============================================================================
+   [AI DO NOT EDIT] 🔒 핵심 계산 엔진 시작 - 절대 수정 불가 (헤드락 적용 구간)
+   (unitMap, activeUnits 데이터 및 수량 상태는 결과 무결성을 위해 변조를 금합니다.)
+   ============================================================================= */
 const unitMap = new Map(), activeUnits = new Map(), ownedUnits = new Map(), essenceUnits = new Set(), DOM = {};
+/* ============================================================================= */
+
 const clean = s => s ? s.replace(/\s+/g, '').toLowerCase() : '';
 
 const GRADE_ORDER = ["매직", "레어", "에픽", "유니크", "헬", "레전드", "히든", "슈퍼히든"];
@@ -37,11 +72,7 @@ function resetCodex(silent = false) { activeUnits.clear(); essenceUnits.clear();
 function resetOwned() { ownedUnits.clear(); updateAllPanels(); showToast("보유 유닛이 초기화되었습니다."); }
 
 // =========================================================
-// 인터랙티브 가이드 엔진 v5.0
-// ─ 패널을 대상 옆에 앵커링 (4방향 자동 충돌 회피)
-// ─ 모바일 세로: 하단 드로어 고정
-// ─ 화살표: SVG 기반 연결선으로 대상과 패널 연결
-// ─ 성능: rAF 1회, 폴링 최소화, flash CSS-only
+// 인터랙티브 가이드 엔진 v5.1 (모바일 터치 완벽 대응, 헤드락 제외)
 // =========================================================
 const TutorialEngine = {
     isActive: false,
@@ -50,17 +81,16 @@ const TutorialEngine = {
     _watchTimer: null,
     _flashTimer: null,
 
-    // 패널 폭 (CSS 와 맞춤)
     PANEL_W: 280,
-    PANEL_GAP: 16,   // 하이라이트 테두리 ~ 패널 사이 간격
-    HL_PAD: 8,       // 하이라이트 패딩
+    PANEL_GAP: 16,
+    HL_PAD: 8,
 
     steps: [
-        {   // INTRO
+        {
             id: 'intro',
             setup: () => { resetCodex(true); },
             target: () => document.querySelector('.ms-card.classic'),
-            prefer: 'bottom',          // 패널 선호 방향
+            prefer: 'bottom',
             badge: 'GUIDE START', badgeColor: 'cyan',
             title: '개복디 넥서스 가이드',
             titleColor: 'var(--grade-rare)',
@@ -70,7 +100,7 @@ const TutorialEngine = {
             action: `👇 <strong style="color:var(--grade-rare);">[도감 모드]</strong> 카드를 직접 클릭하세요!`,
             requireAction: 'click_classic_card', pulseTarget: true,
         },
-        {   // STEP 1
+        {
             id: 'tab_select',
             setup: () => {},
             target: () => document.getElementById('codexTabsWrap'),
@@ -82,7 +112,7 @@ const TutorialEngine = {
             action: `👆 아무 <strong>종족 탭</strong>이나 클릭하세요!`,
             requireAction: 'click_tab', pulseTarget: true,
         },
-        {   // STEP 2
+        {
             id: 'unit_click',
             setup: () => {},
             target: () => document.getElementById('tabContent'),
@@ -96,7 +126,7 @@ const TutorialEngine = {
             action: `👆 아무 <strong>유닛 카드</strong>나 클릭하세요!`,
             requireAction: 'click_unit', pulseTarget: false,
         },
-        {   // STEP 3
+        {
             id: 'dashboard_view',
             setup: () => {},
             target: () => document.getElementById('magicDashboard'),
@@ -118,7 +148,7 @@ const TutorialEngine = {
                 }, 300);
             },
         },
-        {   // STEP 4
+        {
             id: 'deduct_toggle',
             setup: () => {},
             target: () => document.getElementById('btnToggleMode'),
@@ -132,7 +162,7 @@ const TutorialEngine = {
             action: `👆 <strong style="color:var(--g);">[차감 모드 전환]</strong> 버튼을 클릭!`,
             requireAction: 'click_deduct', pulseTarget: true,
         },
-        {   // STEP 5
+        {
             id: 'owned_plus',
             setup: () => {},
             target: () =>
@@ -149,7 +179,7 @@ const TutorialEngine = {
             action: `👆 재료의 <strong style="color:var(--grade-rare);">[+]</strong> 를 클릭!`,
             requireAction: 'click_plus', pulseTarget: true,
         },
-        {   // STEP 6
+        {
             id: 'deduct_result',
             setup: () => {},
             target: () => document.getElementById('magicDashboard'),
@@ -174,10 +204,10 @@ const TutorialEngine = {
                 TutorialEngine._flashTimer = setTimeout(flash, 2600);
             },
         },
-        {   // DONE
+        {
             id: 'finish',
             setup: () => {},
-            target: null,   // 대상 없음 → 화면 중앙
+            target: null,
             prefer: 'center',
             badge: 'COMPLETE ✦', badgeColor: 'gold',
             title: '튜토리얼 완료! 🎉',
@@ -193,7 +223,6 @@ const TutorialEngine = {
         },
     ],
 
-    // ── Public API ─────────────────────────────────────────
     start() {
         this.isActive = true;
         this.stepIndex = 0;
@@ -220,7 +249,6 @@ const TutorialEngine = {
         if (ov) ov.style.display = 'none';
         document.body.style.overflow = '';
         resetCodex(true);
-        // ① 항상 메인(모드 선택) 화면으로 복귀
         openModeSelector();
     },
 
@@ -230,7 +258,6 @@ const TutorialEngine = {
         if (step && step.requireAction === actionType) setTimeout(() => this.next(), 400);
     },
 
-    // ── 렌더링 ────────────────────────────────────────────
     _renderStep() {
         try {
             const step = this.steps[this.stepIndex];
@@ -253,18 +280,15 @@ const TutorialEngine = {
 
         if (!panel) return;
 
-        // 진행 바
         const total = this.steps.length;
         if (bar) bar.style.width = ((this.stepIndex + 1) / total * 100) + '%';
         if (lbl) lbl.textContent = ['INTRO','1/6','2/6','3/6','4/6','5/6','6/6','DONE'][this.stepIndex] || '';
 
-        // 콘텐츠 업데이트
         if (badge) { badge.textContent = step.badge || ''; badge.className = 'tut-badge tut-badge--' + (step.badgeColor || 'cyan'); }
         if (title) { title.innerHTML = step.title || ''; title.style.color = step.titleColor || 'var(--text)'; }
         if (body)  body.innerHTML  = step.body  || '';
         if (act)   { act.innerHTML = step.action || ''; act.style.display = step.action ? 'block' : 'none'; }
 
-        // 버튼
         if (step.requireAction === 'next') {
             btnN.style.display = 'inline-flex';
             btnN.textContent = step.nextLabel || '다음 단계 ➔';
@@ -277,17 +301,14 @@ const TutorialEngine = {
             btnN.style.display = 'none';
         }
 
-        // 하이라이트 & 패널 위치
         let targetEl = null;
         try { targetEl = step.target ? step.target() : null; } catch (e) {}
 
         if (targetEl) {
             this._positionHighlight(hl, targetEl, step.pulseTarget);
-            // 패널을 대상 옆에 앵커링 (한 rAF 후 — 패널 실제 크기 확정 뒤)
             requestAnimationFrame(() => this._anchorPanel(panel, targetEl, step.prefer || 'right'));
         } else {
             hl.style.display = 'none';
-            // 대상 없음 → 화면 중앙
             panel.style.cssText = `
                 position:fixed; top:50%; left:50%;
                 transform:translate(-50%,-50%);
@@ -299,7 +320,6 @@ const TutorialEngine = {
         if (step.onRender) step.onRender();
     },
 
-    // 하이라이트 위치
     _positionHighlight(hl, el, pulse) {
         if (!el) { hl.style.display = 'none'; return; }
         const r = el.getBoundingClientRect();
@@ -312,11 +332,9 @@ const TutorialEngine = {
         hl.className = 'tut-highlight' + (pulse ? ' pulse' : '');
     },
 
-    // 패널 앵커링 — 4방향 시도, 뷰포트 안에 들어오는 방향 자동 선택
     _anchorPanel(panel, el, prefer) {
         const isMobile = window.innerWidth < 700 || (window.innerWidth < window.innerHeight && window.innerWidth < 900);
         if (isMobile) {
-            // 모바일: 하단 드로어
             panel.style.cssText = `
                 position:fixed; left:0; right:0; bottom:0;
                 width:100%; max-height:52vh;
@@ -336,7 +354,6 @@ const TutorialEngine = {
         const vh   = window.innerHeight;
         const margin = 12;
 
-        // 각 방향의 가용 공간
         const space = {
             right:  vw - (r.right  + p + gap),
             left:   r.left  - p - gap,
@@ -344,7 +361,6 @@ const TutorialEngine = {
             top:    r.top   - p - gap,
         };
 
-        // 선호 방향 우선, 공간 부족 시 최대 공간 방향 사용
         const dirs = [prefer, 'right', 'left', 'bottom', 'top'].filter(Boolean);
         let chosen = dirs.find(d => {
             if (d === 'right'  || d === 'left')   return space[d] >= pw + margin;
@@ -363,12 +379,11 @@ const TutorialEngine = {
         } else if (chosen === 'bottom') {
             top  = r.bottom + p + gap;
             left = r.left + r.width / 2 - pw / 2;
-        } else { // top
+        } else {
             top  = r.top - p - gap - ph;
             left = r.left + r.width / 2 - pw / 2;
         }
 
-        // 뷰포트 클램핑
         top  = Math.max(margin, Math.min(top,  vh - ph   - margin));
         left = Math.max(margin, Math.min(left, vw - pw   - margin));
 
@@ -381,8 +396,7 @@ const TutorialEngine = {
         `;
     },
 
-    // ── 리스너 ────────────────────────────────────────────
-    _addListener(el, ev, fn) { el.addEventListener(ev, fn); this._listeners.push({el, ev, fn}); },
+    _addListener(el, ev, fn) { el.addEventListener(ev, fn, { passive: false }); this._listeners.push({el, ev, fn}); },
 
     _cleanListeners() {
         this._listeners.forEach(({el, ev, fn}) => { try { el.removeEventListener(ev, fn); } catch (e) {} });
@@ -392,26 +406,31 @@ const TutorialEngine = {
     },
 
     _setupActionListeners(step) {
+        // 모바일/태블릿 터치 환경 대응용 이중 바인딩 헬퍼
+        const bindInteraction = (el, evName) => {
+            this._addListener(el, 'click', () => this.handleEvent(evName));
+            this._addListener(el, 'touchend', (e) => { this.handleEvent(evName); });
+        };
+
         if (step.requireAction === 'click_classic_card') {
             const c = document.querySelector('.ms-card.classic');
-            if (c) this._addListener(c, 'click', () => this.handleEvent('click_classic_card'));
+            if (c) bindInteraction(c, 'click_classic_card');
         }
         if (step.requireAction === 'click_tab') {
-            const bind = () => document.querySelectorAll('.tab-btn:not([data-tut-bound])').forEach(b => {
+            const bindAllTabs = () => document.querySelectorAll('.tab-btn:not([data-tut-bound])').forEach(b => {
                 b.setAttribute('data-tut-bound', '1');
-                this._addListener(b, 'click', () => this.handleEvent('click_tab'));
+                bindInteraction(b, 'click_tab');
             });
-            bind();
-            this._watchTimer = setInterval(bind, 500);
+            bindAllTabs();
+            this._watchTimer = setInterval(bindAllTabs, 500);
         }
         if (step.requireAction === 'click_deduct') {
             const b = document.getElementById('btnToggleMode');
-            if (b) this._addListener(b, 'click', () => this.handleEvent('click_deduct'));
+            if (b) bindInteraction(b, 'click_deduct');
         }
     },
 };
 
-// resize / orientation 변경 시 패널 재배치
 let _tutResizeTimer = null;
 window.addEventListener('resize', () => {
     if (!TutorialEngine.isActive) return;
@@ -422,9 +441,7 @@ window.addEventListener('resize', () => {
     }, 120);
 });
 
-
 // 초기 진입 및 모드 컨트롤
-// =========================================================
 function checkInitialMode() {
     document.getElementById('modeSelector').classList.add('active');
 }
@@ -441,7 +458,6 @@ function initMode(mode, showToastMsg = true) {
     else if(mode === 'classic') { document.getElementById('classicSearchContainer').appendChild(searchWrap); if(showToastMsg) showToast("도감 모드가 활성화되었습니다."); } 
     else if(mode === 'jewel') { layout.classList.add('view-jewel'); if(showToastMsg) showToast("쥬얼 도감 모드가 활성화되었습니다."); }
     
-    // 모드 진입 시 강제 레이아웃 업데이트
     switchLayout(_currentViewMode === 'deduct' ? 'deduct' : 'codex');
 }
 
@@ -545,7 +561,6 @@ function showToast(msg, isError = false) {
     container.appendChild(t); setTimeout(() => { if(t.parentElement) t.remove(); }, 1800);
 }
 
-
 // =========================================================
 // 공통 리스너 및 유틸리티
 // =========================================================
@@ -597,7 +612,6 @@ function calculateTotalCostScore(costStr){
     let score=0; costStr.split(',').forEach(p=>{const m=p.match(/\[(\d+(?:\.\d+)?)\]/);if(m)score+=parseFloat(m[1]);else score+=1}); return score;
 }
 
-// 스마트 수량 컨트롤 엔진 (Shift+클릭 다중 증감 지원)
 let repeatTimer = null, repeatDelayTimer = null;
 function startSmartChange(id, delta, type, event) {
     if(event) { event.preventDefault(); event.stopPropagation(); }
@@ -641,7 +655,10 @@ function showRecipeTooltip(id, event, isDeduction = false) {
 function hideRecipeTooltip() { const tt = document.getElementById('recipeTooltip'); if(tt) tt.classList.remove('active'); }
 document.addEventListener('click', hideRecipeTooltip); document.addEventListener('touchstart', hideRecipeTooltip);
 
-// 초고속 정수 연산
+/* =============================================================================
+   [AI DO NOT EDIT] 🔒 핵심 계산 엔진 - 절대 수정 불가 (헤드락 적용 구간)
+   (정수 스코어 및 매직 코스트 합산/차감 결과에 관여하는 핵심 로직)
+   ============================================================================= */
 function calcEssenceRecursiveFast(uid, counts, visited) {
     if(visited.has(uid)) return; visited.add(uid);
     const u = unitMap.get(uid); if(!u) return;
@@ -666,6 +683,74 @@ function updateEssence(){
     const setVal=(id,v)=>{const el=document.getElementById(id);if(el){el.innerText=v;el.parentElement.className='cost-slot'+(el.parentElement.id.includes('magic')?' is-magic-slot':'')+(id.includes('total')?' total':'')+(v>0?' active':'')}};
     setVal('val-coral',counts.코랄);setVal('val-aiur',counts.아이어);setVal('val-zerus',counts.제루스);setVal('essence-total-val',counts.코랄+counts.아이어+counts.제루스);
 }
+
+function updateMagicDashboard(){
+    const totalMap={}; dashboardAtoms.forEach(a=>{if(a==="갓오타/메시브")totalMap[a]={갓오타:0,메시브:0};else totalMap[a]=0;});
+    
+    Array.from(activeUnits.keys()).forEach(k=>{
+        const u=unitMap.get(k); if(!u) return; const c=activeUnits.get(k)||1;
+        if(u.parsedCost && u.parsedCost.length > 0) {
+            u.parsedCost.forEach(pc => {
+                if(pc.type === 'special') totalMap['갓오타/메시브'][pc.key] += pc.qty * c;
+                else totalMap[pc.key] = (totalMap[pc.key] || 0) + pc.qty * c;
+            });
+        }
+    });
+
+    const ownedMap={}; dashboardAtoms.forEach(a=>{if(a==="갓오타/메시브")ownedMap[a]={갓오타:0,메시브:0};else ownedMap[a]=0;});
+    Array.from(ownedUnits.keys()).forEach(k=>{
+        const c=ownedUnits.get(k)||0;
+        if(c > 0) {
+            if(k === '갓오타') { ownedMap['갓오타/메시브'].갓오타 += c; return; }
+            if(k === '메시브') { ownedMap['갓오타/메시브'].메시브 += c; return; }
+            const u=unitMap.get(k); if(!u) return;
+            if(u.parsedCost && u.parsedCost.length > 0) {
+                u.parsedCost.forEach(pc => {
+                    if(pc.type === 'special') ownedMap['갓오타/메시브'][pc.key] += pc.qty * c;
+                    else ownedMap[pc.key] = (ownedMap[pc.key] || 0) + pc.qty * c;
+                });
+            }
+        }
+    });
+
+    let totalMagic=0;
+    dashboardAtoms.forEach(a=>{
+        const val=totalMap[a], owned=ownedMap[a];
+        const container=document.getElementById(`vslot-${clean(a)}`);if(!container)return;
+        const e=container.querySelector('.cost-val'), nameEl=container.querySelector('.cost-name');
+
+        if(a==="갓오타/메시브"){
+            let finalG = Math.max(0, val.갓오타 - owned.갓오타); let finalM = Math.max(0, val.메시브 - owned.메시브);
+            if(finalG>0 || finalM>0){
+                e.innerHTML=`<div style="display:flex; width:100%; height:100%;">
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; border-right:1px solid rgba(236,72,153,0.3);">
+                        <span style="font-size:1.8rem; font-weight:900; color:var(--grade-rare); line-height:1; margin-bottom:4px; text-shadow:0 0 10px rgba(251,191,36,0.5);">${finalG}</span>
+                        <span style="font-size:0.7rem; color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">갓오타</span>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                        <span style="font-size:1.8rem; font-weight:900; color:var(--grade-unique); line-height:1; margin-bottom:4px; text-shadow:0 0 10px rgba(239,68,68,0.5);">${finalM}</span>
+                        <span style="font-size:0.7rem; color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">메시브</span>
+                    </div>
+                </div>`;
+                nameEl.style.display='none'; container.classList.add('active');
+            } else { 
+                if(e.innerHTML !== EMPTY_SVG) { e.innerHTML=EMPTY_SVG; nameEl.style.display='block'; container.classList.remove('active'); }
+            }
+        } else {
+            let finalVal = Math.max(0, val - owned);
+            if(finalVal>0){ 
+                e.innerText=Math.ceil(finalVal); nameEl.style.display='block'; container.classList.add('active'); totalMagic+=finalVal; 
+            } else { 
+                if(e.innerHTML !== EMPTY_SVG) { e.innerHTML=EMPTY_SVG; nameEl.style.display='block'; container.classList.remove('active'); }
+            }
+        }
+    });
+    const magicTotalEl=document.querySelector('#slot-total-magic .cost-val');
+    if(magicTotalEl){magicTotalEl.innerText=Math.ceil(totalMagic);magicTotalEl.parentElement.classList.toggle('active',totalMagic>0);}
+}
+/* =============================================================================
+   [AI DO NOT EDIT] 🔒 핵심 계산 엔진 종료
+   ============================================================================= */
 
 function calculateIntermediateRequirements() {
     const reqMap = new Map(); const reasonMap = new Map();
@@ -712,7 +797,6 @@ function switchLayout(mode) {
     if (!layout || !btnToggle) return;
     _currentViewMode = mode; 
     
-    // 1. 레이아웃 제어 (DOM 이동 없이 항상 코스트 데시보드에 고정됨)
     layout.classList.remove('view-deduct');
     if (mode === 'deduct') {
         layout.classList.add('view-deduct');
@@ -791,71 +875,6 @@ function handleOwnedWheel(e, id) {
 
     if (qty < 0) qty = 0; if (qty > maxQty) qty = maxQty;
     if (ownedUnits.get(id) !== qty) { ownedUnits.set(id, qty); updateAllPanels(); }
-}
-
-function updateMagicDashboard(){
-    const totalMap={}; dashboardAtoms.forEach(a=>{if(a==="갓오타/메시브")totalMap[a]={갓오타:0,메시브:0};else totalMap[a]=0;});
-    
-    Array.from(activeUnits.keys()).forEach(k=>{
-        const u=unitMap.get(k); if(!u) return; const c=activeUnits.get(k)||1;
-        if(u.parsedCost && u.parsedCost.length > 0) {
-            u.parsedCost.forEach(pc => {
-                if(pc.type === 'special') totalMap['갓오타/메시브'][pc.key] += pc.qty * c;
-                else totalMap[pc.key] = (totalMap[pc.key] || 0) + pc.qty * c;
-            });
-        }
-    });
-
-    const ownedMap={}; dashboardAtoms.forEach(a=>{if(a==="갓오타/메시브")ownedMap[a]={갓오타:0,메시브:0};else ownedMap[a]=0;});
-    Array.from(ownedUnits.keys()).forEach(k=>{
-        const c=ownedUnits.get(k)||0;
-        if(c > 0) {
-            if(k === '갓오타') { ownedMap['갓오타/메시브'].갓오타 += c; return; }
-            if(k === '메시브') { ownedMap['갓오타/메시브'].메시브 += c; return; }
-            const u=unitMap.get(k); if(!u) return;
-            if(u.parsedCost && u.parsedCost.length > 0) {
-                u.parsedCost.forEach(pc => {
-                    if(pc.type === 'special') ownedMap['갓오타/메시브'][pc.key] += pc.qty * c;
-                    else ownedMap[pc.key] = (ownedMap[pc.key] || 0) + pc.qty * c;
-                });
-            }
-        }
-    });
-
-    let totalMagic=0;
-    dashboardAtoms.forEach(a=>{
-        const val=totalMap[a], owned=ownedMap[a];
-        const container=document.getElementById(`vslot-${clean(a)}`);if(!container)return;
-        const e=container.querySelector('.cost-val'), nameEl=container.querySelector('.cost-name');
-
-        if(a==="갓오타/메시브"){
-            let finalG = Math.max(0, val.갓오타 - owned.갓오타); let finalM = Math.max(0, val.메시브 - owned.메시브);
-            if(finalG>0 || finalM>0){
-                e.innerHTML=`<div style="display:flex; width:100%; height:100%;">
-                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; border-right:1px solid rgba(236,72,153,0.3);">
-                        <span style="font-size:1.8rem; font-weight:900; color:var(--grade-rare); line-height:1; margin-bottom:4px; text-shadow:0 0 10px rgba(251,191,36,0.5);">${finalG}</span>
-                        <span style="font-size:0.7rem; color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">갓오타</span>
-                    </div>
-                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-                        <span style="font-size:1.8rem; font-weight:900; color:var(--grade-unique); line-height:1; margin-bottom:4px; text-shadow:0 0 10px rgba(239,68,68,0.5);">${finalM}</span>
-                        <span style="font-size:0.7rem; color:rgba(255,255,255,0.7); letter-spacing:-0.5px;">메시브</span>
-                    </div>
-                </div>`;
-                nameEl.style.display='none'; container.classList.add('active');
-            } else { 
-                if(e.innerHTML !== EMPTY_SVG) { e.innerHTML=EMPTY_SVG; nameEl.style.display='block'; container.classList.remove('active'); }
-            }
-        } else {
-            let finalVal = Math.max(0, val - owned);
-            if(finalVal>0){ 
-                e.innerText=Math.ceil(finalVal); nameEl.style.display='block'; container.classList.add('active'); totalMagic+=finalVal; 
-            } else { 
-                if(e.innerHTML !== EMPTY_SVG) { e.innerHTML=EMPTY_SVG; nameEl.style.display='block'; container.classList.remove('active'); }
-            }
-        }
-    });
-    const magicTotalEl=document.querySelector('#slot-total-magic .cost-val');
-    if(magicTotalEl){magicTotalEl.innerText=Math.ceil(totalMagic);magicTotalEl.parentElement.classList.toggle('active',totalMagic>0);}
 }
 
 function renderDeductionBoard() {
@@ -1126,7 +1145,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupSearchEngine();
         checkInitialMode();
 
-        // 모바일 제스처 스와이프 등록
         let touchStartX = 0; let touchEndX = 0;
         const swipeArea = document.getElementById('tabContent');
         if(swipeArea) {

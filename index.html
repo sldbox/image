@@ -23,10 +23,6 @@
 
     <link rel="stylesheet" href="style.css">
     <style>
-        /* 검색 모드에서만 코스트 데시보드에 홈 버튼 표시를 위한 CSS */
-        .expert-only { display: none !important; }
-        .main-layout.mode-expert .expert-only { display: inline-flex !important; }
-        
         /* 튜토리얼 최상단 보장 */
         #tutOverlay { z-index: 99999 !important; }
     </style>
@@ -101,7 +97,13 @@
 
     <div class="col-center" id="centerPanel">
         <div id="expertSearchContainer">
-            <div class="expert-main-title">개복디 넥서스</div>
+            <div class="expert-header-row">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span class="expert-main-title">개복디 넥서스</span>
+                    <span style="color:var(--g-dim);">|</span>
+                    <button class="btn-text-link" onclick="openModeSelector()">🏠 메인화면으로</button>
+                </div>
+            </div>
         </div>
 
         <div class="hud-panel" style="flex: 1 1 auto;">
@@ -109,8 +111,6 @@
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="ph-icon" style="color:var(--grade-epic); border-color:var(--grade-epic);">❖</span>
                     <span class="ph-title" style="text-shadow:0 0 15px rgba(251,146,60,0.8), 0 0 5px rgba(251,146,60,0.5);">코스트 데시보드</span>
-                    <span class="ph-sep expert-only">|</span>
-                    <button class="btn-text-link expert-only" onclick="openModeSelector()">🏠 메인화면으로</button>
                 </div>
                 <div style="display: flex; align-items: stretch; gap: 4px;">
                     <button class="btn-toggle-layout active" id="btnToggleMode" onclick="toggleViewMode()" style="width: 130px; justify-content: center; background: rgba(0,0,0,0.5); border: 1px solid var(--border-light);">
@@ -157,39 +157,22 @@
 <div id="toastContainer" class="toast-container"></div>
 
 <div id="tutOverlay" class="tut-overlay" style="display:none;">
-
-    <!-- 하이라이트 컷아웃 (대상 테두리 + 배경 어둡게) -->
     <div id="tutHighlight" class="tut-highlight" style="display:none;"></div>
-
-    <!-- 가이드 패널 (JS가 position:fixed + top/left 직접 부여) -->
     <div id="tutPanel">
-
-        <!-- 진행 바 -->
         <div class="tut-progress-wrap">
             <div class="tut-progress-track">
                 <div id="tutProgressBar" class="tut-progress-fill" style="width:0%"></div>
             </div>
             <div id="tutStepLabel" class="tut-step-label">INTRO</div>
         </div>
-
-        <!-- 배지 -->
         <div id="tutBadge" class="tut-badge tut-badge--cyan">GUIDE START</div>
-
-        <!-- 제목 -->
         <div id="tutTitle" class="tut-panel-title"></div>
-
-        <!-- 본문 -->
         <div id="tutBody" class="tut-panel-body"></div>
-
-        <!-- 액션 힌트 (클릭 유도 문구) -->
         <div id="tutAction" class="tut-action-hint" style="display:none;"></div>
-
-        <!-- 버튼 -->
         <div class="tut-actions">
             <button id="tutBtnSkip" class="btn-tut-skip" onclick="TutorialEngine.end()">가이드 종료</button>
             <button id="tutBtnNext" class="btn-tut-next" style="display:none;"></button>
         </div>
-
     </div>
 </div>
 

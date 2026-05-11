@@ -97,6 +97,7 @@ body{background:var(--void);color:var(--text);font-family:var(--font-body);min-h
     .col-center{order:2;display:flex;flex-direction:column;gap:10px;}
     .col-right{order:3;display:none !important;flex-direction:column;gap:10px;opacity:1 !important;transform:none !important;pointer-events:auto !important;visibility:visible !important;}
     .panel-jewel{order:4;display:none !important;flex:1;opacity:1 !important;transform:none !important;pointer-events:auto !important;visibility:visible !important;}
+    .main-layout.view-deduct .panel-codex{display:none !important;} /* 차감 모드 시 도감 숨김 추가 */
     .main-layout.view-deduct .col-right{display:flex !important;}
     .main-layout.view-jewel .panel-codex,.main-layout.view-jewel .col-center,.main-layout.view-jewel .col-right{display:none !important;}
     .main-layout.view-jewel .panel-jewel{display:flex !important;min-height:calc(100vh - 20px);}
