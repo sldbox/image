@@ -48,6 +48,11 @@
             <p style="color:var(--text); line-height:1.4; font-size:1rem; font-weight:800; word-break:keep-all; margin-bottom:16px;">방해 요소 없는 쥬얼<br>전설/신화 능력치 전용 열람</p>
             <div style="margin-top:auto; color:rgba(255,215,0,0.8); background:rgba(255,215,0,0.1); padding:7px 14px; border-radius:6px; border:1px solid rgba(255,215,0,0.3); font-size:0.88rem;">독립된 열람 환경</div>
         </div>
+        <div class="ms-card genealogy" onclick="initMode('genealogy')">
+            <h2 style="color:var(--grade-hidden); font-size:1.7rem; margin-bottom:10px; font-family:var(--font-display); text-shadow:0 0 15px rgba(16,185,129,0.5);">계보 도감</h2>
+            <p style="color:var(--text); line-height:1.4; font-size:1rem; font-weight:800; word-break:keep-all; margin-bottom:16px;">유닛의 상/하위 테크트리와<br>조합 비용의 시각화 맵핑</p>
+            <div style="margin-top:auto; color:rgba(16,185,129,0.8); background:rgba(16,185,129,0.1); padding:7px 14px; border-radius:6px; border:1px solid rgba(16,185,129,0.3); font-size:0.88rem;">동적 트리 렌더링 지원</div>
+        </div>
     </div>
     
     <div class="creator-badge">
@@ -146,6 +151,29 @@
         </div>
         <div class="panel-body" style="padding:24px; overflow-y:auto;">
             <div id="jewelGrid"></div>
+        </div>
+    </div>
+
+    <div class="hud-panel panel-genealogy" id="genealogyPanel">
+        <div class="panel-header" style="justify-content:space-between; background:rgba(16,185,129,0.05);">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span class="ph-icon" style="color:var(--grade-hidden); border-color:var(--grade-hidden);">⎇</span>
+                <span class="ph-title" style="text-shadow:0 0 15px rgba(16,185,129,0.7); font-size:1.15rem;">유닛 계보 트리</span>
+            </div>
+            <div style="display:flex; align-items:stretch;">
+                <button class="btn-hdr-sm neon" onclick="openModeSelector()" style="border-color:rgba(16,185,129,0.35); color:var(--grade-hidden);">⬅ 메인화면</button>
+            </div>
+        </div>
+        <div class="panel-body gn-container">
+            <div class="gn-sidebar">
+                <div class="codex-tabs-wrap" style="padding:10px; border-bottom:1px solid var(--border);">
+                    <div class="codex-tabs" id="gnTabs"></div>
+                </div>
+                <div class="gn-list-wrap" id="gnUnitList"></div>
+            </div>
+            <div class="gn-content" id="gnTreeArea">
+                <div class="gn-empty-state">좌측 목록에서 유닛을 선택하여 계보를 확인하세요.</div>
+            </div>
         </div>
     </div>
 </main>
