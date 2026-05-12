@@ -1,7 +1,7 @@
 /* style.css */
 /*
 =============================================================================
-  개복디 넥서스 — style.css  v8.8  HIGH-END GAMING UI (OPTIMIZED)
+  개복디 넥서스 — style.css
 =============================================================================
 */
 
@@ -935,6 +935,17 @@ body{
     width: 160px; /* 조건 텍스트를 담기 위해 너비 확장 */
     position: relative;
 }
+.gn-node-relation {
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    color: var(--text-sub);
+    margin-bottom: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    z-index: 2;
+}
 .gn-node:hover { transform: translateY(-4px); z-index: 10; }
 .gn-node:hover .gn-node-inner { border-color: var(--n-color); box-shadow: 0 10px 25px rgba(0,0,0,0.8), 0 0 15px var(--n-color); }
 
@@ -1049,6 +1060,15 @@ body{
     .gn-mc-slot { padding: 6px 2px; }
     .gn-mc-val { font-size: 1rem; }
     .gn-mc-lbl { font-size: 0.55rem; }
+
+    .gn-node-row { gap: 10px; }
+    .gn-node { width: calc(50% - 5px); }
+    .gn-node-inner { padding: 8px 6px; gap: 6px; }
+    .gn-img-box { width: 48px; height: 48px; }
+    .gn-node-name { font-size: 0.85rem; }
+    .gn-node-grade { font-size: 0.6rem; padding: 2px 6px; }
+    .gn-node-cost { font-size: 0.65rem; }
+    .gn-node-relation { font-size: 0.65rem; padding: 3px 8px; margin-bottom: 5px; }
 
     /* 모바일 성능 최적화: 고비용 필터 제거 및 배경 솔리드화 */
     .hud-panel, .panel-header, .mode-selector, .search-results, .recipe-tooltip, .jewel-item, .gn-sidebar {

@@ -1,7 +1,7 @@
 // app.js
 /*
 =============================================================================
-[파일 설명서] app.js (오류 수정 및 안정성 강화 버전)
+[파일 설명서] app.js 
 =============================================================================
 */
 
@@ -254,19 +254,26 @@ function resetOwned() { ownedUnits.clear(); debouncedUpdateAllPanels(); showToas
 // 초기 진입 및 모드 컨트롤
 function checkInitialMode() {
     document.getElementById('modeSelector').classList.add('active');
+    const layout = document.getElementById('mainLayout');
+    if (layout) layout.style.display = 'none';
 }
 
 function openModeSelector() { 
     _currentAppMode = 'classic';
     document.getElementById('modeSelector').classList.add('active');
     const layout = document.getElementById('mainLayout');
-    if (layout) layout.classList.remove('view-jewel', 'view-genealogy');
+    if (layout) {
+        layout.classList.remove('view-jewel', 'view-genealogy');
+        layout.style.display = 'none';
+    }
 }
 
 function initMode(mode, showToastMsg = true) {
     _currentAppMode = mode; 
     document.getElementById('modeSelector').classList.remove('active');
     const layout = document.getElementById('mainLayout'), searchWrap = document.getElementById('searchWrap');
+    
+    if (layout) layout.style.display = '';
     
     layout.classList.remove('mode-expert', 'view-jewel', 'view-genealogy');
     if(mode === 'expert') { layout.classList.add('mode-expert'); document.getElementById('expertSearchContainer').appendChild(searchWrap); if(showToastMsg) showToast("검색 모드가 활성화되었습니다."); } 
