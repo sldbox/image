@@ -1120,7 +1120,7 @@ body{
     position: relative; overflow: hidden;
     box-shadow: 0 4px 15px rgba(0,0,0,0.7);
     transition: all 0.3s cubic-bezier(0.2,0.8,0.2,1);
-    cursor: 기본;
+    cursor: default;
 }
 .jwm-item::before {
     content:""; position:absolute; top:0; left:0; right:0; height:2px;

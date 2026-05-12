@@ -26,8 +26,6 @@
 </head>
 <body>
 
-<!-- 메인화면 제거됨: 도감 모드가 기본값 -->
-
 <div style="display:none;">
     <div class="search-wrap" id="searchWrap">
         <input type="text" class="search-input" id="unitSearchInput" placeholder="유닛 검색 또는 다중 커맨드 (예: 불새/아몬/땅굴*8)" autocomplete="off">
@@ -62,15 +60,6 @@
     </div>
 
     <div class="col-center" id="centerPanel">
-        <div id="expertSearchContainer">
-            <div class="expert-header-row">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <span class="expert-main-title" id="nexusCycleTitleExpert">개복디 넥서스</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 코스트 데시보드 (기본) -->
         <div class="hud-panel" id="costDashboardPanel" style="flex: 1 1 auto;">
             <div class="panel-header" style="justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -88,7 +77,6 @@
             </div>
         </div>
 
-        <!-- 쥬얼 인라인 패널 (토글로 표시) -->
         <div class="hud-panel" id="jewelInlinePanel" style="flex: 1 1 auto; display:none;">
             <div class="panel-header" style="justify-content:space-between; background:rgba(255,215,0,0.05);">
                 <div style="display:flex; align-items:center; gap:12px;">
@@ -115,8 +103,6 @@
         </div>
         <div class="panel-body" id="deductionBoard" style="padding:16px; overflow-y:auto; background:var(--panel);"></div>
     </div>
-
-    <!-- 전체화면 쥬얼/계보 패널 (삭제됨 - 인라인으로 통합) -->
 </main>
 
 <div id="recipeTooltip" class="recipe-tooltip"></div>

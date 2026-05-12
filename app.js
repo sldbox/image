@@ -7,13 +7,14 @@
 
 // [핵심 데이터 맵]
 const unitMap = new Map(), activeUnits = new Map(), ownedUnits = new Map(), essenceUnits = new Set(), DOM = {};
-const reverseRecipeMap = new Map(); // 상위 계보 역추적용 캐시 맵
 
 // [핵심 상수 및 유틸]
 const clean = s => s ? s.replace(/\s+/g, '').toLowerCase() : '';
 const IGNORE_PARSE_RECIPES = ["미발견", "없음", ""];
 const dashboardAtoms = ["전쟁광", "스파르타중대", "암흑광전사", "암흑파수기", "원시바퀴", "저격수", "코브라", "암흑고위기사", "암흑추적자", "변종가시지옥", "망치경호대", "공성파괴단", "암흑집정관", "암흑불멸자", "원시히드라리스크", "땅거미지뢰", "자동포탑", "우르사돈암", "우르사돈수", "갓오타/메시브"];
 const EMPTY_SVG = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2;"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><line x1="3" y1="21" x2="21" y2="3"></line></svg>`;
+
+const isOneTime = (u) => u && (u.grade === "슈퍼히든" || ["데하카", "데하카고치", "데하카의오른팔"].includes(u.name));
 
 function getUnitId(rawName){ const c=clean(rawName); const u=unitMap.get(c); return u ? u.id : c; }
 
@@ -48,12 +49,6 @@ function initializeCacheEngine() {
                 if(m) {
                     const childId = getUnitId(m[1]);
                     u.parsedRecipe.push({ id: childId, qty: m[3] ? parseInt(m[3]) : 1, cond: m[2] || '' });
-                    
-                    // 상위 계보 역추적 트리 빌드 (1ms 미만 소요)
-                    if(childId) {
-                        if(!reverseRecipeMap.has(childId)) reverseRecipeMap.set(childId, new Set());
-                        reverseRecipeMap.get(childId).add(u.id);
-                    }
                 }
             });
         }
@@ -66,7 +61,7 @@ function calcEssenceRecursiveFast(uid, counts, visited) {
     if(["히든", "슈퍼히든"].includes(u.grade)) {
         if(u.category === "테바테메") counts.코랄 += 1;
         else if(u.category === "토바토메") counts.아이어 += 1;
-        else if(u.category === "저그중립") counts.제루스 += 1;
+        else if(u.category === "저그중립" && u.name !== "미니성큰") counts.제루스 += 1;
         else if(u.category === "혼종") counts.혼종 += 1; 
     }
     if(u.parsedRecipe) u.parsedRecipe.forEach(pr => { if(pr.id) calcEssenceRecursiveFast(pr.id, counts, visited); });
@@ -196,11 +191,7 @@ function updateMagicDashboard(){
 // UI 상태 및 설정 변수 
 // =========================================================
 let _activeTabIdx = 0;
-let _currentAppMode = 'classic'; // 'expert', 'classic', 'jewel', 'genealogy'
 let _currentViewMode = 'codex';
-let _activeGenealogyTabIdx = 0;
-let _selectedGenealogyUnitId = null;
-let _gnHistory = []; // 계보 탐색 히스토리 추적용 배열
 
 const GRADE_ORDER = ["매직", "레어", "에픽", "유니크", "헬", "레전드", "히든", "슈퍼히든"];
 const gradeColorsRaw = { "매직":"var(--grade-magic)", "레어":"var(--grade-rare)", "에픽":"var(--grade-epic)", "유니크":"var(--grade-unique)", "헬":"var(--grade-hell)", "레전드":"var(--grade-legend)", "히든":"var(--grade-hidden)", "슈퍼히든":"var(--grade-super)" };
@@ -219,11 +210,10 @@ function triggerHaptic() { if (typeof navigator !== 'undefined' && navigator.vib
 function resetCodex(silent = false) { activeUnits.clear(); essenceUnits.clear(); debouncedUpdateAllPanels(); if(!silent) showToast("선택된 유닛이 초기화되었습니다."); }
 function resetOwned() { ownedUnits.clear(); debouncedUpdateAllPanels(); showToast("보유 유닛이 초기화되었습니다."); }
 
-// 초기 진입: 바로 도감 모드로 시작
-function checkInitialMode() {
+// 초기 진입 설정
+function setupInitialView() {
     const layout = document.getElementById('mainLayout');
     if (layout) layout.style.display = '';
-    _currentAppMode = 'classic';
     document.getElementById('classicSearchContainer').appendChild(document.getElementById('searchWrap'));
     switchLayout('codex');
     startTitleCycle();
@@ -233,58 +223,38 @@ function checkInitialMode() {
 const _cycleTitles = ['개복디 넥서스', '제작자 | 회장', 'ID : 3-S2-1-2461127'];
 let _cycleTitleIdx = 0;
 function startTitleCycle() {
-    const els = [document.getElementById('nexusCycleTitle'), document.getElementById('nexusCycleTitleExpert')].filter(Boolean);
+    const el = document.getElementById('nexusCycleTitle');
+    if(!el) return;
     setInterval(() => {
         _cycleTitleIdx = (_cycleTitleIdx + 1) % _cycleTitles.length;
-        els.forEach(el => {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(-8px)';
-            setTimeout(() => {
-                el.textContent = _cycleTitles[_cycleTitleIdx];
-                el.style.opacity = '1';
-                el.style.transform = 'translateY(0)';
-            }, 350);
-        });
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-8px)';
+        setTimeout(() => {
+            el.textContent = _cycleTitles[_cycleTitleIdx];
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        }, 350);
     }, 3000);
-}
-
-function initMode(mode, showToastMsg = true) {
-    _currentAppMode = mode; 
-    const layout = document.getElementById('mainLayout'), searchWrap = document.getElementById('searchWrap');
-    if (layout) layout.style.display = '';
-    layout.classList.remove('mode-expert', 'view-jewel', 'view-genealogy');
-    if(mode === 'expert') { 
-        layout.classList.add('mode-expert'); 
-        document.getElementById('expertSearchContainer').appendChild(searchWrap); 
-        if(showToastMsg) showToast("검색 모드가 활성화되었습니다."); 
-    } else if(mode === 'classic') { 
-        document.getElementById('classicSearchContainer').appendChild(searchWrap); 
-        if(showToastMsg) showToast("도감 모드가 활성화되었습니다."); 
-    }
-    switchLayout(_currentViewMode === 'deduct' ? 'deduct' : 'codex');
 }
 
 // 쥬얼 인라인 패널 토글
 let _jewelPanelOpen = false;
 function toggleJewelPanel() {
     _jewelPanelOpen = !_jewelPanelOpen;
-    const layout = document.getElementById('mainLayout');
     const costPanel = document.getElementById('costDashboardPanel');
-    const rightPanel = document.getElementById('rightPanel'); // 차감 데시보드
+    const rightPanel = document.getElementById('rightPanel');
     const jewelPanel = document.getElementById('jewelInlinePanel');
     const btn = document.getElementById('btnJewelToggle');
     
     if(_jewelPanelOpen) {
-        layout.classList.add('view-jewel');
         costPanel.style.display = 'none';
-        if(rightPanel) rightPanel.style.display = 'none'; // 차감 보드 완벽하게 숨김
+        if(rightPanel) rightPanel.style.display = 'none';
         jewelPanel.style.display = 'flex';
         if(btn) { btn.innerHTML = '⬅ 돌아가기'; btn.style.borderColor='rgba(255,215,0,0.7)'; btn.style.background='rgba(255,215,0,0.1)'; }
         renderJewelMiniGrid();
     } else {
-        layout.classList.remove('view-jewel');
         costPanel.style.display = '';
-        if(rightPanel) rightPanel.style.display = ''; // 복구
+        if(rightPanel) rightPanel.style.display = '';
         jewelPanel.style.display = 'none';
         if(btn) { btn.innerHTML = '✦ 쥬얼도감'; btn.style.borderColor='rgba(255,215,0,0.35)'; btn.style.background=''; }
     }
@@ -293,11 +263,11 @@ function toggleJewelPanel() {
 function switchLayout(mode) {
     const layout = document.getElementById('mainLayout');
     const btnToggle = document.getElementById('btnToggleMode');
-    
     if (!layout || !btnToggle) return;
-    _currentViewMode = mode; 
     
+    _currentViewMode = mode; 
     layout.classList.remove('view-deduct');
+    
     if (mode === 'deduct') {
         layout.classList.add('view-deduct');
         btnToggle.classList.remove('active');
@@ -309,11 +279,8 @@ function switchLayout(mode) {
 }
 
 function toggleViewMode() {
-    if (_currentViewMode === 'deduct') {
-        switchLayout('codex');
-    } else {
-        switchLayout('deduct');
-    }
+    if (_currentViewMode === 'deduct') switchLayout('codex');
+    else switchLayout('deduct');
 }
 
 // =========================================================
@@ -401,7 +368,8 @@ function processCommand(val) {
 
         if(match) {
             let currentQty = activeUnits.get(match.id) || 0; let newQty = currentQty + qty;
-            if(newQty > 16 && match.grade !== "슈퍼히든") newQty = 16; if(match.grade === "슈퍼히든") newQty = 1;
+            if(newQty > 16 && !isOneTime(match)) newQty = 16; 
+            if(isOneTime(match)) newQty = 1;
             activeUnits.set(match.id, newQty); essenceUnits.add(match.id); successCount++;
         }
     });
@@ -481,7 +449,7 @@ function toggleUnitSelection(id, forceQty){
     if(activeUnits.has(id)){
         activeUnits.delete(id); essenceUnits.delete(id);
     } else {
-        const u = unitMap.get(id); const initQty = (u && u.grade === "슈퍼히든") ? 1 : (forceQty || 1);
+        const u = unitMap.get(id); const initQty = isOneTime(u) ? 1 : (forceQty || 1);
         activeUnits.set(id, initQty); essenceUnits.add(id);
     }
     debouncedUpdateAllPanels();
@@ -494,14 +462,14 @@ function setUnitQty(id, val) {
         debouncedUpdateAllPanels();
         return;
     }
-    const u = unitMap.get(id); if (!u || u.grade === "슈퍼히든") return;
+    const u = unitMap.get(id); if (!u || isOneTime(u)) return;
     if (q > 16) q = 16;
     activeUnits.set(id, q); debouncedUpdateAllPanels();
 }
 
 function handleWheel(e, id) {
     if (!activeUnits.has(id)) return;
-    const u = unitMap.get(id); if (!u || u.grade === "슈퍼히든") return;
+    const u = unitMap.get(id); if (!u || isOneTime(u)) return;
     e.preventDefault(); 
     let qty = activeUnits.get(id) || 1;
     let shiftMulti = e.shiftKey ? 5 : 1;
@@ -761,19 +729,29 @@ window.selectTab = selectTab;
 function renderCurrentTabContent() {
     const catKey = TAB_CATEGORIES[_activeTabIdx].key;
     let items = Array.from(unitMap.values()).filter(u => ["슈퍼히든","히든","레전드"].includes(u.grade) && u.category === catKey);
-    items.sort((a,b) => { if(a.grade !== b.grade) return GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade); return calculateTotalCostScore(b.cost) - calculateTotalCostScore(a.cost); });
+    
+    // [정렬 개선] 1회성 유닛(슈퍼히든 및 데하카 계열)을 항상 해당 분류의 최상단에 고정
+    items.sort((a,b) => { 
+        const aOne = isOneTime(a);
+        const bOne = isOneTime(b);
+        if (aOne && !bOne) return -1;
+        if (!aOne && bOne) return 1;
+
+        if(a.grade !== b.grade) return GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade); 
+        return calculateTotalCostScore(b.cost) - calculateTotalCostScore(a.cost); 
+    });
 
     let h='<div style="display:flex;flex-direction:column;gap:4px;">';
     if (items.length === 0) h += `<div style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold; font-size:1.05rem;">해당 분류에 유닛이 없습니다.</div>`;
 
     items.forEach((item, index) => {
-        const unitEssence = getUnitEssenceTotal(item.id);
         const unitCost = Math.ceil(calculateTotalCostScore(item.cost));
-        
         let gradeHtml = `<span class="gtag" style="border-color:${gradeColorsRaw[item.grade]}44; color:${gradeColorsRaw[item.grade]};">${item.grade}</span>`;
 
         let rightControls = '';
-        if (item.grade !== "슈퍼히든") {
+        
+        // [레이아웃 확장] 1회 한정 유닛은 우측 갭(컨트롤 영역)을 완전히 제거하여 레시피 영역이 끝까지 확장되도록 함
+        if (!isOneTime(item)) {
             rightControls = `<div class="uc-ctrl" onclick="event.stopPropagation()">
                 <div class="smart-stepper active-stepper" onwheel="handleWheel(event, '${item.id}')">
                     <button id="btn-minus-${item.id}" onmousedown="startSmartChange('${item.id}', -1, 'active', event)" ontouchstart="startSmartChange('${item.id}', -1, 'active', event)">-</button>
@@ -817,7 +795,7 @@ function updateTabContentUI() {
         
         if(isActive) card.classList.add('active'); else card.classList.remove('active');
         
-        if(item.grade !== "슈퍼히든") {
+        if(!isOneTime(item)) {
             const valEl = document.getElementById(`val-${item.id}`);
             if(valEl) valEl.innerText = isActive ? qty : '-';
             
@@ -865,43 +843,6 @@ function renderDashboardAtoms(){
     });
 }
 
-function renderJewelGrid(){
-    const g=document.getElementById('jewelGrid'); 
-    if(!g) return;
-    
-    const url="https://sldbox.github.io/site/image/jw/";
-    let h='';
-
-    JEWEL_DATABASE.forEach((koArr, idx) => {
-        const kr=koArr[0], krLeg=koArr[1], krMyth=koArr[2], imgName=koArr[3]||kr;
-        const c = typeof JEWEL_COLORS !== 'undefined' && JEWEL_COLORS[kr] ? JEWEL_COLORS[kr] : "#ffffff";
-        const cA = c + '28';
-        const cB = c + '44';
-        const cShadow = c + '55';
-        const hasMythic = krMyth && krMyth.trim() !== "";
-        const mythHtml = hasMythic
-            ? `<div class="jw-stat mythic"><div class="jw-stat-lbl">신화 능력 <span class="mythic-sparkle">✦</span></div><div class="jw-stat-val">${krMyth}</div></div>`
-            : '';
-        const delay = (idx * 0.04).toFixed(2);
-
-        h += `<div class="jewel-item" style="--jw-color:${c};--jw-color-a:${cA};--jw-color-b:${cB};--jw-shadow:${cShadow};--jw-glow:radial-gradient(ellipse 80% 60% at 50% 0%,${cA} 0%,transparent 70%);animation:jwFadeIn 0.45s ${delay}s both ease-out;">
-            <div class="jewel-banner">
-                <div class="jewel-banner-bg"></div>
-                <div class="jewel-img-wrap">
-                    <img src="${url}${imgName}.png" alt="${kr}" onerror="this.style.opacity='0'">
-                </div>
-                <div class="jewel-name-txt">${kr}</div>
-                <div class="jewel-banner-line"></div>
-            </div>
-            <div class="jewel-body">
-                <div class="jw-stat legend"><div class="jw-stat-lbl">전설 능력</div><div class="jw-stat-val">${krLeg}</div></div>
-                ${mythHtml}
-            </div>
-        </div>`;
-    });
-    g.innerHTML = h;
-}
-
 function renderJewelMiniGrid(){
     const g=document.getElementById('jewelMiniGrid'); 
     if(!g || g.dataset.rendered) return;
@@ -925,316 +866,6 @@ function renderJewelMiniGrid(){
     });
     g.innerHTML = h;
 }
-function renderGenealogyTabs(){
-    const gnTabs = document.getElementById('gnTabs');
-    if (!gnTabs) return;
-    let h='';
-    TAB_CATEGORIES.forEach((cat,idx)=>{
-        h+=`<button id="gn-tab-btn-${idx}" class="tab-btn" onclick="selectGenealogyTab(${idx})">
-                <span class="tab-sym" style="font-size:1.1rem; padding:2px 5px; border-radius:3px; background:rgba(0,0,0,0.3); border:1px solid var(--border-light); color:var(--text-sub);">${cat.sym}</span>
-                <span>${cat.name}</span>
-            </button>`;
-    });
-    gnTabs.innerHTML=h;
-}
-
-function selectGenealogyTab(idx) {
-    _activeGenealogyTabIdx = idx;
-    TAB_CATEGORIES.forEach((_, i) => {
-        const btn = document.getElementById(`gn-tab-btn-${i}`);
-        if(btn) { if(i === idx) btn.classList.add('active'); else btn.classList.remove('active'); }
-    });
-    renderGenealogyList();
-}
-window.selectGenealogyTab = selectGenealogyTab;
-
-function renderGenealogyList() {
-    const gnList = document.getElementById('gnUnitList');
-    if(!gnList) return;
-    const catKey = TAB_CATEGORIES[_activeGenealogyTabIdx].key;
-    
-    let items = Array.from(unitMap.values()).filter(u => ["슈퍼히든","히든","레전드"].includes(u.grade) && u.category === catKey);
-    items.sort((a,b) => { if(a.grade !== b.grade) return GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade); return calculateTotalCostScore(b.cost) - calculateTotalCostScore(a.cost); });
-
-    if(items.length === 0) {
-        gnList.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-sub); font-size:0.9rem;">해당 분류에 표시할 유닛이 없습니다.</div>`;
-        return;
-    }
-
-    let h = '';
-    items.forEach((u, idx) => {
-        const isSelected = _selectedGenealogyUnitId === u.id;
-        const color = gradeColorsRaw[u.grade];
-        const delay = (idx * 0.03).toFixed(2);
-        h += `<div class="gn-list-item ${isSelected ? 'active' : ''}" style="--g-color:${color}; animation-delay:${delay}s;" onclick="selectGenealogyUnit('${u.id}', true)">
-                <div class="gn-li-grade" style="color:${color}; border-color:${color}44;">${u.grade}</div>
-                <div class="gn-li-name">${u.name}</div>
-              </div>`;
-    });
-    gnList.innerHTML = h;
-
-    if(!_selectedGenealogyUnitId || !items.find(u => u.id === _selectedGenealogyUnitId)) {
-        if(items.length > 0) selectGenealogyUnit(items[0].id, true);
-    }
-}
-
-function selectGenealogyUnit(unitId, isRoot = false) {
-    try {
-        if (isRoot) {
-            _gnHistory = [unitId];
-        } else {
-            if (_gnHistory[_gnHistory.length - 1] !== unitId) {
-                _gnHistory.push(unitId);
-            }
-        }
-        _selectedGenealogyUnitId = unitId;
-        renderGenealogyList(); 
-        renderGenealogyTree(unitId);
-    } catch (error) {
-        console.error("계보 트리 렌더링 중 오류 발생:", error);
-    }
-}
-window.selectGenealogyUnit = selectGenealogyUnit;
-
-window.goBackGenealogy = function() {
-    if (_gnHistory.length > 1) {
-        _gnHistory.pop();
-        const prevId = _gnHistory[_gnHistory.length - 1];
-        _selectedGenealogyUnitId = prevId;
-        renderGenealogyList();
-        renderGenealogyTree(prevId);
-    }
-};
-
-window.jumpGenealogyHistory = function(index) {
-    if (index >= 0 && index < _gnHistory.length) {
-        _gnHistory = _gnHistory.slice(0, index + 1);
-        const targetId = _gnHistory[_gnHistory.length - 1];
-        _selectedGenealogyUnitId = targetId;
-        renderGenealogyList();
-        renderGenealogyTree(targetId);
-    }
-};
-
-function buildGenealogyNodeHTML(unitId, role = 'lower', relationQty = 1, relationCond = '') {
-    const u = unitMap.get(unitId);
-    if(!u) return '';
-    const color = gradeColorsRaw[u.grade] || "var(--text)";
-    const imgUrl = `https://sldbox.github.io/site/image/ctg/${u.name}.png`;
-    
-    const unitCost = Math.ceil(calculateTotalCostScore(u.cost));
-    const costHtml = unitCost > 0 ? `<div class="gn-node-cost">코스트 ${unitCost}</div>` : '';
-    
-    let relationHtml = '';
-    const qtyTxt = relationQty > 1 ? `x${relationQty}` : '';
-    const condTxt = relationCond ? `(${relationCond})` : '';
-    if(qtyTxt || condTxt) {
-        relationHtml = `<div class="gn-node-relation">${condTxt} <span style="color:var(--text);font-weight:900;">${qtyTxt}</span></div>`;
-    }
-
-    const fallbackSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6;"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>`;
-
-    return `<div class="gn-node ${role}" style="--n-color:${color};" onclick="selectGenealogyUnit('${u.id}')">
-        ${relationHtml}
-        <div class="gn-node-inner">
-            <div class="gn-img-box">
-                <img src="${imgUrl}" alt="${u.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="gn-img-fallback" style="display:none; color:${color};">${fallbackSvg}</div>
-            </div>
-            <div class="gn-node-info">
-                <div class="gn-node-grade" style="color:${color};">${u.grade}</div>
-                <div class="gn-node-name">${u.name}</div>
-                ${costHtml}
-            </div>
-        </div>
-    </div>`;
-}
-
-function renderGenealogyTree(unitId) {
-    const area = document.getElementById('gnTreeArea');
-    if(!area) return;
-    const targetUnit = unitMap.get(unitId);
-    if(!targetUnit) return;
-
-    let breadcrumbHtml = '';
-    if (_gnHistory.length > 1) {
-        breadcrumbHtml = `<div class="gn-breadcrumb" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom: 10px; width: 100%; justify-content:flex-start; background:rgba(0,0,0,0.5); padding:10px 16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">`;
-        
-        breadcrumbHtml += `<button onclick="goBackGenealogy()" style="background:linear-gradient(180deg, rgba(255,255,255,0.1), rgba(0,0,0,0.2)); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:bold; margin-right:8px; display:flex; align-items:center; gap:6px; transition:all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.5);" onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.borderColor='rgba(255,255,255,0.3)';" onmouseout="this.style.background='linear-gradient(180deg, rgba(255,255,255,0.1), rgba(0,0,0,0.2))'; this.style.borderColor='rgba(255,255,255,0.1)';"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> 뒤로가기</button>`;
-
-        _gnHistory.forEach((hId, idx) => {
-            const hUnit = unitMap.get(hId);
-            if (!hUnit) return;
-            const isLast = idx === _gnHistory.length - 1;
-            const color = gradeColorsRaw[hUnit.grade] || 'var(--text)';
-            
-            if (!isLast) {
-                breadcrumbHtml += `<span onclick="jumpGenealogyHistory(${idx})" style="color:${color}; cursor:pointer; font-size:0.9rem; font-weight:bold; opacity:0.6; transition:0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">${hUnit.name}</span>`;
-                breadcrumbHtml += `<span style="color:var(--text-muted); font-size:0.8rem; font-weight:900;">></span>`;
-            } else {
-                breadcrumbHtml += `<span style="color:${color}; font-size:0.95rem; font-weight:900; text-shadow:0 0 8px ${color}66; padding-left:2px;">${hUnit.name}</span>`;
-            }
-        });
-        breadcrumbHtml += `</div>`;
-    }
-
-    const upperIds = reverseRecipeMap.get(unitId);
-    let upperHtml = '';
-    if(upperIds && upperIds.size > 0) {
-        upperHtml = `<div class="gn-tree-section">
-            <div class="gn-section-title"><span style="color:var(--grade-rare);">▲</span> 상위 계보 (사용처)</div>
-            <div class="gn-node-row">
-                ${Array.from(upperIds).map(pid => {
-                    const parentUnit = unitMap.get(pid);
-                    let reqQty = 1, reqCond = '';
-                    if(parentUnit && parentUnit.parsedRecipe) {
-                        const recipePart = parentUnit.parsedRecipe.find(r => r.id === unitId);
-                        if(recipePart) { reqQty = recipePart.qty; reqCond = recipePart.cond; }
-                    }
-                    return buildGenealogyNodeHTML(pid, 'upper', reqQty, reqCond);
-                }).join('')}
-            </div>
-            <div class="gn-link-down"></div>
-        </div>`;
-    }
-
-    const targetColor = gradeColorsRaw[targetUnit.grade] || "var(--text)";
-    const imgUrl = `https://sldbox.github.io/site/image/ctg/${targetUnit.name}.png`;
-    const fallbackSvg = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6;"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>`;
-
-    let condHtml = '';
-    if(targetUnit.recipe && !IGNORE_PARSE_RECIPES.includes(targetUnit.recipe)){
-        targetUnit.recipe.split(/\+(?![^()]*\))/).forEach(p => {
-            const match = p.trim().match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
-            if(match && match[2]) {
-                condHtml += `<div class="gn-cond-badge"><span class="gn-cb-name">${match[1].trim()}</span><span class="gn-cb-cond">${match[2]}</span></div>`;
-            } else if(!match && p.trim() && !p.includes('[')) {
-                condHtml += `<div class="gn-cond-badge" style="justify-content:center;"><span class="gn-cb-name">${p.trim()}</span></div>`;
-            }
-        });
-    }
-    if(!condHtml) condHtml = `<div style="color:var(--text-muted);font-size:0.85rem; text-align:center; padding: 10px;">특수 조건 없음</div>`;
-
-    let counts = {코랄:0, 아이어:0, 제루스:0, 혼종:0}, visited = new Set();
-    if (["히든", "슈퍼히든"].includes(targetUnit.grade)) {
-        calcEssenceRecursiveFast(targetUnit.id, counts, visited);
-    }
-    let finalCoral = counts.코랄 + counts.혼종;
-    let finalAiur = counts.아이어 + counts.혼종;
-    let finalZerus = counts.제루스 + counts.혼종;
-    let totalEssence = finalCoral + finalAiur + finalZerus;
-
-    let essenceHtml = '';
-    if (totalEssence > 0) {
-        essenceHtml = `
-        <div class="gn-detail-row">
-            <div class="gn-detail-title"><span style="color:var(--grade-super);">✦</span> 필요 정수</div>
-            <div class="gn-essence-grid">
-                <div class="gn-es-slot"><span class="gn-es-val" style="color:#FF6B6B;">${finalCoral}</span><span class="gn-es-lbl">코랄</span></div>
-                <div class="gn-es-slot"><span class="gn-es-val" style="color:var(--grade-rare);">${finalAiur}</span><span class="gn-es-lbl">아이어</span></div>
-                <div class="gn-es-slot"><span class="gn-es-val" style="color:var(--grade-legend);">${finalZerus}</span><span class="gn-es-lbl">제루스</span></div>
-                <div class="gn-es-slot"><span class="gn-es-val" style="color:var(--g);">${counts.혼종}</span><span class="gn-es-lbl">혼종</span></div>
-                <div class="gn-es-slot total"><span class="gn-es-val">${totalEssence}</span><span class="gn-es-lbl">총합</span></div>
-            </div>
-        </div>`;
-    }
-
-    const unitCost = Math.ceil(calculateTotalCostScore(targetUnit.cost));
-    let costMap = {};
-    dashboardAtoms.forEach(a => {
-        if(a === "갓오타/메시브") { costMap['갓오타'] = 0; costMap['메시브'] = 0; }
-        else { costMap[clean(a)] = 0; }
-    });
-
-    if (targetUnit.parsedCost && targetUnit.parsedCost.length > 0) {
-        targetUnit.parsedCost.forEach(pc => {
-            let key = clean(pc.key);
-            if (costMap[key] !== undefined) costMap[key] += pc.qty;
-        });
-    }
-
-    let costGridHtml = '';
-    dashboardAtoms.forEach(a => {
-        let isSpecial = (a === "갓오타/메시브");
-        let displayHtml = '';
-        let isActive = false;
-
-        if (isSpecial) {
-            let g = costMap['갓오타'] || 0;
-            let m = costMap['메시브'] || 0;
-            isActive = (g > 0 || m > 0);
-            if(isActive) {
-                displayHtml = `<div style="display:flex; justify-content:center; gap:3px; font-size:0.95rem; align-items:center;"><span style="color:var(--grade-rare);">${g}</span><span style="color:#555; font-size:0.8rem;">/</span><span style="color:var(--grade-unique);">${m}</span></div>`;
-            } else {
-                displayHtml = `<span style="opacity:0.2;">-</span>`;
-            }
-        } else {
-            let v = costMap[clean(a)] || 0;
-            isActive = (v > 0);
-            displayHtml = isActive ? v : `<span style="opacity:0.2;">-</span>`;
-        }
-
-        costGridHtml += `<div class="gn-mc-slot ${isActive ? 'active' : ''}">
-            <span class="gn-mc-val">${displayHtml}</span>
-            <span class="gn-mc-lbl">${a}</span>
-        </div>`;
-    });
-    
-    let costHtml = '';
-    if (unitCost > 0 || totalEssence > 0) {
-        costHtml = `
-        <div class="gn-detail-row">
-            <div class="gn-detail-title"><span style="color:var(--grade-epic);">❖</span> 코스트 데시보드 (총 ${unitCost})</div>
-            <div class="gn-cost-grid">
-                ${costGridHtml}
-            </div>
-        </div>`;
-    }
-
-    const targetHtml = `<div class="gn-tree-section target-section">
-        <div class="gn-target-dashboard" style="--t-color:${targetColor};">
-            <div class="gn-td-top">
-                <div class="gn-td-profile">
-                    <div class="gn-td-img-box" style="border-color:${targetColor}; box-shadow:0 0 15px ${targetColor}44;">
-                        <img src="${imgUrl}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div class="gn-img-fallback" style="display:none; color:${targetColor};">${fallbackSvg}</div>
-                    </div>
-                    <div class="gn-td-info">
-                        <div class="gn-td-grade" style="color:${targetColor}; border-color:${targetColor}66;">${targetUnit.grade}</div>
-                        <div class="gn-td-name">${targetUnit.name}</div>
-                    </div>
-                </div>
-                <div class="gn-td-conds-wrap">
-                    <div class="gn-detail-title"><span style="color:var(--grade-unique);">⚠</span> 특수 조합 조건</div>
-                    <div class="gn-tdd-conds">${condHtml}</div>
-                </div>
-            </div>
-            ${essenceHtml}
-            ${costHtml}
-        </div>
-    </div>`;
-
-    let lowerHtml = '';
-    if(targetUnit.parsedRecipe && targetUnit.parsedRecipe.length > 0) {
-        lowerHtml = `<div class="gn-tree-section">
-            <div class="gn-link-up"></div>
-            <div class="gn-section-title"><span style="color:var(--grade-magic);">▼</span> 하위 계보 (요구 재료)</div>
-            <div class="gn-node-row">
-                ${targetUnit.parsedRecipe.map(pr => {
-                    if(pr.id) return buildGenealogyNodeHTML(pr.id, 'lower', pr.qty, pr.cond);
-                    return ''; 
-                }).join('')}
-            </div>
-        </div>`;
-    }
-
-    area.innerHTML = `<div class="gn-tree-wrapper" style="animation: jwFadeIn 0.4s cubic-bezier(0.2,0.8,0.2,1);">
-        ${breadcrumbHtml}
-        ${upperHtml}
-        ${targetHtml}
-        ${lowerHtml}
-    </div>`;
-}
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -1254,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
         debouncedUpdateAllPanels();
         
         setupSearchEngine();
-        checkInitialMode();
+        setupInitialView();
 
         let touchStartX = 0; let touchEndX = 0;
         const swipeArea = document.getElementById('tabContent');
