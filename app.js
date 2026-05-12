@@ -11,8 +11,8 @@ const reverseRecipeMap = new Map(); // 상위 계보 역추적용 캐시 맵
 
 // [핵심 상수 및 유틸]
 const clean = s => s ? s.replace(/\s+/g, '').toLowerCase() : '';
-const IGNORE_PARSE_RECIPES = ["미발견", "없음", "", "100라운드이전까지저그업20↑ [(타 종족 업 0)[1]+역전 복권10회[1]+인생 복권3회시-소환[1]]"];
-const dashboardAtoms = ["전쟁광", "스파르타중대", "암흑광전사", "암흑파수기", "원시바퀴", "저격수", "코브라", "암흑고위기사", "암흑추적자", "변종가시지옥", "망치경호대", "공성파괴단", "암흑집정관", "암흑불멸자", "원시히드라리스크", "땅거미지뢰", "자동포탑", "우르사돈[암]", "우르사돈[수]", "갓오타/메시브"];
+const IGNORE_PARSE_RECIPES = ["미발견", "없음", ""];
+const dashboardAtoms = ["전쟁광", "스파르타중대", "암흑광전사", "암흑파수기", "원시바퀴", "저격수", "코브라", "암흑고위기사", "암흑추적자", "변종가시지옥", "망치경호대", "공성파괴단", "암흑집정관", "암흑불멸자", "원시히드라리스크", "땅거미지뢰", "자동포탑", "우르사돈암", "우르사돈수", "갓오타/메시브"];
 const EMPTY_SVG = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2;"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><line x1="3" y1="21" x2="21" y2="3"></line></svg>`;
 
 function getUnitId(rawName){ const c=clean(rawName); const u=unitMap.get(c); return u ? u.id : c; }
@@ -35,8 +35,6 @@ function initializeCacheEngine() {
                 if(cName.includes('메시브') || cName.includes('디제스터')) { type='special'; key='메시브'; }
                 else if(cName.includes('갓오브타임') || cName.includes('갓오타')) { type='special'; key='갓오타'; }
                 else if(cName.includes('땅거미지뢰')) { key='땅거미지뢰'; }
-                else if(cName.includes('우르사돈[암]')||cName.includes('우르사돈암')) { key='우르사돈[암]'; }
-                else if(cName.includes('우르사돈[수]')||cName.includes('우르사돈수')) { key='우르사돈[수]'; }
                 else if(cName.includes('자동포탑')) { key='자동포탑'; }
                 else if(cName.includes('잠복')) { key='잠복'; }
                 else { const uid = getUnitId(cName); key = dashboardAtoms.find(a => clean(a) === uid) || uid; }
@@ -294,8 +292,7 @@ const ALIAS_MAP = {
     "타커": "타이커스", "타이": "타이커스", "닥템": "암흑기사", "닼템": "암흑기사", "다칸": "암흑집정관", 
     "스투": "스투코프", "디젯": "디제스터", "메십": "메시브", "마랩": "마스터랩", "히페": "히페리온", 
     "고전순": "고르곤전투순양함", "특레": "특공대레이너", "드레천": "드라켄레이저천공기", 
-    "우르사돈암": "우르사돈[암]", "우르사돈수": "우르사돈[수]", "공허": "공허포격기", 
-    "분수": "분노수호자", "원히": "원시히드라리스크"
+    "공허": "공허포격기", "분수": "분노수호자", "원히": "원시히드라리스크"
 };
 
 function setupSearchEngine() {
