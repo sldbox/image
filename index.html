@@ -7,8 +7,8 @@
 
     <meta name="theme-color" content="#030508">
 
-    <link rel="icon" href="https://sldbox.github.io/site/image/logo/icon.png?v=3" 입력="image/png">
-    <link rel="shortcut icon" href="https://sldbox.github.io/site/image/logo/icon.png?v=3" 입력="image/png">
+    <link rel="icon" href="https://sldbox.github.io/site/image/logo/icon.png?v=3" type="image/png">
+    <link rel="shortcut icon" href="https://sldbox.github.io/site/image/logo/icon.png?v=3" type="image/png">
 
     <meta name="description" content="개복디 넥서스 - 히든조합&정수 계산 HUB">
     <meta property="og:type" content="website">
@@ -44,7 +44,7 @@
 
             <div id="classicSearchContainer">
                 <div class="search-wrap" id="searchWrap">
-                    <input 입력="text" class="search-input" id="unitSearchInput" placeholder="유닛 검색 또는 다중 커맨드 (예: 불새/아몬/땅굴*8)" autocomplete="off">
+                    <input type="text" class="search-input" id="unitSearchInput" placeholder="유닛 검색 또는 다중 커맨드 (예: 불새/아몬/땅굴*8)" autocomplete="off">
                     <div class="search-results" id="searchResults"></div>
                     <div id="activeRoster" class="active-roster"></div>
                 </div>
@@ -65,9 +65,6 @@
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="ph-icon" style="color:var(--grade-epic); border-color:var(--grade-epic);">❖</span>
                     <span class="ph-title" style="text-shadow:0 0 15px rgba(251,146,60,0.8), 0 0 5px rgba(251,146,60,0.5);">코스트 데시보드</span>
-                    <div class="ph-desc">
-                        <span> <b>유닛이름 클릭 : [코스트] 표시</b> &nbsp;&nbsp; & &nbsp;&nbsp;  <b>종족별 정수 합계</b></span>
-                    </div>
                 </div>
                 <div style="display: flex; align-items: stretch; gap: 4px;">
                     <button class="btn-toggle-layout active" id="btnToggleMode" onclick="toggleViewMode()" style="width: 130px; justify-content: center; background: rgba(0,0,0,0.5); border: 1px solid var(--border-light);">
@@ -86,9 +83,6 @@
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span class="ph-icon" style="color:var(--grade-unique); border-color:var(--grade-unique);">⊖</span>
                 <span class="ph-title" style="text-shadow:0 0 15px rgba(239,68,68,0.8), 0 0 5px rgba(239,68,68,0.5);">차감 데시보드</span>
-                <div class="ph-desc">
-                    <span> <b>유닛이름 클릭 : [조합법] 표시</b> &nbsp;&nbsp; & &nbsp;&nbsp;  <b>슬롯/대그 클릭 : 조합트리 강조</b></span>
-                </div>
             </div>
             <div style="display: flex; align-items: stretch;">
                 <button class="btn-hdr-sm neon" onclick="resetOwned()">⟲ 보유 초기화</button>
