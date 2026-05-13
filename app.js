@@ -1,3 +1,4 @@
+// app.js
 /*
 =============================================================================
   개복디 넥서스 — app.js
@@ -496,78 +497,206 @@ function setOwnedQty(id, val) {
 }
 
 // =========================================================
-// 차감 연동 계산기
+// 차감 연동 계산기 및 수동 조합 시스템 (Craft)
 // =========================================================
+
+// 하향식(Top-Down) 의존성 처리를 위한 완벽한 위상 정렬 엔진
+// (수정: 오직 parsedRecipe만을 기준으로 의존성 그래프를 그려, 맵핑 중복을 차단함)
+let _topoOrder = null;
+function getTopologicalOrder() {
+    if (_topoOrder) return _topoOrder;
+    let inDegree = new Map();
+    let graph = new Map();
+    
+    unitMap.forEach((u, id) => {
+        if (!inDegree.has(id)) inDegree.set(id, 0);
+        if (!graph.has(id)) graph.set(id, []);
+        
+        if (u.parsedRecipe) {
+            u.parsedRecipe.forEach(child => {
+                if (child.id && unitMap.has(child.id)) {
+                    if (!inDegree.has(child.id)) inDegree.set(child.id, 0);
+                    graph.get(id).push(child.id);
+                    inDegree.set(child.id, inDegree.get(child.id) + 1);
+                }
+            });
+        }
+    });
+    
+    let queue = [];
+    inDegree.forEach((deg, id) => {
+        if (deg === 0) queue.push(id);
+    });
+    
+    let sorted = [];
+    while(queue.length > 0) {
+        let curr = queue.shift();
+        sorted.push(curr);
+        let children = graph.get(curr);
+        if (children) {
+            children.forEach(child => {
+                let deg = inDegree.get(child) - 1;
+                inDegree.set(child, deg);
+                if (deg === 0) queue.push(child);
+            });
+        }
+    }
+    
+    unitMap.forEach((u, id) => {
+        if (!sorted.includes(id)) sorted.push(id);
+    });
+    
+    _topoOrder = sorted.map(id => unitMap.get(id)).filter(u => u !== undefined);
+    return _topoOrder;
+}
+
 function calculateDeductedRequirements() {
-    let deficits = new Map();
     let reqMap = new Map();
     let reasonMap = new Map();
+    let specialReq = { 갓오타: 0, 메시브: 0 };
+    let specialReason = { 갓오타: new Set(), 메시브: new Set() };
 
-    let specialReq = { 갓오타: 0, 메시브: 0, 자동포탑: 0, 땅거미지뢰: 0 };
-    let specialReason = { 갓오타: new Set(), 메시브: new Set(), 자동포탑: new Set(), 땅거미지뢰: new Set() };
-
+    let deficits = new Map();
     activeUnits.forEach((qty, uid) => {
         deficits.set(uid, (deficits.get(uid) || 0) + qty);
-        reqMap.set(uid, (reqMap.get(uid) || 0) + qty);
-        if (!reasonMap.has(uid)) reasonMap.set(uid, new Set());
-        reasonMap.get(uid).add('목표 유닛');
+        reasonMap.set(uid, new Set(['목표 유닛']));
     });
 
-    let availableOwned = new Map(ownedUnits);
-    let safetyCounter = 0;
+    let usedOwned = new Map();
+    let sortedUnits = getTopologicalOrder();
+    let ravenId = getUnitId("낮까마귀");
 
-    while(deficits.size > 0 && safetyCounter < 2000) {
-        safetyCounter++;
-        let highestUid = null, highestScore = -1;
+    // 1. 트리 전파 (순수하게 parsedRecipe 기준, 중복 맵핑 완전 차단)
+    sortedUnits.forEach(u => {
+        let uid = u.id;
+        let needed = deficits.get(uid) || 0;
 
-        for (let uid of deficits.keys()) {
-            const u = unitMap.get(uid);
-            const score = u ? calculateTotalCostScore(u.cost) : 0;
-            if (score > highestScore) { highestScore = score; highestUid = uid; }
+        // [낮까마귀 고정 로직]
+        if (uid === ravenId && needed > 1) {
+            needed = 1;
+            deficits.set(uid, needed);
         }
-        if (!highestUid) break;
 
-        let needed = deficits.get(highestUid);
-        deficits.delete(highestUid);
-        if (needed <= 0) continue;
+        if (needed <= 0) return;
 
-        let owned = availableOwned.get(highestUid) || 0;
-        let consumed = Math.min(needed, owned);
-        availableOwned.set(highestUid, owned - consumed);
-        let remaining = needed - consumed;
+        reqMap.set(uid, needed);
+        let owned = ownedUnits.get(uid) || 0;
+        let consume = Math.min(owned, needed);
+        
+        if (consume > 0) usedOwned.set(uid, consume);
+        
+        let remaining = needed - consume;
 
-        if (remaining > 0) {
-            const u = unitMap.get(highestUid);
-            if (u) {
-                if (u.parsedRecipe) {
-                    u.parsedRecipe.forEach(child => {
-                        if (child.id) {
-                            let childNeed = remaining * child.qty;
-                            deficits.set(child.id, (deficits.get(child.id) || 0) + childNeed);
-                            reqMap.set(child.id, (reqMap.get(child.id) || 0) + childNeed);
-                            if (!reasonMap.has(child.id)) reasonMap.set(child.id, new Set());
-                            reasonMap.get(child.id).add(u.name);
-                        }
-                    });
+        if (remaining > 0 && u.parsedRecipe) {
+            u.parsedRecipe.forEach(child => {
+                if (child.id && unitMap.has(child.id)) {
+                    let childNeed = remaining * child.qty;
+                    deficits.set(child.id, (deficits.get(child.id) || 0) + childNeed);
+                    if (!reasonMap.has(child.id)) reasonMap.set(child.id, new Set());
+                    reasonMap.get(child.id).add(u.name);
                 }
-                if (u.parsedCost) {
-                     u.parsedCost.forEach(pc => {
-                         let pcNeed = pc.qty * remaining;
-                         if (pc.type === 'special') {
-                             if (pc.key === '메시브') { specialReq.메시브 += pcNeed; specialReason.메시브.add(u.name); }
-                             if (pc.key === '갓오타') { specialReq.갓오타 += pcNeed; specialReason.갓오타.add(u.name); }
-                         } else if (pc.key === '자동포탑') {
-                             specialReq.자동포탑 += pcNeed; specialReason.자동포탑.add(u.name);
-                         } else if (pc.key === '땅거미지뢰') {
-                             specialReq.땅거미지뢰 += pcNeed; specialReason.땅거미지뢰.add(u.name);
-                         }
-                     });
-                }
-            }
+            });
         }
+    });
+
+    // 2. 특수 아톰(갓오타/메시브)는 트리에 없으므로 납작하게(flattened) 정산
+    activeUnits.forEach((qty, uid) => {
+        const u = unitMap.get(uid);
+        if (u && u.parsedCost) {
+            u.parsedCost.forEach(pc => {
+                if (pc.key === '갓오타' || pc.key === '메시브') {
+                    specialReq[pc.key] += pc.qty * qty;
+                    specialReason[pc.key].add("목표 유닛");
+                }
+            });
+        }
+    });
+    usedOwned.forEach((usedQty, uid) => {
+        const u = unitMap.get(uid);
+        if (u && u.parsedCost) {
+            u.parsedCost.forEach(pc => {
+                if (pc.key === '갓오타' || pc.key === '메시브') {
+                    specialReq[pc.key] -= pc.qty * usedQty;
+                }
+            });
+        }
+    });
+    specialReq['갓오타'] = Math.max(0, specialReq['갓오타']);
+    specialReq['메시브'] = Math.max(0, specialReq['메시브']);
+
+    // 3. [로리스완 자동포탑 글로벌 차감 로직] (트리 계산 완료 후 최종 반영)
+    let roryId = getUnitId("로리스완");
+    let roryOwned = ownedUnits.get(roryId) || 0;
+    let autoTurretId = getUnitId("자동포탑");
+    
+    if (roryOwned > 0 && autoTurretId && reqMap.has(autoTurretId)) {
+        let currentReq = reqMap.get(autoTurretId);
+        let deductAmount = roryOwned * 5;
+        let newReq = Math.max(0, currentReq - deductAmount);
+        reqMap.set(autoTurretId, newReq);
+        if (newReq === 0) reasonMap.get(autoTurretId).add("로리스완 지원 충당");
     }
 
     return { reqMap, reasonMap, specialReq, specialReason };
+}
+
+function getCraftableCount(uid, reqVal) {
+    const u = unitMap.get(uid);
+    if (!u || !u.parsedRecipe || u.parsedRecipe.length === 0) return 0;
+
+    let hasAnyRequirement = false;
+    let maxCraftable = 999;
+    let canCraft = true;
+
+    // 코스트 대시보드(기초 자원)로 빠지는 유닛들은 조합 판정 기준에서 철저히 제외
+    u.parsedRecipe.forEach(child => {
+        if (child.id) {
+            const isAtom = dashboardAtoms.map(a => clean(a)).includes(child.id) || child.id === '갓오타' || child.id === '메시브' || child.id === '자동포탑';
+            if (!isAtom) {
+                hasAnyRequirement = true;
+                let ownedChild = ownedUnits.get(child.id) || 0;
+                let possible = Math.floor(ownedChild / child.qty);
+                if (possible < maxCraftable) maxCraftable = possible;
+                if (ownedChild < child.qty) canCraft = false;
+            }
+        }
+    });
+
+    if (!hasAnyRequirement || !canCraft || maxCraftable <= 0) return 0;
+    
+    let currentOwned = ownedUnits.get(uid) || 0;
+    let needed = reqVal - currentOwned;
+    if (needed <= 0) return 0; 
+
+    // 일괄 조합(MAX) 연산: 보유 재료가 허용하는 최대치와 목표 필요수량 중 작은 값을 반환
+    return Math.min(maxCraftable, needed);
+}
+
+function craftUnit(uid) {
+    const u = unitMap.get(uid);
+    if(!u || !u.parsedRecipe) return;
+
+    const reqEl = document.getElementById(`d-req-${uid}`);
+    const reqVal = reqEl ? parseInt(reqEl.innerText) : 0;
+    const craftCount = getCraftableCount(uid, reqVal);
+    
+    if (craftCount > 0) {
+        u.parsedRecipe.forEach(child => {
+            if (child.id) {
+                const isAtom = dashboardAtoms.map(a => clean(a)).includes(child.id) || child.id === '갓오타' || child.id === '메시브' || child.id === '자동포탑';
+                if (!isAtom) {
+                    let currentChildOwned = ownedUnits.get(child.id) || 0;
+                    ownedUnits.set(child.id, Math.max(0, currentChildOwned - (child.qty * craftCount))); 
+                }
+            }
+        });
+        
+        let currentOwned = ownedUnits.get(uid) || 0;
+        ownedUnits.set(uid, currentOwned + craftCount);
+        
+        triggerHaptic();
+        debouncedUpdateAllPanels();
+    }
 }
 
 function renderActiveRoster() {
@@ -616,6 +745,7 @@ function renderDeductionBoard() {
                 <span class="gtag" style="border-color:${color}44; color:${color}; margin-right:6px;">${grade}</span>${name}
             </div>
             <div class="d-inputs">
+                <div class="craft-btn-wrap" id="craft-wrap-${id}"></div>
                 <div class="smart-stepper owned-stepper">
                     <button onmousedown="startSmartChange('${id}', -1, 'owned', event)" ontouchstart="startSmartChange('${id}', -1, 'owned', event)">-</button>
                     <div class="ss-val" id="d-in-${id}" data-req="0">${ownedUnits.get(id)||0}</div>
@@ -630,31 +760,39 @@ function renderDeductionBoard() {
     let h = '';
     h += `<div id="deduct-empty-msg" style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold; width:100%; display:none;">목표 유닛을 선택하거나, 차감 맵핑에 보유 유닛을 입력하세요.</div>`;
 
-    h += `<div class="deduct-group" id="group-final" style="display:none; border-color:rgba(251,191,36,0.3); background:linear-gradient(to bottom, rgba(30,25,10,0.6), rgba(15,10,5,0.8));">
+    // 1. 직속 재료 및 특수기초자원 통합 (최상위)
+    h += `<div class="deduct-group" id="group-special" style="border-color:rgba(251,191,36,0.3); background:linear-gradient(to bottom, rgba(30,25,10,0.6), rgba(15,10,5,0.8));">
             <div class="deduct-group-title" style="color:var(--grade-super); border-bottom-color:rgba(251,191,36,0.2);">
-                <span style="color:var(--grade-super); text-shadow:0 0 10px var(--grade-super);">✦</span> 직속 재료 (최종 조합)
+                <span style="color:var(--grade-super); text-shadow:0 0 10px var(--grade-super);">✦</span> 직속 재료 및 특수 맵핑
             </div>
-            <div class="deduct-grid" id="grid-final"></div>
+            <div class="deduct-grid" id="grid-special">
+                ${renderSlot('갓오타', '갓오타', '레어', 'grid-special')} 
+                ${renderSlot('메시브', '메시브', '유니크', 'grid-special')} 
+                ${renderSlot('자동포탑', '자동포탑', '매직', 'grid-special')}
+            </div>
           </div>`;
 
-    const specialIds = ['갓오타', '메시브', '자동포탑', '땅거미지뢰'];
+    // 2. 히든 그룹
+    const specialIds = ['갓오타', '메시브', '자동포탑'];
+    let hiddenItems = Array.from(unitMap.values()).filter(u => u.grade === "히든" && !specialIds.includes(u.id));
+    h += `<div class="deduct-group" id="group-hidden">
+            <div class="deduct-group-title"><span style="color:var(--grade-hidden);">♦</span> 히든 등급 맵핑</div>
+            <div class="deduct-grid" id="grid-hidden">
+                ${hiddenItems.map(u => renderSlot(u.id, u.name, u.grade, 'grid-hidden')).join('')}
+            </div>
+          </div>`;
 
-    h += `<div class="deduct-group" id="group-special"><div class="deduct-group-title"><span style="color:var(--grade-unique);">★</span> 특수 및 기초 자원 맵핑</div><div class="deduct-grid" id="grid-special">
-            ${renderSlot('갓오타', '갓오타', '레어', 'grid-special')} ${renderSlot('메시브', '메시브', '유니크', 'grid-special')} ${renderSlot('자동포탑', '자동포탑', '매직', 'grid-special')} ${renderSlot('땅거미지뢰', '땅거미지뢰', '히든', 'grid-special')}
-          </div></div>`;
-
+    // 3. 레전드 ~ 레어 그룹
     const topGrades = ["레전드", "헬", "유니크", "에픽", "레어"];
     let topItems = Array.from(unitMap.values()).filter(u => topGrades.includes(u.grade) && !specialIds.includes(u.id));
     topItems.sort((a, b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
 
-    h += `<div class="deduct-group" id="group-top"><div class="deduct-group-title"><span style="color:var(--grade-legend);">▲</span> 상위 등급 맵핑 (레전드 ~ 레어)</div><div class="deduct-grid" id="grid-top">
-            ${topItems.map(u => renderSlot(u.id, u.name, u.grade, 'grid-top')).join('')}
-          </div></div>`;
-
-    let hiddenItems = Array.from(unitMap.values()).filter(u => u.grade === "히든" && !specialIds.includes(u.id));
-    h += `<div class="deduct-group" id="group-hidden" style="margin-bottom:0;"><div class="deduct-group-title"><span style="color:var(--grade-hidden);">♦</span> 히든 등급 맵핑</div><div class="deduct-grid" id="grid-hidden">
-            ${hiddenItems.map(u => renderSlot(u.id, u.name, u.grade, 'grid-hidden')).join('')}
-          </div></div>`;
+    h += `<div class="deduct-group" id="group-top" style="margin-bottom:0;">
+            <div class="deduct-group-title"><span style="color:var(--grade-legend);">▲</span> 상위 등급 맵핑 (레전드 ~ 레어)</div>
+            <div class="deduct-grid" id="grid-top">
+                ${topItems.map(u => renderSlot(u.id, u.name, u.grade, 'grid-top')).join('')}
+            </div>
+          </div>`;
 
     DOM.deductionBoard.innerHTML = h;
 }
@@ -699,16 +837,34 @@ function updateDeductionBoard() {
                 else { reasonContainer.style.display = 'none'; reasonContainer.innerHTML = ''; }
             }
 
+            let isSpecial = (id === '갓오타' || id === '메시브' || id === '자동포탑');
+
             if(targetVal > 0) {
-                wrapEl.classList.add('has-target'); wrapEl.style.order = "-1";
+                wrapEl.classList.add('has-target'); 
+                // [개선] 특수 개체는 항상 마지막 순서로 밀어넣기
+                wrapEl.style.order = isSpecial ? "999" : "-1";
                 if(ownedVal >= targetVal) wrapEl.classList.add('satisfied'); else wrapEl.classList.remove('satisfied');
             } else {
-                wrapEl.classList.remove('has-target', 'satisfied'); wrapEl.style.order = "0";
+                wrapEl.classList.remove('has-target', 'satisfied'); 
+                wrapEl.style.order = isSpecial ? "1000" : "0";
                 if(ownedVal > 0) wrapEl.classList.add('has-owned'); else wrapEl.classList.remove('has-owned');
             }
 
+            let craftWrap = document.getElementById(`craft-wrap-${id}`);
+            if (craftWrap) {
+                let craftCount = getCraftableCount(id, targetVal);
+                if (craftCount > 0) {
+                    wrapEl.classList.add('craftable');
+                    craftWrap.innerHTML = `<button class="btn-craft" onclick="craftUnit('${id}'); event.stopPropagation();">🔨 ${craftCount}개 MAX조합</button>`;
+                } else {
+                    wrapEl.classList.remove('craftable');
+                    craftWrap.innerHTML = '';
+                }
+            }
+
+            // 통합된 grid-special에 직속재료들을 꽂아넣어 자연스럽게 병합
             if ((targetVal > 0 || ownedVal > 0) && directMaterials.has(id)) {
-                const finalGrid = document.getElementById('grid-final');
+                const finalGrid = document.getElementById('grid-special');
                 if (finalGrid && wrapEl.parentElement !== finalGrid) finalGrid.appendChild(wrapEl);
             } else {
                 const origParentId = wrapEl.getAttribute('data-orig-parent');
@@ -720,11 +876,14 @@ function updateDeductionBoard() {
 
     updateSlot('갓오타', specialReq.갓오타, specialReason.갓오타);
     updateSlot('메시브', specialReq.메시브, specialReason.메시브);
-    updateSlot('자동포탑', Math.max(reqMap.get('자동포탑') || 0, Math.ceil(specialReq.자동포탑 || 0)), reasonMap.get('자동포탑'));
-    updateSlot('땅거미지뢰', Math.max(reqMap.get('땅거미지뢰') || 0, Math.ceil(specialReq.땅거미지뢰 || 0)), reasonMap.get('땅거미지뢰'));
+    updateSlot('자동포탑', reqMap.get('자동포탑') || 0, reasonMap.get('자동포탑'));
 
     const targetGrades = ["레어", "에픽", "유니크", "헬", "레전드", "히든"];
-    unitMap.forEach(u => { if(targetGrades.includes(u.grade) && u.id !== '자동포탑' && u.id !== '땅거미지뢰') updateSlot(u.id, reqMap.get(u.id) || 0, reasonMap.get(u.id)); });
+    unitMap.forEach(u => { 
+        if(targetGrades.includes(u.grade) && u.id !== '자동포탑') {
+            updateSlot(u.id, reqMap.get(u.id) || 0, reasonMap.get(u.id)); 
+        }
+    });
 
     let hasAnyVisible = false;
     document.querySelectorAll('.deduct-group').forEach(group => {

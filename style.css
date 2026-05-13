@@ -1,3 +1,5 @@
+/* style.css */
+
 /*
 =============================================================================
   개복디 넥서스 — style.css
@@ -66,7 +68,10 @@ body{
     100% { left: 150%; opacity: 0; }
 }
 
-/* ── 컨텍스트 메뉴 규칙 제거됨 (미사용) ──────────────────── */
+@keyframes craftPulse {
+    from { box-shadow: 0 0 10px rgba(251,191,36,0.2), inset 0 0 10px rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.6); }
+    to { box-shadow: 0 0 20px rgba(251,191,36,0.4), inset 0 0 15px rgba(251,191,36,0.2); border-color: rgba(251,191,36,1); }
+}
 
 /* ══════════════════════════════════════════════════════════
    레이아웃 — PC
@@ -489,6 +494,48 @@ body{
     opacity:1;transform:scale(1);transform-origin:center;
 }
 
+.deduct-slot.craftable {
+    border-color: rgba(251,191,36,0.9) !important;
+    box-shadow: 0 0 20px rgba(251,191,36,0.4), inset 0 0 15px rgba(251,191,36,0.2) !important;
+    background: linear-gradient(180deg, rgba(251,191,36,0.15), var(--slot-bg)) !important;
+    animation: craftPulse 1.2s infinite alternate;
+    z-index: 10;
+}
+/* [개선] 텍스트 눈부심 방지를 위해 그림자를 어둡게 처리 */
+.deduct-slot.craftable .d-name {
+    background: linear-gradient(90deg, transparent, rgba(251,191,36,0.25), transparent);
+    color: #fbbf24 !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 2px rgba(0,0,0,1) !important; 
+    border-bottom: 1px solid rgba(251,191,36,0.5);
+}
+
+.btn-craft {
+    background: linear-gradient(to bottom, #f59e0b, #b45309);
+    border: 1px solid #fcd34d;
+    color: #fff;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 6px;
+    transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+.btn-craft:hover {
+    background: linear-gradient(to bottom, #fbbf24, #d97706);
+    box-shadow: 0 6px 15px rgba(251,191,36,0.6), inset 0 1px 0 rgba(255,255,255,0.4);
+    transform: scale(1.05) translateY(-2px);
+}
+.btn-craft:active {
+    transform: scale(0.95);
+}
+
 .deduct-slot::before {
     content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); opacity:0; transition:0.3s;
 }
@@ -546,12 +593,6 @@ body{
 .jewel-modal-overlay.active .jewel-modal-content { transform: translateY(0) scale(1); }
 
 /* ══════════════════════════════════════════════════════════
-   쥬얼 도감
-══════════════════════════════════════════════════════════ */
-/* #jewelGrid 제거됨 — HTML에 해당 ID 없음, .jwm-item 구조만 사용 */
-/* .jewel-item 계열 스타일 제거됨 — renderJewelMiniGrid()는 .jwm-item 구조만 사용 */
-
-/* ══════════════════════════════════════════════════════════
    모바일 ≤719px
 ══════════════════════════════════════════════════════════ */
 @media(max-width:719px){
@@ -586,8 +627,7 @@ body{
     .d-name{font-size:0.78rem;padding:6px;}
     .d-inputs{padding:6px;gap:6px;}
     .d-req{font-size:1rem;}
-
-    /* 모바일 ≤719px: .jewel-item, #jewelGrid 계열 레거시 스타일 제거됨 */
+    .btn-craft{font-size:0.65rem; padding:3px 6px;}
 
     /* 모바일 성능 최적화 */
     .hud-panel, .panel-header, .search-results, .recipe-tooltip { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
