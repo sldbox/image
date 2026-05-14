@@ -68,7 +68,7 @@
                 </div>
                 <div style="display: flex; align-items: stretch; gap: 4px;">
                     <button class="btn-toggle-layout active" id="btnToggleMode" onclick="toggleViewMode()" style="width: 130px; justify-content: center; background: rgba(0,0,0,0.5); border: 1px solid var(--border-light);">
-                        <span class="toggle-icon">◧</span> 차감 모드 전환
+                        <span class="toggle-icon">◧</span> 체크리스트 전환
                     </button>
                 </div>
             </div>
@@ -82,30 +82,45 @@
         <div class="panel-header" style="justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span class="ph-icon" style="color:var(--grade-unique); border-color:var(--grade-unique);">⊖</span>
-                <span class="ph-title" style="text-shadow:0 0 15px rgba(239,68,68,0.8), 0 0 5px rgba(239,68,68,0.5);">차감 데시보드</span>
+                <span class="ph-title" style="text-shadow:0 0 15px rgba(239,68,68,0.8), 0 0 5px rgba(239,68,68,0.5);">체크리스트 보드</span>
             </div>
-            <div style="display: flex; align-items: stretch;">
-                <button class="btn-hdr-sm neon" onclick="resetOwned()">⟲ 보유 초기화</button>
+            <div style="display: flex; align-items: stretch; gap: 8px;">
+                <button class="btn-hdr-sm neon" onclick="resetCodex()">⟲ 목표 초기화</button>
+                <button class="btn-hdr-sm neon" onclick="resetCompleted()" style="color:#10b981; border-color:rgba(16,185,129,0.3);">✔ 완료 초기화</button>
             </div>
         </div>
         <div class="panel-body" id="deductionBoard" style="padding:16px; overflow-y:auto; background:var(--panel);"></div>
     </div>
-</main>
 
-<div id="jewelModalOverlay" class="jewel-modal-overlay" onclick="closeJewelModal(event)">
-    <div class="jewel-modal-content" onclick="event.stopPropagation()">
-        <div class="panel-header" style="justify-content:space-between; background:rgba(255,215,0,0.05); border-radius: 18px 18px 0 0; padding: 12px 20px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <span class="ph-icon" style="color:#FFD700; border-color:#FFD700;">✦</span>
-                <span class="ph-title" style="text-shadow:0 0 15px rgba(255,215,0,0.7);">쥬얼 도감</span>
+    <div class="col-lineage" id="lineagePanel" style="display:none;">
+        <div class="hud-panel" style="height:100%;">
+            <div class="panel-header" style="justify-content:space-between; background:rgba(0,229,255,0.05);">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span class="ph-icon" style="color:var(--g); border-color:var(--g-border);">⎇</span>
+                    <span class="ph-title" id="lineageTitle" style="text-shadow:0 0 15px var(--g-glow), 0 0 5px var(--g);">계보 뷰어</span>
+                </div>
+                <button class="btn-hdr-sm neon" onclick="closeLineage()">✖ 대시보드로 복귀 (ESC)</button>
             </div>
-            <button class="btn-hdr-sm neon" onclick="toggleJewelPanel()" style="border-color:rgba(255,215,0,0.35); color:#FFD700;">✖ 닫기</button>
-        </div>
-        <div class="panel-body" style="padding:16px; overflow-y:auto;">
-            <div id="jewelMiniGrid" class="jewel-mini-grid"></div>
+            <div class="panel-body" id="lineageContent" style="padding:20px; overflow-y:auto; background:var(--panel);">
+            </div>
         </div>
     </div>
-</div>
+
+    <div class="col-jewel" id="jewelPanel" style="display:none;">
+        <div class="hud-panel" style="height:100%;">
+            <div class="panel-header" style="justify-content:space-between; background:rgba(255,215,0,0.05);">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span class="ph-icon" style="color:#FFD700; border-color:#FFD700;">✦</span>
+                    <span class="ph-title" style="text-shadow:0 0 15px rgba(255,215,0,0.7);">쥬얼 도감</span>
+                </div>
+                <button class="btn-hdr-sm neon" onclick="closeJewelPanel()" style="border-color:rgba(255,215,0,0.35); color:#FFD700;">✖ 대시보드로 복귀 (ESC)</button>
+            </div>
+            <div class="panel-body" style="padding:20px; overflow-y:auto; background:var(--panel);">
+                <div id="jewelMiniGrid" class="jewel-mini-grid"></div>
+            </div>
+        </div>
+    </div>
+</main>
 
 <div id="recipeTooltip" class="recipe-tooltip"></div>
 <div id="toastContainer" class="toast-container"></div>

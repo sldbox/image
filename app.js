@@ -1,20 +1,17 @@
 /*
 =============================================================================
-  개복디 넥서스 — app.js
+  [최종본] 개복디 넥서스 — app.js (스마트 프로그레션 버튼 및 비활성화 렌더링)
 =============================================================================
 */
 
-// [핵심 데이터 맵]
-const unitMap = new Map(), activeUnits = new Map(), ownedUnits = new Map(), DOM = {};
+const unitMap = new Map(), activeUnits = new Map(), completedUnits = new Map(), DOM = {};
 
-// [핵심 상수 및 유틸]
 const clean = s => s ? s.replace(/\s+/g, '').toLowerCase() : '';
 const IGNORE_PARSE_RECIPES = ["미발견", "없음", ""];
 const dashboardAtoms = ["전쟁광", "스파르타중대", "암흑광전사", "암흑파수기", "원시바퀴", "저격수", "코브라", "암흑고위기사", "암흑추적자", "변종가시지옥", "망치경호대", "공성파괴단", "암흑집정관", "암흑불멸자", "원시히드라리스크", "땅거미지뢰", "자동포탑", "우르사돈암", "우르사돈수", "갓오타/메시브"];
 const EMPTY_SVG = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2;"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><line x1="3" y1="21" x2="21" y2="3"></line></svg>`;
 
 const isOneTime = (u) => u && (u.grade === "슈퍼히든" || ["데하카", "데하카고치", "데하카의오른팔", "유물"].includes(u.name));
-// 검색 및 도감 노출 허용 대상
 const isTargetGrade = (u) => ["슈퍼히든", "히든", "레전드"].includes(u.grade);
 
 function getUnitId(rawName){ const c=clean(rawName); const u=unitMap.get(c); return u ? u.id : c; }
@@ -49,16 +46,12 @@ function initializeCacheEngine() {
                 const m = p.trim().match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
                 if(m) {
                     const childId = getUnitId(m[1]);
-                    u.parsedRecipe.push({ id: childId, qty: m[3] ? parseInt(m[3]) : 1, cond: m[2] || '' });
+                    u.parsedRecipe.push({ id: childId, qty: m[3] ? parseFloat(m[3]) : 1, cond: m[2] || '' });
                 }
             });
         }
     });
 }
-
-// =====================================================================
-// 정수 코스트 계산 로직
-// =====================================================================
 
 function calcEssenceRecursiveFast(uid, counts, visited) {
     if(visited.has(uid)) return; visited.add(uid);
@@ -72,40 +65,49 @@ function calcEssenceRecursiveFast(uid, counts, visited) {
     if(u.parsedRecipe) u.parsedRecipe.forEach(pr => { if(pr.id) calcEssenceRecursiveFast(pr.id, counts, visited); });
 }
 
-function updateEssence(){
-    let counts={코랄:0, 아이어:0, 제루스:0, 혼종:0}, visited = new Set();
-    activeUnits.forEach((qty, key) => { const u = unitMap.get(key); if(u && ["히든", "슈퍼히든"].includes(u.grade)) calcEssenceRecursiveFast(key, counts, visited); });
+function getEssenceCount(sourceMap) {
+    let counts = {코랄:0, 아이어:0, 제루스:0, 혼종:0};
+    sourceMap.forEach((qty, uid) => {
+        for(let i=0; i<qty; i++) {
+            let visited = new Set();
+            calcEssenceRecursiveFast(uid, counts, visited);
+        }
+    });
+    return counts;
+}
 
-    const finalCoral = counts.코랄 + counts.혼종;
-    const finalAiur = counts.아이어 + counts.혼종;
-    const finalZerus = counts.제루스 + counts.혼종;
-    const totalEssence = finalCoral + finalAiur + finalZerus;
+function updateEssence(){
+    let targetE = getEssenceCount(activeUnits);
+    let compE = getEssenceCount(completedUnits);
+
+    let finalCoral = Math.max(0, targetE.코랄 - compE.코랄);
+    let finalAiur = Math.max(0, targetE.아이어 - compE.아이어);
+    let finalZerus = Math.max(0, targetE.제루스 - compE.제루스);
+    let finalHybrid = Math.max(0, targetE.혼종 - compE.혼종);
+
+    let displayCoral = finalCoral + finalHybrid;
+    let displayAiur = finalAiur + finalHybrid;
+    let displayZerus = finalZerus + finalHybrid;
+    let totalEssence = displayCoral + displayAiur + displayZerus;
 
     const setVal = (id, totalVal, baseVal, hybridVal) => {
         const el = document.getElementById(`val-${id}`);
         const subEl = document.getElementById(`sub-${id}`);
         const parent = document.getElementById(`slot-${id}`);
-
         if(el) {
             if(el.innerText !== String(totalVal)) el.innerText = totalVal;
             if(subEl) {
-                if (hybridVal > 0 && id !== 'hybrid') {
-                    subEl.innerText = `${baseVal} + ${hybridVal}`;
-                } else {
-                    subEl.innerText = '';
-                }
+                if (hybridVal > 0 && id !== 'hybrid') { subEl.innerText = `${baseVal} + ${hybridVal}`; }
+                else { subEl.innerText = ''; }
             }
-            if(parent) {
-                const isActive = totalVal > 0;
-                parent.classList.toggle('active', isActive);
-            }
+            if(parent) parent.classList.toggle('active', totalVal > 0);
         }
     };
 
-    setVal('coral', finalCoral, counts.코랄, counts.혼종);
-    setVal('aiur', finalAiur, counts.아이어, counts.혼종);
-    setVal('zerus', finalZerus, counts.제루스, counts.혼종);
-    setVal('hybrid', counts.혼종, counts.혼종, 0);
+    setVal('coral', displayCoral, finalCoral, finalHybrid);
+    setVal('aiur', displayAiur, finalAiur, finalHybrid);
+    setVal('zerus', displayZerus, finalZerus, finalHybrid);
+    setVal('hybrid', finalHybrid, finalHybrid, 0);
 
     const totalEl = document.getElementById('essence-total-val');
     if(totalEl) {
@@ -128,36 +130,34 @@ function updateMagicDashboard(){
         }
     });
 
-    const ownedMap={}; dashboardAtoms.forEach(a=>{if(a==="갓오타/메시브")ownedMap[a]={갓오타:0,메시브:0};else ownedMap[a]=0;});
-    Array.from(ownedUnits.keys()).forEach(k=>{
-        const c=ownedUnits.get(k)||0;
+    const compMap={}; dashboardAtoms.forEach(a=>{if(a==="갓오타/메시브")compMap[a]={갓오타:0,메시브:0};else compMap[a]=0;});
+    Array.from(completedUnits.keys()).forEach(k=>{
+        const c=completedUnits.get(k)||0;
         if(c > 0) {
             const cleanK = clean(k);
             const atomKey = dashboardAtoms.find(a => clean(a) === cleanK);
-            if (atomKey && atomKey !== '갓오타/메시브') {
-                ownedMap[atomKey] = (ownedMap[atomKey] || 0) + c;
-            }
+            if (atomKey && atomKey !== '갓오타/메시브') compMap[atomKey] = (compMap[atomKey] || 0) + c;
 
-            if(k === '갓오타') { ownedMap['갓오타/메시브'].갓오타 += c; return; }
-            if(k === '메시브') { ownedMap['갓오타/메시브'].메시브 += c; return; }
+            if(k === '갓오타') { compMap['갓오타/메시브'].갓오타 += c; return; }
+            if(k === '메시브') { compMap['갓오타/메시브'].메시브 += c; return; }
 
             const u=unitMap.get(k); if(!u) return;
             if(u.parsedCost && u.parsedCost.length > 0) {
                 u.parsedCost.forEach(pc => {
-                    if(pc.type === 'special') ownedMap['갓오타/메시브'][pc.key] += pc.qty * c;
-                    else ownedMap[pc.key] = (ownedMap[pc.key] || 0) + pc.qty * c;
+                    if(pc.type === 'special') compMap['갓오타/메시브'][pc.key] += pc.qty * c;
+                    else compMap[pc.key] = (compMap[pc.key] || 0) + pc.qty * c;
                 });
             }
         }
     });
 
     dashboardAtoms.forEach(a=>{
-        const val=totalMap[a], owned=ownedMap[a];
+        const val=totalMap[a], comp=compMap[a];
         const container=document.getElementById(`vslot-${clean(a)}`);if(!container)return;
         const e=container.querySelector('.cost-val'), nameEl=container.querySelector('.cost-name');
 
         if(a==="갓오타/메시브"){
-            let finalG = Math.max(0, val.갓오타 - owned.갓오타); let finalM = Math.max(0, val.메시브 - owned.메시브);
+            let finalG = Math.max(0, val.갓오타 - comp.갓오타); let finalM = Math.max(0, val.메시브 - comp.메시브);
             if(finalG>0 || finalM>0){
                 if(e.innerHTML === EMPTY_SVG || e.innerHTML === '') {
                     e.innerHTML=`<div class="sp-wrap" style="display:flex; width:100%; height:100%;">
@@ -171,18 +171,15 @@ function updateMagicDashboard(){
                         </div>
                     </div>`;
                 }
-                const spG = e.querySelector('.sp-val-g');
-                const spM = e.querySelector('.sp-val-m');
-                if(spG) spG.innerText = finalG;
-                if(spM) spM.innerText = finalM;
-
+                const spG = e.querySelector('.sp-val-g'); const spM = e.querySelector('.sp-val-m');
+                if(spG) spG.innerText = finalG; if(spM) spM.innerText = finalM;
                 if(nameEl.style.display !== 'none') nameEl.style.display='none';
                 if(!container.classList.contains('active')) container.classList.add('active');
             } else {
                 if(e.innerHTML !== EMPTY_SVG) { e.innerHTML=EMPTY_SVG; nameEl.style.display='block'; container.classList.remove('active'); }
             }
         } else {
-            let finalVal = Math.max(0, val - owned);
+            let finalVal = Math.max(0, val - comp);
             if(finalVal>0){
                 let targetText = String(Math.ceil(finalVal));
                 if(e.innerText !== targetText) e.innerText = targetText;
@@ -195,12 +192,10 @@ function updateMagicDashboard(){
     });
 }
 
-// =========================================================
-// UI 상태 및 설정 변수
-// =========================================================
 let _activeTabIdx = 0;
 let _currentViewMode = 'codex';
-let _currentHighlight = null; // [개선] 하이라이트 활성화 대상 추적
+let _currentHighlight = null;
+let _currentLineageId = null;
 
 const GRADE_ORDER = ["매직", "레어", "에픽", "유니크", "헬", "레전드", "히든", "슈퍼히든"];
 const gradeColorsRaw = { "매직":"var(--grade-magic)", "레어":"var(--grade-rare)", "에픽":"var(--grade-epic)", "유니크":"var(--grade-unique)", "헬":"var(--grade-hell)", "레전드":"var(--grade-legend)", "히든":"var(--grade-hidden)", "슈퍼히든":"var(--grade-super)" };
@@ -212,14 +207,12 @@ const TAB_CATEGORIES = [
     {key:"혼종", name:"혼종", sym:"⌬"}
 ];
 
-// --- 햅틱 피드백 엔진 ---
 function triggerHaptic() { if (typeof navigator !== 'undefined' && navigator.vibrate) { navigator.vibrate(15); } }
 
-// --- 데이터 초기화 모듈 ---
-function resetCodex(silent = false) { activeUnits.clear(); toggleHighlight(null); debouncedUpdateAllPanels(); if(!silent) showToast("선택된 유닛이 초기화되었습니다."); }
-function resetOwned() { ownedUnits.clear(); debouncedUpdateAllPanels(); showToast("보유 유닛이 초기화되었습니다."); }
+function resetCodex(silent = false) { activeUnits.clear(); completedUnits.clear(); toggleHighlight(null); debouncedUpdateAllPanels(); if(!silent) showToast("목표 유닛이 초기화되었습니다."); }
 
-// 초기 진입 설정
+function resetCompleted() { completedUnits.clear(); debouncedUpdateAllPanels(); showToast("완료 기록이 모두 초기화되었습니다."); }
+
 function setupInitialView() {
     const layout = document.getElementById('mainLayout');
     if (layout) layout.style.display = '';
@@ -227,7 +220,6 @@ function setupInitialView() {
     startTitleCycle();
 }
 
-// 제목 순환 애니메이션
 const _cycleTitles = ['개복디 넥서스', '제작자 | 회장', 'ID : 3-S2-1-2461127'];
 let _cycleTitleIdx = 0;
 function startTitleCycle() {
@@ -245,26 +237,25 @@ function startTitleCycle() {
     }, 3000);
 }
 
-// 쥬얼 모달 패널 토글
 let _jewelPanelOpen = false;
-function toggleJewelPanel() {
-    _jewelPanelOpen = !_jewelPanelOpen;
-    const modal = document.getElementById('jewelModalOverlay');
-
-    if(_jewelPanelOpen) {
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        renderJewelMiniGrid();
+window.toggleJewelPanel = function() {
+    const layout = document.getElementById('mainLayout');
+    if (layout.classList.contains('view-jewel')) {
+        closeJewelPanel();
     } else {
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
+        layout.classList.remove('view-lineage');
+        _currentLineageId = null;
+        layout.classList.add('view-jewel');
+        _jewelPanelOpen = true;
+        renderJewelMiniGrid();
     }
-}
-function closeJewelModal(e) {
-    if(e.target === document.getElementById('jewelModalOverlay')) {
-        if(_jewelPanelOpen) toggleJewelPanel();
-    }
-}
+};
+
+window.closeJewelPanel = function() {
+    const layout = document.getElementById('mainLayout');
+    layout.classList.remove('view-jewel');
+    _jewelPanelOpen = false;
+};
 
 function switchLayout(mode) {
     const layout = document.getElementById('mainLayout');
@@ -273,14 +264,18 @@ function switchLayout(mode) {
 
     _currentViewMode = mode;
     layout.classList.remove('view-deduct');
+    layout.classList.remove('view-lineage');
+    _currentLineageId = null;
+    layout.classList.remove('view-jewel');
+    _jewelPanelOpen = false;
 
     if (mode === 'deduct') {
         layout.classList.add('view-deduct');
         btnToggle.classList.remove('active');
-        btnToggle.innerHTML = '<span class="toggle-icon">◧</span> 입력 모드 전환';
-    } else {
+        btnToggle.innerHTML = '<span class="toggle-icon">◧</span> 도감 모드 전환';
+    } else if (mode === 'codex') {
         btnToggle.classList.add('active');
-        btnToggle.innerHTML = '<span class="toggle-icon">◨</span> 차감 모드 전환';
+        btnToggle.innerHTML = '<span class="toggle-icon">◨</span> 체크리스트 전환';
     }
 }
 
@@ -289,9 +284,216 @@ function toggleViewMode() {
     else switchLayout('deduct');
 }
 
-// =========================================================
-// 검색 및 커맨드 엔진 (Search & Command)
-// =========================================================
+window.toggleLineageNode = function(el) {
+    const node = el.closest('.tree-node');
+    if(!node) return;
+    const body = node.querySelector(':scope > .tree-body');
+    const toggle = el.querySelector('.th-toggle');
+    if(body) {
+        if(body.classList.contains('collapsed')) {
+            body.classList.remove('collapsed');
+            if(toggle) toggle.innerText = '▼';
+        } else {
+            body.classList.add('collapsed');
+            if(toggle) toggle.innerText = '▶';
+        }
+    }
+};
+
+window.toggleAllLineage = function() {
+    const btn = document.getElementById('btnToggleAllLineage');
+    const container = document.getElementById('lineageTreeContainer');
+    if(!container || !btn) return;
+
+    if (btn.innerText === '전체펼치기') {
+        container.querySelectorAll('.tree-body').forEach(el => el.classList.remove('collapsed'));
+        container.querySelectorAll('.th-toggle').forEach(el => { if(el.innerText === '▶') el.innerText = '▼'; });
+        btn.innerText = '전체접기';
+    } else {
+        const rootBody = document.querySelector('#lineageTreeContainer > .tree-node > .tree-body');
+        if(rootBody) {
+            rootBody.querySelectorAll('.tree-body').forEach(el => el.classList.add('collapsed'));
+            rootBody.querySelectorAll('.th-toggle').forEach(el => { if(el.innerText === '▼') el.innerText = '▶'; });
+        }
+        btn.innerText = '전체펼치기';
+    }
+};
+
+function isCostSameAsRecipe(uid) {
+    const u = unitMap.get(uid);
+    if(!u || !u.parsedRecipe || u.parsedRecipe.length === 0) return true;
+    for(let pr of u.parsedRecipe) {
+        let childU = unitMap.get(pr.id);
+        if(childU && childU.parsedRecipe && childU.parsedRecipe.length > 0) return false;
+    }
+    return true;
+}
+
+function getLineageRecipeText(u, multiplier = 1) {
+    if(!u.parsedRecipe || u.parsedRecipe.length === 0) return '';
+    let parts = u.parsedRecipe.map(pr => {
+        let childU = unitMap.get(pr.id);
+        let origName = childU ? childU.name : pr.id;
+        let color = childU ? gradeColorsRaw[childU.grade] : 'var(--text)';
+        let nameStr = `<span style="color:${color}; font-weight:bold;">${origName}</span>`;
+        let condStr = pr.cond ? `(<span style="color:var(--text-sub);">${pr.cond}</span>)` : '';
+
+        let childReqQty = (u.id === '로리스완' && pr.id === '낮까마귀') ? 1 : pr.qty * multiplier;
+        let qtyStr = `[${childReqQty}]`;
+        return `${nameStr}${condStr}${qtyStr}`;
+    });
+    return `<div class="td-line"><span class="td-label">재료:</span> ${parts.join('+')}</div>`;
+}
+
+function getLineageMagicCostText(uid, multiplier = 1) {
+    const u = unitMap.get(uid);
+    if(!u || !u.parsedCost || u.parsedCost.length === 0) return '';
+
+    let totalMap={}; dashboardAtoms.forEach(a=>{if(a==="갓오타/메시브")totalMap[a]={갓오타:0,메시브:0};else totalMap[a]=0;});
+    u.parsedCost.forEach(pc => {
+        if(pc.type === 'special') totalMap['갓오타/메시브'][pc.key] += pc.qty * multiplier;
+        else totalMap[pc.key] = (totalMap[pc.key] || 0) + pc.qty * multiplier;
+    });
+
+    let costArr = [];
+    dashboardAtoms.forEach(a => {
+        if (a === "갓오타/메시브") {
+            if (totalMap[a].갓오타 > 0) costArr.push(`<span style="color:var(--g); font-weight:bold;">갓오타[${totalMap[a].갓오타}]</span>`);
+            if (totalMap[a].메시브 > 0) costArr.push(`<span style="color:var(--g); font-weight:bold;">메시브[${totalMap[a].메시브}]</span>`);
+        } else {
+            if (totalMap[a] > 0) costArr.push(`<span style="color:var(--g); font-weight:bold;">${a}[${totalMap[a]}]</span>`);
+        }
+    });
+
+    if(costArr.length === 0) return '';
+    return `<div class="td-line" style="color:var(--g); font-weight:bold;"><span class="td-label" style="color:var(--g);">매직:</span> ${costArr.join(',')}</div>`;
+}
+
+function buildLineageTree(uid, reqQty=1, cond='', depth=0, isRoot=false) {
+    const u = unitMap.get(uid) || { id: uid, name: uid, grade: "일반", parsedRecipe: [] };
+    const hasChildren = u.parsedRecipe && u.parsedRecipe.length > 0;
+    const color = gradeColorsRaw[u.grade] || "var(--text-sub)";
+
+    let isExpanded = isRoot;
+    let html = `<div class="tree-node" data-depth="${depth}">`;
+
+    html += `<div class="tree-header-row">`;
+    html += `<div class="tree-header-box" style="border-color:${color}66;" ${hasChildren ? `onclick="toggleLineageNode(this)"` : ''}>`;
+
+    html += `<div class="th-thumb-lg" style="border-color:${color}88;">
+                <img src="https://sldbox.github.io/site/image/ctg/${u.name}.png" alt="${u.name}" onerror="this.parentElement.style.display='none'">
+             </div>`;
+    html += `<div class="th-info">`;
+    html += `    <span class="gtag th-badge" style="border-color:${color}88; color:${color};">${u.grade}</span>`;
+    html += `    <span class="th-name-lg" style="color:${color};">${u.name}</span>`;
+    html += `</div>`;
+
+    if (hasChildren) {
+        html += `<span class="th-toggle">${isExpanded ? '▼' : '▶'}</span>`;
+    }
+    html += `</div>`;
+
+    if (!isRoot) {
+        if (cond) html += `<span class="th-cond">${cond}</span>`;
+        html += `<span class="th-qty">[${reqQty}]</span>`;
+    }
+    html += `</div>`;
+
+    let hasMagicCost = !isCostSameAsRecipe(uid) && getLineageMagicCostText(uid, reqQty) !== '';
+
+    if (hasChildren || hasMagicCost) {
+        html += `<div class="tree-body ${isExpanded ? '' : 'collapsed'}">`;
+
+        if (hasChildren || hasMagicCost) {
+            html += `<div class="tree-details">`;
+            if (hasChildren) html += getLineageRecipeText(u, reqQty);
+            if (hasMagicCost) {
+                let tc = getLineageMagicCostText(uid, reqQty);
+                if(tc) html += tc;
+            }
+            html += `</div>`;
+        }
+
+        if (hasChildren) {
+            html += `<div class="tree-children">`;
+            u.parsedRecipe.forEach(child => {
+                let childReqQty = (u.id === '로리스완' && child.id === '낮까마귀') ? 1 : child.qty * reqQty;
+                html += buildLineageTree(child.id, childReqQty, child.cond, depth + 1, false);
+            });
+            html += `</div>`;
+        }
+        html += `</div>`;
+    }
+    html += `</div>`;
+    return html;
+}
+
+window.openLineage = function(uid) {
+    const layout = document.getElementById('mainLayout');
+
+    if (layout.classList.contains('view-lineage') && _currentLineageId === uid) {
+        closeLineage();
+        return;
+    }
+
+    const u = unitMap.get(uid);
+    if (!u) return;
+
+    _currentLineageId = uid;
+
+    layout.classList.add('view-lineage');
+    if(layout.classList.contains('view-jewel')) layout.classList.remove('view-jewel');
+
+    const contentEl = document.getElementById('lineageContent');
+    contentEl.scrollTop = 0;
+
+    const titleEl = document.getElementById('lineageTitle');
+    titleEl.innerHTML = `<span style="color:${gradeColorsRaw[u.grade]}; font-size:0.9rem; vertical-align:middle; border:1px solid currentColor; padding:2px 6px; border-radius:6px; margin-right:6px;">${u.grade}</span> ${u.name} 계보`;
+
+    let html = '';
+
+    if (u.grade === "히든" || u.grade === "레전드") {
+        let parents = [];
+        unitMap.forEach(parent => {
+            if (["슈퍼히든", "히든"].includes(parent.grade) && parent.parsedRecipe) {
+                if (parent.parsedRecipe.some(pr => pr.id === uid)) parents.push(parent);
+            }
+        });
+        if (parents.length > 0) {
+            parents.sort((a, b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
+            html += `<div class="lineage-parents-section">
+                        <div class="lp-title">🔼 상위 진화 트리</div>
+                        <div class="lp-list">`;
+            parents.forEach(p => {
+                html += `<button class="lineage-nav-up" onclick="openLineage('${p.id}')">
+                            <span class="lp-grade" style="color:${gradeColorsRaw[p.grade]}; border-color:${gradeColorsRaw[p.grade]}44;">${p.grade}</span>
+                            <span>${p.name} (으)로 이동</span>
+                         </button>`;
+            });
+            html += `</div></div>`;
+        }
+    }
+
+    html += `<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px;">
+                <div style="font-size:1.1rem; color:var(--grade-super); font-weight:900; letter-spacing:0.5px; font-family:var(--font-display);">${u.name}</div>
+                <div class="lineage-ctrl-btns">
+                    <button class="l-ctrl-btn" id="btnToggleAllLineage" onclick="toggleAllLineage()">전체펼치기</button>
+                </div>
+             </div>`;
+
+    html += `<div class="lineage-tree" id="lineageTreeContainer">`;
+    html += buildLineageTree(uid, 1, '', 0, true);
+    html += `</div>`;
+
+    contentEl.innerHTML = html;
+};
+
+window.closeLineage = function() {
+    const layout = document.getElementById('mainLayout');
+    layout.classList.remove('view-lineage');
+    _currentLineageId = null;
+};
+
 let searchTimeout = null;
 const ALIAS_MAP = {
     "타커": "타이커스", "타이": "타이커스", "닥템": "암흑기사", "닼템": "암흑기사", "다칸": "암흑집정관",
@@ -418,13 +620,18 @@ function showToast(msg, isError = false) {
     container.appendChild(t); setTimeout(() => { if(t.parentElement) t.remove(); }, 2100);
 }
 
-// =========================================================
-// 공통 리스너 및 유틸리티
-// =========================================================
 window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
         hideRecipeTooltip();
-        if (_jewelPanelOpen) toggleJewelPanel();
+        const layout = document.getElementById('mainLayout');
+
+        if (layout && layout.classList.contains('view-jewel')) {
+            closeJewelPanel();
+        }
+        if (layout && layout.classList.contains('view-lineage')) {
+            closeLineage();
+        }
+
         const searchEl = document.getElementById('unitSearchInput');
         if (document.activeElement === searchEl) {
             searchEl.value = '';
@@ -434,7 +641,6 @@ window.addEventListener('keydown', e => {
     }
 });
 
-// 외부 클릭 시 하이라이트 초기화 로직
 document.addEventListener('click', (e) => {
     if (_currentHighlight && !e.target.closest('.deduct-slot') && !e.target.closest('.d-reason-tag') && !e.target.closest('#recipeTooltip')) {
         toggleHighlight(null);
@@ -461,14 +667,9 @@ function startSmartChange(id, delta, type, event) {
     let finalDelta = delta * shiftMulti;
 
     const action = () => {
-        if(type === 'active') {
-            let current = activeUnits.get(id) || 0;
-            if(current === 0 && finalDelta > 0) toggleUnitSelection(id, finalDelta);
-            else setUnitQty(id, current + finalDelta);
-        }
-        else {
-            setOwnedQty(id, (ownedUnits.get(id) || 0) + finalDelta);
-        }
+        let current = activeUnits.get(id) || 0;
+        if(current === 0 && finalDelta > 0) toggleUnitSelection(id, finalDelta);
+        else setUnitQty(id, current + finalDelta);
     };
     action();
     repeatDelayTimer = setTimeout(() => { repeatTimer = setInterval(() => { triggerHaptic(); action(); }, 80); }, 400);
@@ -518,20 +719,6 @@ function setUnitQty(id, val) {
     activeUnits.set(id, q); debouncedUpdateAllPanels();
 }
 
-function setOwnedQty(id, val) {
-    let q = parseInt(val); if (isNaN(q) || q < 0) q = 0;
-    const inEl = document.getElementById(`d-in-${id}`);
-    let maxQty = 99;
-    if(inEl && inEl.hasAttribute('data-req')) { const reqVal = parseInt(inEl.getAttribute('data-req')); if(reqVal > 0) maxQty = reqVal; }
-    if (q > maxQty) q = maxQty;
-    ownedUnits.set(id, q); debouncedUpdateAllPanels();
-}
-
-// =========================================================
-// 차감 연동 계산기 및 수동 조합 시스템 (Craft)
-// =========================================================
-
-// [개선] 목표 유닛의 하위 재료 트리 전체를 가져오는 재귀 함수 (하이라이트용)
 function getDependencies(uid, deps = new Set()) {
     if(deps.has(uid)) return deps;
     deps.add(uid);
@@ -549,7 +736,6 @@ function getDependencies(uid, deps = new Set()) {
     return deps;
 }
 
-// [개선] 클릭 시 트리를 강조하는 하이라이트 토글 기능
 function toggleHighlight(uid, event) {
     if(event) { event.preventDefault(); event.stopPropagation(); }
     const board = document.getElementById('deductionBoard');
@@ -573,156 +759,157 @@ function toggleHighlight(uid, event) {
     });
 }
 
-let _topoOrder = null;
-function getTopologicalOrder() {
-    if (_topoOrder) return _topoOrder;
-    let inDegree = new Map();
-    let graph = new Map();
-
-    unitMap.forEach((u, id) => {
-        if (!inDegree.has(id)) inDegree.set(id, 0);
-        if (!graph.has(id)) graph.set(id, []);
-
-        if (u.parsedRecipe) {
-            u.parsedRecipe.forEach(child => {
-                if (child.id && unitMap.has(child.id)) {
-                    if (!inDegree.has(child.id)) inDegree.set(child.id, 0);
-                    graph.get(id).push(child.id);
-                    inDegree.set(child.id, inDegree.get(child.id) + 1);
-                }
-            });
-        }
-    });
-
-    let queue = [];
-    inDegree.forEach((deg, id) => {
-        if (deg === 0) queue.push(id);
-    });
-
-    let sorted = [];
-    while(queue.length > 0) {
-        let curr = queue.shift();
-        sorted.push(curr);
-        let children = graph.get(curr);
-        if (children) {
-            children.forEach(child => {
-                let deg = inDegree.get(child) - 1;
-                inDegree.set(child, deg);
-                if (deg === 0) queue.push(child);
-            });
-        }
-    }
-
-    unitMap.forEach((u, id) => {
-        if (!sorted.includes(id)) sorted.push(id);
-    });
-
-    _topoOrder = sorted.map(id => unitMap.get(id)).filter(u => u !== undefined);
-    return _topoOrder;
-}
-
-// [개선] 목표 유닛(루트)를 추적하여 하위 재료의 태그를 생성하도록 로직 전면 개편
+// [개선] 절대 지도(BaseMap)와 순수 필요량(NetMap) 분리 계산
 function calculateDeductedRequirements() {
     let reqMap = new Map();
+    let baseMap = new Map();
     let reasonMap = new Map();
     let specialReq = { 갓오타: 0, 메시브: 0 };
+    let baseSpecialReq = { 갓오타: 0, 메시브: 0 };
     let specialReason = { 갓오타: new Map(), 메시브: new Map() };
 
     let deficits = new Map();
-    let rootTracking = new Map(); // 최상위 목표 유닛을 추적
+    let baseDeficits = new Map();
+    let rootTracking = new Map();
 
     activeUnits.forEach((qty, uid) => {
         deficits.set(uid, (deficits.get(uid) || 0) + qty);
+        baseDeficits.set(uid, (baseDeficits.get(uid) || 0) + qty);
         let rm = new Map();
         rm.set(uid, { id: uid, text: '목표 유닛' });
         rootTracking.set(uid, rm);
     });
 
-    let usedOwned = new Map();
-    let sortedUnits = getTopologicalOrder();
-    let toolMaxReq = new Map();
+    let usedCompleted = new Map();
 
-    sortedUnits.forEach(u => {
-        let uid = u.id;
-        let needed = deficits.get(uid) || 0;
-        let tReq = toolMaxReq.get(uid) || 0;
+    // 1. BaseMap (절대 지도 - 비활성 상태 보존용)
+    let baseQueue = Array.from(activeUnits.keys());
+    let baseGuard = 0;
+    while(baseQueue.length > 0 && baseGuard < 1000) {
+        baseGuard++;
+        let currentLevel = baseQueue.slice();
+        baseQueue = [];
+        currentLevel.forEach(uid => {
+            const u = unitMap.get(uid);
+            if (!u) return;
+            let needed = baseDeficits.get(uid) || 0;
 
-        if (tReq > needed) {
-            needed = tReq;
-            deficits.set(uid, needed);
-        }
-
-        if (needed <= 0) return;
-
-        reqMap.set(uid, needed);
-        let owned = ownedUnits.get(uid) || 0;
-        let consume = Math.min(owned, needed);
-
-        if (consume > 0) usedOwned.set(uid, consume);
-
-        let remaining = needed - consume;
-
-        if (remaining > 0 && u.parsedRecipe) {
-            u.parsedRecipe.forEach(child => {
-                if (child.id && unitMap.has(child.id)) {
-                    let isTool = (uid === '로리스완' && child.id === '낮까마귀');
-
-                    if (!rootTracking.has(child.id)) rootTracking.set(child.id, new Map());
-                    let childRoots = rootTracking.get(child.id);
-                    let parentRoots = rootTracking.get(uid);
-
-                    // 부모의 루트 정보(목표 유닛)를 자식에게 상속하여 태그에 반영
-                    if (parentRoots) {
-                        parentRoots.forEach((rootInfo, rootId) => {
-                            let rootUnit = unitMap.get(rootId);
-                            let baseName = rootUnit ? rootUnit.name : rootId;
-                            let newText = baseName;
-
-                            if (isTool) {
-                                newText += ` <span style="margin-left:4px; font-size:0.75rem; color:#10b981; font-weight:900; text-shadow:0 0 4px rgba(16,185,129,0.4);">[도구]</span>`;
-                            } else if (child.cond) {
-                                newText += ` <span style="margin-left:4px; font-size:0.75rem; color:#fde047; font-weight:900; text-shadow:0 0 4px rgba(253,224,71,0.4);">[${child.cond}]</span>`;
-                            }
-                            childRoots.set(rootId, { id: rootId, text: newText });
-                        });
-                    }
-
-                    if (isTool) {
-                        toolMaxReq.set('낮까마귀', Math.max(toolMaxReq.get('낮까마귀') || 0, 1));
-                    } else {
-                        let childNeed = remaining * child.qty;
-                        deficits.set(child.id, (deficits.get(child.id) || 0) + childNeed);
-                    }
+            if (uid === '로리스완') {
+                let toolNeeded = needed > 0 ? 1 : 0;
+                if (toolNeeded > (baseDeficits.get('낮까마귀') || 0)) {
+                    baseDeficits.set('낮까마귀', toolNeeded);
+                    if (!baseQueue.includes('낮까마귀')) baseQueue.push('낮까마귀');
                 }
-            });
+            }
+
+            if (needed > 0 && u.parsedRecipe) {
+                u.parsedRecipe.forEach(child => {
+                    if (child.id && unitMap.has(child.id)) {
+                        let isTool = (uid === '로리스완' && child.id === '낮까마귀');
+                        if (!isTool) {
+                            let childNeed = needed * child.qty;
+                            baseDeficits.set(child.id, (baseDeficits.get(child.id) || 0) + childNeed);
+                            if (!baseQueue.includes(child.id)) baseQueue.push(child.id);
+                        }
+                    }
+                });
+            }
+        });
+    }
+    baseDeficits.forEach((val, k) => { if (val > 0) baseMap.set(k, val); });
+
+    // 2. ReqMap (순수 필요 지도 - 완료된 수량 차감)
+    let processQueue = Array.from(activeUnits.keys());
+    let safeGuard = 0;
+    while (processQueue.length > 0 && safeGuard < 1000) {
+        safeGuard++;
+        let currentLevel = processQueue.slice();
+        processQueue = [];
+
+        currentLevel.forEach(uid => {
+            const u = unitMap.get(uid);
+            if (!u) return;
+
+            let needed = deficits.get(uid) || 0;
+            let completed = completedUnits.get(uid) || 0;
+            let consume = Math.min(completed, needed);
+            let remaining = needed - consume;
+
+            if (uid === '로리스완') {
+                let toolNeeded = remaining > 0 ? 1 : 0;
+                let currentTool = deficits.get('낮까마귀') || 0;
+                if (toolNeeded > currentTool) {
+                    deficits.set('낮까마귀', toolNeeded);
+                    if (!processQueue.includes('낮까마귀')) processQueue.push('낮까마귀');
+                }
+            }
+
+            if (remaining > 0 && u.parsedRecipe) {
+                u.parsedRecipe.forEach(child => {
+                    if (child.id && unitMap.has(child.id)) {
+                        let isTool = (uid === '로리스완' && child.id === '낮까마귀');
+
+                        if (!rootTracking.has(child.id)) rootTracking.set(child.id, new Map());
+                        let childRoots = rootTracking.get(child.id);
+                        let parentRoots = rootTracking.get(uid);
+
+                        if (parentRoots) {
+                            parentRoots.forEach((rootInfo, rootId) => {
+                                let rootUnit = unitMap.get(rootId);
+                                let baseName = rootUnit ? rootUnit.name : rootId;
+                                let newText = baseName;
+                                if (isTool) newText += ` <span style="margin-left:4px; font-size:0.75rem; color:#10b981; font-weight:900; text-shadow:0 0 4px rgba(16,185,129,0.4);">[도구]</span>`;
+                                else if (child.cond) newText += ` <span style="margin-left:4px; font-size:0.75rem; color:#fde047; font-weight:900; text-shadow:0 0 4px rgba(253,224,71,0.4);">[${child.cond}]</span>`;
+                                childRoots.set(rootId, { id: rootId, text: newText });
+                            });
+                        }
+
+                        if (!isTool) {
+                            let childNeed = remaining * child.qty;
+                            deficits.set(child.id, (deficits.get(child.id) || 0) + childNeed);
+                            if (!processQueue.includes(child.id)) processQueue.push(child.id);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    deficits.forEach((needed, uid) => {
+        if (needed > 0) {
+            let comp = completedUnits.get(uid) || 0;
+            let net = Math.max(0, needed - comp);
+            reqMap.set(uid, net);
         }
     });
 
-    activeUnits.forEach((qty, uid) => {
+    // Special Needs
+    baseDeficits.forEach((needed, uid) => {
         const u = unitMap.get(uid);
         if (u && u.parsedCost) {
             u.parsedCost.forEach(pc => {
                 if (pc.key === '갓오타' || pc.key === '메시브') {
-                    specialReq[pc.key] += pc.qty * qty;
-                    specialReason[pc.key].set(uid, `${u.name}`);
+                    baseSpecialReq[pc.key] += pc.qty * needed;
                 }
             });
         }
     });
-    usedOwned.forEach((usedQty, uid) => {
+
+    deficits.forEach((needed, uid) => {
         const u = unitMap.get(uid);
         if (u && u.parsedCost) {
             u.parsedCost.forEach(pc => {
                 if (pc.key === '갓오타' || pc.key === '메시브') {
-                    specialReq[pc.key] -= pc.qty * usedQty;
+                    specialReq[pc.key] += pc.qty * needed;
+                    if(activeUnits.has(uid)) specialReason[pc.key].set(uid, `${u.name}`);
                 }
             });
         }
     });
-    specialReq['갓오타'] = Math.max(0, specialReq['갓오타']);
-    specialReq['메시브'] = Math.max(0, specialReq['메시브']);
 
-    // 최종 rootTracking 맵을 reasonMap으로 변환
+    specialReq['갓오타'] = Math.max(0, specialReq['갓오타'] - (completedUnits.get('갓오타') || 0));
+    specialReq['메시브'] = Math.max(0, specialReq['메시브'] - (completedUnits.get('메시브') || 0));
+
     rootTracking.forEach((rootsMap, childId) => {
         let rMap = new Map();
         if (activeUnits.has(childId)) {
@@ -733,64 +920,152 @@ function calculateDeductedRequirements() {
         reasonMap.set(childId, rMap);
     });
 
-    return { reqMap, reasonMap, specialReq, specialReason };
+    return { reqMap, baseMap, reasonMap, specialReq, baseSpecialReq, specialReason };
 }
 
-function getCraftableCount(uid, reqVal) {
+// [개선] 딥 스캔(Deep Scan): 연결된 모든 하위 재료의 완료 여부를 확인
+function getDeepCompleted(uid, visited = new Set()) {
+    if (visited.has(uid)) return 0;
+    visited.add(uid);
+    let count = 0;
     const u = unitMap.get(uid);
-    if (!u || !u.parsedRecipe || u.parsedRecipe.length === 0) return 0;
+    if (u && u.parsedRecipe) {
+        u.parsedRecipe.forEach(pr => {
+            if (pr.id && !(uid === '로리스완' && pr.id === '낮까마귀')) {
+                count += completedUnits.get(pr.id) || 0;
+                count += getDeepCompleted(pr.id, visited);
+            }
+        });
+    }
+    if (u && u.parsedCost) {
+        u.parsedCost.forEach(pc => {
+            if (pc.key === '갓오타' || pc.key === '메시브') {
+                count += completedUnits.get(pc.key) || 0;
+            }
+        });
+    }
+    return count;
+}
 
-    let hasAnyRequirement = false;
-    let maxCraftable = 999;
-    let canCraft = true;
+function attemptAutoMerge() {
+    let merged = false;
+    let loopCount = 0;
 
-    u.parsedRecipe.forEach(child => {
-        if (child.id) {
-            hasAnyRequirement = true;
-            let ownedChild = ownedUnits.get(child.id) || 0;
-            let possible = Math.floor(ownedChild / child.qty);
+    do {
+        merged = false;
+        let { reqMap } = calculateDeductedRequirements();
 
-            if (uid === '로리스완' && child.id === '낮까마귀') {
-                if (ownedChild >= 1) possible = 999;
-                else { possible = 0; canCraft = false; }
-            } else {
-                if (possible < maxCraftable) maxCraftable = possible;
+        unitMap.forEach((u, uid) => {
+            // 타겟 유닛은 유저가 직접 [최종 완료]를 누르게 하도록 자동머지에서 제외
+            if (activeUnits.has(uid)) return;
+            if (!u.parsedRecipe || u.parsedRecipe.length === 0) return;
+
+            let netNeeded = reqMap.get(uid) || 0;
+            if (netNeeded <= 0) return;
+
+            let maxCraftable = 999;
+            let canCraft = true;
+
+            u.parsedRecipe.forEach(child => {
+                if (child.id) {
+                    let comp = completedUnits.get(child.id) || 0;
+                    if (uid === '로리스완' && child.id === '낮까마귀') {
+                        if (comp < 1) { canCraft = false; maxCraftable = 0; }
+                    } else {
+                        let possible = Math.floor(comp / child.qty);
+                        if (possible < maxCraftable) maxCraftable = possible;
+                        if (comp < child.qty) canCraft = false;
+                    }
+                }
+            });
+
+            if (u.parsedCost) {
+                u.parsedCost.forEach(pc => {
+                    if (pc.key === '갓오타' || pc.key === '메시브') {
+                        let comp = completedUnits.get(pc.key) || 0;
+                        let possible = Math.floor(comp / pc.qty);
+                        if (possible < maxCraftable) maxCraftable = possible;
+                        if (comp < pc.qty) canCraft = false;
+                    }
+                });
             }
 
-            if (ownedChild < child.qty) canCraft = false;
-        }
-    });
-
-    if (!hasAnyRequirement || !canCraft || maxCraftable <= 0) return 0;
-
-    let currentOwned = ownedUnits.get(uid) || 0;
-    let needed = reqVal - currentOwned;
-    if (needed <= 0) return 0;
-
-    return Math.min(maxCraftable, needed);
-}
-
-function craftUnit(uid) {
-    const u = unitMap.get(uid);
-    if(!u || !u.parsedRecipe) return;
-
-    const reqEl = document.getElementById(`d-req-${uid}`);
-    const reqVal = reqEl ? parseInt(reqEl.innerText) : 0;
-    const craftCount = getCraftableCount(uid, reqVal);
-
-    if (craftCount > 0) {
-        u.parsedRecipe.forEach(child => {
-            if (child.id) {
-                if (!(uid === '로리스완' && child.id === '낮까마귀')) {
-                    let currentChildOwned = ownedUnits.get(child.id) || 0;
-                    ownedUnits.set(child.id, Math.max(0, currentChildOwned - (child.qty * craftCount)));
+            if (canCraft && maxCraftable > 0) {
+                let mergeAmount = Math.min(maxCraftable, netNeeded);
+                if (mergeAmount > 0) {
+                    u.parsedRecipe.forEach(child => {
+                        if (child.id && !(uid === '로리스완' && child.id === '낮까마귀')) {
+                            completedUnits.set(child.id, (completedUnits.get(child.id) || 0) - (child.qty * mergeAmount));
+                        }
+                    });
+                    if (u.parsedCost) {
+                        u.parsedCost.forEach(pc => {
+                            if (pc.key === '갓오타' || pc.key === '메시브') {
+                                completedUnits.set(pc.key, (completedUnits.get(pc.key) || 0) - (pc.qty * mergeAmount));
+                            }
+                        });
+                    }
+                    completedUnits.set(uid, (completedUnits.get(uid) || 0) + mergeAmount);
+                    merged = true;
                 }
             }
         });
+        loopCount++;
+    } while (merged && loopCount < 30);
+}
 
-        let currentOwned = ownedUnits.get(uid) || 0;
-        ownedUnits.set(uid, currentOwned + craftCount);
+function consumeCompletedRecipe(uid, multiplier) {
+    const u = unitMap.get(uid);
+    if (!u) return;
 
+    if (u.parsedRecipe) {
+        u.parsedRecipe.forEach(child => {
+            if (child.id) {
+                if (uid === '로리스완' && child.id === '낮까마귀') return;
+
+                let needed = child.qty * multiplier;
+                let currentlyCompleted = completedUnits.get(child.id) || 0;
+                let consumeAmount = Math.min(needed, currentlyCompleted);
+
+                if (consumeAmount > 0) {
+                    completedUnits.set(child.id, currentlyCompleted - consumeAmount);
+                    needed -= consumeAmount;
+                }
+
+                if (needed > 0) {
+                    consumeCompletedRecipe(child.id, needed);
+                }
+            }
+        });
+    }
+
+    if (u.parsedCost) {
+        u.parsedCost.forEach(pc => {
+            if (pc.key === '갓오타' || pc.key === '메시브') {
+                let needed = pc.qty * multiplier;
+                let currentlyCompleted = completedUnits.get(pc.key) || 0;
+                let consumeAmount = Math.min(needed, currentlyCompleted);
+                if (consumeAmount > 0) {
+                    completedUnits.set(pc.key, currentlyCompleted - consumeAmount);
+                }
+            }
+        });
+    }
+}
+
+window.completeUnit = function(uid) {
+    const reqEl = document.getElementById(`d-req-${uid}`);
+    const reqVal = reqEl ? parseInt(reqEl.innerText) : 0;
+
+    if (reqVal > 0) {
+        consumeCompletedRecipe(uid, reqVal);
+
+        let current = completedUnits.get(uid) || 0;
+        completedUnits.set(uid, current + reqVal);
+
+        if (_currentHighlight) toggleHighlight(null);
+
+        attemptAutoMerge();
         triggerHaptic();
         debouncedUpdateAllPanels();
     }
@@ -834,7 +1109,6 @@ function debouncedUpdateAllPanels() {
 function renderDeductionBoard() {
     if (!DOM.deductionBoard) return;
 
-    // [개선] 슬롯에 하이라이트 이벤트 바인딩
     const renderSlot = (id, name, grade, parentId) => {
         const color = gradeColorsRaw[grade] || "var(--text)";
         return `<div class="deduct-slot" id="d-slot-wrap-${id}" data-orig-parent="${parentId}" style="display:none;" onclick="toggleHighlight('${id}', event)">
@@ -842,21 +1116,20 @@ function renderDeductionBoard() {
             <div class="d-name" style="color: ${color}; cursor:help;" onclick="showRecipeTooltip('${id}', event, true); event.stopPropagation();">
                 <span class="gtag" style="border-color:${color}44; color:${color}; margin-right:6px;">${grade}</span>${name}
             </div>
-            <div class="d-inputs">
-                <div class="craft-btn-wrap" id="craft-wrap-${id}"></div>
-                <div class="smart-stepper owned-stepper">
-                    <button onmousedown="startSmartChange('${id}', -1, 'owned', event)" ontouchstart="startSmartChange('${id}', -1, 'owned', event)">-</button>
-                    <div class="ss-val" id="d-in-${id}" data-req="0">${ownedUnits.get(id)||0}</div>
-                    <button onmousedown="startSmartChange('${id}', 1, 'owned', event)" ontouchstart="startSmartChange('${id}', 1, 'owned', event)">+</button>
+            <div class="d-bottom-area" style="padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.4); border-top: 1px solid rgba(255,255,255,0.05);">
+                <div class="req-text" style="font-family: var(--font-mono); font-size: 1.2rem; color: #fbbf24; font-weight: 900; text-shadow: 0 1px 3px rgba(0,0,0,1);">
+                    <span id="d-req-${id}">0</span><span style="font-size:0.8rem; color:var(--text-sub); margin-left:4px;">필요</span>
                 </div>
-                <span class="d-sep">/</span>
-                <span class="d-req" id="d-req-${id}">0</span>
+                <div id="craft-wrap-${id}"></div>
             </div>
         </div>`;
     };
 
     let h = '';
-    h += `<div id="deduct-empty-msg" style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold; width:100%; display:none;">목표 유닛을 선택하거나, 차감 맵핑에 보유 유닛을 입력하세요.</div>`;
+    h += `<div id="deduct-empty-msg" style="text-align:center; padding:40px 20px; color:var(--text-sub); font-weight:bold; width:100%; display:none; line-height:1.6; font-size:1.05rem;">
+            <div style="font-size:2rem; margin-bottom:12px; color:var(--g-dim);">✨</div>
+            목표 유닛을 선택하면<br>필요한 재료 목록이 이곳에 생성됩니다.
+          </div>`;
 
     h += `<div class="deduct-group" id="group-special" style="border-color:rgba(251,191,36,0.3); background:linear-gradient(to bottom, rgba(30,25,10,0.6), rgba(15,10,5,0.8));">
             <div class="deduct-group-title" style="color:var(--grade-super); border-bottom-color:rgba(251,191,36,0.2);">
@@ -872,7 +1145,7 @@ function renderDeductionBoard() {
     const specialIds = ['갓오타', '메시브', '자동포탑'];
     let hiddenItems = Array.from(unitMap.values()).filter(u => u.grade === "히든" && !specialIds.includes(u.id));
     h += `<div class="deduct-group" id="group-hidden">
-            <div class="deduct-group-title"><span style="color:var(--grade-hidden);">♦</span> 히든 등급 맵핑</div>
+            <div class="deduct-group-title"><span style="color:var(--grade-hidden);">♦</span> 히든 등급 재료</div>
             <div class="deduct-grid" id="grid-hidden">
                 ${hiddenItems.map(u => renderSlot(u.id, u.name, u.grade, 'grid-hidden')).join('')}
             </div>
@@ -883,7 +1156,7 @@ function renderDeductionBoard() {
     topItems.sort((a, b) => GRADE_ORDER.indexOf(b.grade) - GRADE_ORDER.indexOf(a.grade));
 
     h += `<div class="deduct-group" id="group-top" style="margin-bottom:0;">
-            <div class="deduct-group-title"><span style="color:var(--grade-legend);">▲</span> 상위 등급 맵핑 (슈퍼히든 ~ 레어)</div>
+            <div class="deduct-group-title"><span style="color:var(--grade-legend);">▲</span> 레어 - 레전드 재료</div>
             <div class="deduct-grid" id="grid-top">
                 ${topItems.map(u => renderSlot(u.id, u.name, u.grade, 'grid-top')).join('')}
             </div>
@@ -895,7 +1168,7 @@ function renderDeductionBoard() {
 function updateDeductionBoard() {
     if (!DOM.deductionBoard) return;
 
-    const { reqMap, reasonMap, specialReq, specialReason } = calculateDeductedRequirements();
+    const { reqMap, baseMap, reasonMap, specialReq, baseSpecialReq, specialReason } = calculateDeductedRequirements();
 
     const directMaterials = new Set();
     activeUnits.forEach((qty, uid) => {
@@ -905,79 +1178,110 @@ function updateDeductionBoard() {
         }
     });
 
-    const updateSlot = (id, targetVal, reasons) => {
-        const reqEl = document.getElementById(`d-req-${id}`), wrapEl = document.getElementById(`d-slot-wrap-${id}`), inEl = document.getElementById(`d-in-${id}`), reasonContainer = document.getElementById(`d-reason-${id}`);
-        if(reqEl && wrapEl && inEl) {
-            reqEl.innerText = targetVal; inEl.setAttribute('data-req', targetVal);
+    const updateSlot = (id, netReq, baseReq, reasons) => {
+        const reqEl = document.getElementById(`d-req-${id}`), wrapEl = document.getElementById(`d-slot-wrap-${id}`), reasonContainer = document.getElementById(`d-reason-${id}`);
+        if(reqEl && wrapEl) {
 
-            let ownedVal = ownedUnits.get(id) || 0;
+            // [개선] BaseReq(절대 지도)에 포함되어 있다면 슬롯 무조건 렌더링 (사라짐 방지)
+            if (baseReq > 0) {
+                wrapEl.style.display = 'flex';
+                wrapEl.classList.add('is-visible');
 
-            if (targetVal > 0 && ownedVal > targetVal) {
-                ownedVal = targetVal;
-                ownedUnits.set(id, ownedVal);
-            }
-            inEl.innerText = ownedVal;
-
-            if (targetVal > 0 || ownedVal > 0) { wrapEl.style.display = 'flex'; wrapEl.classList.add('is-visible'); }
-            else { wrapEl.style.display = 'none'; wrapEl.classList.remove('is-visible'); }
-
-            // [개선] 맵 형태로 들어온 루트 정보를 태그 버튼(하이라이트 트리거)으로 렌더링
-            if (reasonContainer) {
-                if (reasons && reasons.size > 0 && targetVal > 0) {
-                    let rHtml = Array.from(reasons.entries()).map(([rootId, text]) => 
-                        `<span class="d-reason-tag" onclick="toggleHighlight('${rootId}', event)">${text}</span>`
-                    ).join('');
-                    reasonContainer.innerHTML = rHtml; 
-                    reasonContainer.style.display = 'flex'; 
+                if (reasonContainer) {
+                    if (reasons && reasons.size > 0 && netReq > 0) {
+                        let rHtml = Array.from(reasons.entries()).map(([rootId, text]) =>
+                            `<span class="d-reason-tag" onclick="toggleHighlight('${rootId}', event)">${text}</span>`
+                        ).join('');
+                        reasonContainer.innerHTML = rHtml;
+                        reasonContainer.style.display = 'flex';
+                    }
+                    else { reasonContainer.style.display = 'none'; reasonContainer.innerHTML = ''; }
                 }
-                else { reasonContainer.style.display = 'none'; reasonContainer.innerHTML = ''; }
-            }
 
-            let isSpecial = (id === '갓오타' || id === '메시브' || id === '자동포탑');
-            let isTarget = activeUnits.has(id);
+                const isTarget = activeUnits.has(id);
+                const isDirect = directMaterials.has(id);
+                const isSpecial = (id === '갓오타' || id === '메시브' || id === '자동포탑');
 
-            if(targetVal > 0) {
-                wrapEl.classList.add('has-target');
                 if(isTarget) wrapEl.style.order = "-999";
                 else wrapEl.style.order = isSpecial ? "999" : "-1";
-                if(ownedVal >= targetVal) wrapEl.classList.add('satisfied'); else wrapEl.classList.remove('satisfied');
-            } else {
-                wrapEl.classList.remove('has-target', 'satisfied');
-                wrapEl.style.order = isSpecial ? "1000" : "0";
-                if(ownedVal > 0) wrapEl.classList.add('has-owned'); else wrapEl.classList.remove('has-owned');
-            }
 
-            let craftWrap = document.getElementById('craft-wrap-' + id);
-            if (craftWrap) {
-                let craftCount = getCraftableCount(id, targetVal);
-                if (craftCount > 0) {
-                    wrapEl.classList.add('craftable');
-                    craftWrap.innerHTML = `<button class="btn-craft" onclick="craftUnit('${id}'); event.stopPropagation();">🔨 ${craftCount}개 MAX조합</button>`;
+                let craftWrap = document.getElementById('craft-wrap-' + id);
+
+                if (netReq > 0) {
+                    // --- 활성 상태 (진행중) ---
+                    wrapEl.classList.remove('is-completed');
+                    wrapEl.classList.add('has-target');
+                    reqEl.innerText = netReq;
+
+                    if (craftWrap) {
+                        const u = unitMap.get(id);
+                        let deepComp = getDeepCompleted(id); // 하위 트리에 완료된 재료가 하나라도 있는지 딥스캔
+
+                        if (isTarget) {
+                            let isTargetReady = true;
+                            if (u && u.parsedRecipe) {
+                                u.parsedRecipe.forEach(pr => {
+                                    if (pr.id) {
+                                        let cId = pr.id;
+                                        if (id === '로리스완' && cId === '낮까마귀') return;
+                                        let comp = completedUnits.get(cId) || 0;
+                                        if (comp < pr.qty * netReq) isTargetReady = false;
+                                    }
+                                });
+                            }
+                            if (u && u.parsedCost) {
+                                u.parsedCost.forEach(pc => {
+                                    if (pc.key === '갓오타' || pc.key === '메시브') {
+                                        let comp = completedUnits.get(pc.key) || 0;
+                                        if (comp < pc.qty * netReq) isTargetReady = false;
+                                    }
+                                });
+                            }
+
+                            if (isTargetReady) {
+                                craftWrap.innerHTML = `<button class="btn-complete final-target" onclick="completeUnit('${id}'); event.stopPropagation();">✨ 최종 제작 완료</button>`;
+                            } else {
+                                craftWrap.innerHTML = `<button class="btn-complete" onclick="completeUnit('${id}'); event.stopPropagation();">✔ 완료</button>`;
+                            }
+                        } else {
+                            // [오류] 해결: 스마트 은닉 로직 해제 (하위 재료가 진행중이어도 완료 버튼이 사라지지 않게 처리)
+                            craftWrap.innerHTML = `<button class="btn-complete" onclick="completeUnit('${id}'); event.stopPropagation();">✔ 완료</button>`;
+                        }
+                    }
                 } else {
-                    wrapEl.classList.remove('craftable');
-                    craftWrap.innerHTML = '';
+                    // --- 비활성 상태 (Ghost/완료) ---
+                    wrapEl.classList.add('is-completed');
+                    wrapEl.classList.remove('has-target');
+                    reqEl.innerText = '0';
+                    if (craftWrap) {
+                        craftWrap.innerHTML = `<span style="font-size:0.85rem; color:var(--g-dim); font-weight:bold; text-shadow:0 0 5px var(--g-faint); padding-right:4px;">✨ 완료됨</span>`;
+                    }
                 }
-            }
 
-            if ((targetVal > 0 || ownedVal > 0) && (directMaterials.has(id) || isTarget)) {
-                const finalGrid = document.getElementById('grid-special');
-                if (finalGrid && wrapEl.parentElement !== finalGrid) finalGrid.appendChild(wrapEl);
+                if (isDirect || isTarget) {
+                    const finalGrid = document.getElementById('grid-special');
+                    if (finalGrid && wrapEl.parentElement !== finalGrid) finalGrid.appendChild(wrapEl);
+                } else {
+                    const origParentId = wrapEl.getAttribute('data-orig-parent');
+                    const origParent = document.getElementById(origParentId);
+                    if (origParent && wrapEl.parentElement !== origParent) origParent.appendChild(wrapEl);
+                }
+
             } else {
-                const origParentId = wrapEl.getAttribute('data-orig-parent');
-                const origParent = document.getElementById(origParentId);
-                if (origParent && wrapEl.parentElement !== origParent) origParent.appendChild(wrapEl);
+                wrapEl.style.display = 'none';
+                wrapEl.classList.remove('is-visible');
             }
         }
     };
 
-    updateSlot('갓오타', specialReq.갓오타, specialReason.갓오타);
-    updateSlot('메시브', specialReq.메시브, specialReason.메시브);
-    updateSlot('자동포탑', reqMap.get('자동포탑') || 0, reasonMap.get('자동포탑'));
+    updateSlot('갓오타', specialReq.갓오타, baseSpecialReq.갓오타, specialReason.갓오타);
+    updateSlot('메시브', specialReq.메시브, baseSpecialReq.메시브, specialReason.메시브);
+    updateSlot('자동포탑', reqMap.get('자동포탑') || 0, baseMap.get('자동포탑') || 0, reasonMap.get('자동포탑'));
 
     const targetGrades = ["레어", "에픽", "유니크", "헬", "레전드", "히든", "슈퍼히든"];
     unitMap.forEach(u => {
         if(targetGrades.includes(u.grade) && u.id !== '자동포탑') {
-            updateSlot(u.id, reqMap.get(u.id) || 0, reasonMap.get(u.id));
+            updateSlot(u.id, reqMap.get(u.id) || 0, baseMap.get(u.id) || 0, reasonMap.get(u.id));
         }
     });
 
@@ -987,8 +1291,7 @@ function updateDeductionBoard() {
         if (visibleSlots.length === 0) group.style.display = 'none';
         else { group.style.display = 'block'; hasAnyVisible = true; }
     });
-    
-    // UI 업데이트 후 현재 하이라이트 상태 복원
+
     if(_currentHighlight) {
         const deps = getDependencies(_currentHighlight);
         document.querySelectorAll('.deduct-slot').forEach(el => {
@@ -1052,7 +1355,7 @@ function formatRecipe(item, multiplier = 1, showSeparator = false) {
         if (match) {
             const rawKo = match[1].trim(), u = unitMap.get(getUnitId(rawKo));
             let condTxt = match[2] ? `(${match[2]})` : '';
-            let baseQty = match[3] ? parseInt(match[3]) : 1; let finalQty = baseQty * multiplier; let qtyTxt = `[${finalQty}]`;
+            let baseQty = match[3] ? parseFloat(match[3]) : 1; let finalQty = baseQty * multiplier; let qtyTxt = `[${finalQty}]`;
             const color = u && gradeColorsRaw[u.grade] ? gradeColorsRaw[u.grade] : "var(--text)";
             html += `<div class="recipe-badge" style="color:${color}; border-color:${color}44;">${rawKo} <span class="badge-cond">${condTxt}${qtyTxt}</span></div>`;
         } else { html += `<div style="color:var(--text-sub); font-size:0.85rem; white-space:nowrap;">${part}</div>`; }
@@ -1063,7 +1366,14 @@ function formatRecipe(item, multiplier = 1, showSeparator = false) {
 function formatRecipeHorizontal(item, multiplier = 1) { return formatRecipe(item, multiplier, false); }
 function formatRecipeTooltip(item, multiplier = 1) { return formatRecipe(item, multiplier, true); }
 
-function selectTab(idx){ _activeTabIdx=idx; updateTabsUI(); renderCurrentTabContent(); }
+function selectTab(idx){
+    _activeTabIdx=idx;
+    updateTabsUI();
+    renderCurrentTabContent();
+
+    closeLineage();
+    if (_jewelPanelOpen) closeJewelPanel();
+}
 
 function renderCurrentTabContent() {
     const catKey = TAB_CATEGORIES[_activeTabIdx].key;
@@ -1073,8 +1383,8 @@ function renderCurrentTabContent() {
         const getOrder = (u) => {
             if (u.name === "아몬") return 100;
             if (u.name === "어두운목소리") return 99;
-            if (u.name === "나루드") return 98;
-            if (u.name === "유물") return 97;
+            if (u.name === "나루드") return 97;
+            if (u.name === "유물") return 96;
             return 0;
         };
         let aOrder = getOrder(a);
@@ -1096,18 +1406,23 @@ function renderCurrentTabContent() {
     if (items.length === 0) h += `<div style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold; font-size:1.05rem;">해당 분류에 유닛이 없습니다.</div>`;
 
     items.forEach((item, index) => {
-        const unitCost = Math.ceil(calculateTotalCostScore(item.cost));
         let gradeHtml = `<span class="gtag" style="border-color:${gradeColorsRaw[item.grade]}44; color:${gradeColorsRaw[item.grade]};">${item.grade}</span>`;
 
         let rightControls = '';
+        const lineageBtn = `<button id="btn-lineage-${item.id}" class="btn-lineage pulse" onclick="openLineage('${item.id}'); event.stopPropagation();">⎇ 계보</button>`;
 
         if (!isOneTime(item)) {
             rightControls = `<div class="uc-ctrl" onclick="event.stopPropagation()">
+                ${lineageBtn}
                 <div class="smart-stepper active-stepper">
                     <button id="btn-minus-${item.id}" onmousedown="startSmartChange('${item.id}', -1, 'active', event)" ontouchstart="startSmartChange('${item.id}', -1, 'active', event)">-</button>
                     <div class="ss-val" id="val-${item.id}">-</div>
                     <button id="btn-plus-${item.id}" onmousedown="startSmartChange('${item.id}', 1, 'active', event)" ontouchstart="startSmartChange('${item.id}', 1, 'active', event)">+</button>
                 </div>
+            </div>`;
+        } else {
+            rightControls = `<div class="uc-ctrl" onclick="event.stopPropagation()">
+                ${lineageBtn}
             </div>`;
         }
 
@@ -1144,6 +1459,17 @@ function updateTabContentUI() {
         const qty = activeUnits.get(item.id) || 0;
 
         if(isActive) card.classList.add('active'); else card.classList.remove('active');
+
+        const lineageBtnEl = document.getElementById(`btn-lineage-${item.id}`);
+        if(lineageBtnEl) {
+            if(isActive) {
+                lineageBtnEl.classList.remove('pulse');
+                lineageBtnEl.classList.add('muted');
+            } else {
+                lineageBtnEl.classList.add('pulse');
+                lineageBtnEl.classList.remove('muted');
+            }
+        }
 
         if(!isOneTime(item)) {
             const valEl = document.getElementById(`val-${item.id}`);
