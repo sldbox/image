@@ -78,9 +78,9 @@ function calcEssenceRecursiveFast(uid, counts, visited) {
     if (!u) return;
 
     if (["히든", "슈퍼히든"].includes(u.grade)) {
-        if (u.category === "테바테메") counts.코랄 += 1;
-        else if (u.category === "토바토메") counts.아이어 += 1;
-        else if (u.category === "저그중립" && u.name !== "미니성큰") counts.제루스 += 1;
+        if (["테바", "테메"].includes(u.category)) counts.코랄 += 1;
+        else if (["토바", "토메"].includes(u.category)) counts.아이어 += 1;
+        else if (["저그", "중립"].includes(u.category) && u.name !== "미니성큰") counts.제루스 += 1;
         else if (u.category === "혼종") counts.혼종 += 1;
     }
 
@@ -115,7 +115,13 @@ function updateEssence() {
 
         if (el) {
             if (el.innerText !== String(totalVal)) el.innerText = totalVal;
-            if (subEl) subEl.innerText = (hybridVal > 0 && id !== 'hybrid') ? `${baseVal} + ${hybridVal}` : '';
+            if (subEl) {
+                if (hybridVal > 0) {
+                    subEl.innerHTML = `<span style="opacity:0.6;">${baseVal}</span><span style="color:var(--g); font-weight:bold;"> +${hybridVal}</span>`;
+                } else {
+                    subEl.innerHTML = '';
+                }
+            }
             if (parent) parent.classList.toggle('active', totalVal > 0);
         }
     };
@@ -123,7 +129,6 @@ function updateEssence() {
     setVal('coral', finalCoral + finalHybrid, finalCoral, finalHybrid);
     setVal('aiur', finalAiur + finalHybrid, finalAiur, finalHybrid);
     setVal('zerus', finalZerus + finalHybrid, finalZerus, finalHybrid);
-    setVal('hybrid', finalHybrid, finalHybrid, 0);
 
     const totalEl = getEl('essence-total-val');
     if (totalEl) {
@@ -135,6 +140,17 @@ function updateEssence() {
 }
 
 function updateMagicDashboard() {
+    // 1. 총 매직 코스트 계산
+    let activeScore = 0, compScore = 0;
+    activeUnits.forEach((qty, uid) => { activeScore += calculateTotalCostScore(unitMap.get(uid)?.cost) * qty; });
+    completedUnits.forEach((qty, uid) => { compScore += calculateTotalCostScore(unitMap.get(uid)?.cost) * qty; });
+    let finalTotalCost = Math.max(0, activeScore - compScore);
+
+    const magicTotalEl = getEl('magic-total-val');
+    if (magicTotalEl) magicTotalEl.innerText = Math.ceil(finalTotalCost);
+    getEl('slot-total-magic')?.classList.toggle('active', finalTotalCost > 0);
+
+    // 2. 개별 유닛 코스트 계산
     const totalMap = {}, compMap = {};
     dashboardAtoms.forEach(a => {
         totalMap[a] = a === "갓오타/메시브" ? { 갓오타: 0, 메시브: 0 } : 0;
@@ -236,9 +252,12 @@ const gradeColorsRaw = {
 };
 
 const TAB_CATEGORIES = [
-    {key:"테바테메", name:"테바테메", sym:"♆"},
-    {key:"토바토메", name:"토바토메", sym:"⟡"},
-    {key:"저그중립", name:"저그중립", sym:"☣︎"},
+    {key:"테바", name:"테바", sym:"♆"},
+    {key:"테메", name:"테메", sym:"♆"},
+    {key:"토바", name:"토바", sym:"⟡"},
+    {key:"토메", name:"토메", sym:"⟡"},
+    {key:"저그", name:"저그", sym:"☣︎"},
+    {key:"중립", name:"중립", sym:"❂"},
     {key:"혼종", name:"혼종", sym:"⌬"}
 ];
 
@@ -1103,15 +1122,19 @@ function renderDashboardAtoms() {
     if (!db) return;
 
     db.innerHTML = `
+        <div class="cost-slot total" id="slot-total-magic">
+            <div class="cost-val" id="magic-total-val">0</div>
+            <div class="cost-name">총 코스트</div>
+        </div>
         <div class="cost-slot total" id="slot-total-essence">
             <div class="cost-val" id="essence-total-val">0</div>
-            <div class="cost-name">총 정수 코스트</div>
+            <div class="cost-name">총 정수</div>
         </div>
-        ${['coral|#FF6B6B|코랄', 'aiur|var(--grade-rare)|아이어', 'zerus|var(--grade-legend)|제루스', 'hybrid|var(--g)|혼종'].map(d => {
+        ${['coral|#FF6B6B|코랄', 'aiur|var(--grade-rare)|아이어', 'zerus|var(--grade-legend)|제루스'].map(d => {
             let [id, color, name] = d.split('|');
             return `<div class="cost-slot" id="slot-${id}">
                         <div class="cost-val" id="val-${id}" style="color:${color};">0</div>
-                        <div class="cost-sub" id="sub-${id}" style="font-size:0.75rem; color:var(--text-sub); margin:-4px 0 4px; height:12px; font-family:var(--font-mono); line-height:1;"></div>
+                        <div class="cost-sub" id="sub-${id}" style="font-size:0.8rem; margin:-2px 0 2px; height:14px; font-family:var(--font-mono); line-height:1; display:flex; gap:4px; align-items:center; justify-content:center;"></div>
                         <div class="cost-name">${name}</div>
                     </div>`;
         }).join('')}
@@ -1214,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         UNIT_DATABASE.forEach(kArr => unitMap.set(clean(kArr[0]), {
             id: clean(kArr[0]), name: kArr[0], grade: kArr[1] || "매직",
-            category: kArr[2] || "테바테메", recipe: kArr[3], cost: kArr[4]
+            category: kArr[2] || "테바", recipe: kArr[3], cost: kArr[4]
         }));
 
         initializeCacheEngine();
