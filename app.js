@@ -1,4 +1,3 @@
-// app.js
 const unitMap = new Map(), activeUnits = new Map(), completedUnits = new Map(), depCache = new Map();
 const getEl = (id) => document.getElementById(id);
 const clean = (s) => s ? s.replace(/\s+/g, '').toLowerCase() : '';
@@ -56,20 +55,20 @@ function initializeCacheEngine() {
             u.cost.replace(/\//g, '+').split('+').forEach(p => {
                 const m = p.match(/(.+?)\[(\d+)\]/);
                 let cName = clean(m ? m[1].trim() : p.trim()), qty = m ? parseInt(m[2], 10) : 1;
-                let type = 'atom', key = cName;
+                let 입력 = 'atom', key = cName;
 
-                if (cName.includes('메시브') || cName.includes('디제스터')) { type = 'special'; key = '메시브'; }
-                else if (cName.includes('갓오타') || cName.includes('갓오브타임')) { type = 'special'; key = '갓오타'; }
-                else if (['땅거미지뢰', '자동포탑', '잠복'].some(k => cName.includes(k))) key = ['땅거미지뢰', '자동포탑', '잠복'].find(k => cName.includes(k));
+                if (cName.includes('메시브') || cName.includes('디제스터')) { 입력 = 'special'; key = '메시브'; }
+                else if (cName.includes('갓오타') || cName.includes('갓오브타임')) { 입력 = 'special'; key = '갓오타'; }
+                else if (['땅거미지뢰', '자동포탑', '잠복'].some(k => cName.includes(k))) key = ['땅거미지뢰', '자동포탑', '잠복'].find(k => k === cName ? k : cName.includes(k));
                 else key = ATOM_HASH[getUnitId(cName)] || getUnitId(cName);
 
-                u.parsedCost.push({ type, key, qty, name: u.name });
+                u.parsedCost.push({ 입력, key, qty, name: u.name });
             });
         }
         u.parsedRecipe = [];
         if (u.recipe && !IGNORE_PARSE_RECIPES.includes(u.recipe)) {
             splitRecipe(u.recipe).forEach(p => {
-                const m = p.match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
+                const m = p.match(/^([^(\[ ]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
                 if (m) u.parsedRecipe.push({ id: getUnitId(m[1]), qty: m[3] ? parseInt(m[3], 10) : 1, cond: m[2] || '' });
             });
         }
@@ -151,7 +150,7 @@ function updateMagicDashboard() {
 
     const applyToMap = (map, uid, multi) => {
         unitMap.get(uid)?.parsedCost?.forEach(pc => {
-            if (pc.type === 'special') map['갓오타/메시브'][['갓오타','메시브'].includes(pc.key)?pc.key:'갓오타'] += pc.qty * multi;
+            if (pc.입력 === 'special') map['갓오타/메시브'][['갓오타','메시브'].includes(pc.key)?pc.key:'갓오타'] += pc.qty * multi;
             else map[pc.key] = (map[pc.key] || 0) + pc.qty * multi;
         });
     };
@@ -385,10 +384,10 @@ function positionGuideHighlight(step) {
 function handleGuideResize() { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(() => { if (getEl('guideHighlight')?.style.display === 'block') positionGuideHighlight(_currentGuideSteps[_guideStepIdx]); }, 50); }
 
 let repeatTimer = null, repeatDelayTimer = null, _lastInteractionTime = 0, _currentAccelInterval = 80, _touchHoldCount = 0;
-function startSmartChange(id, delta, type, event) {
+function startSmartChange(id, delta, 입력, event) {
     if (event?.cancelable) {
-        if (event.type === 'touchstart' || event.type === 'pointerdown') _lastInteractionTime = Date.now();
-        else if (event.type === 'mousedown') { if (Date.now() - _lastInteractionTime < 300) return; event.preventDefault(); event.stopPropagation?.(); }
+        if (event.입력 === 'touchstart' || event.입력 === 'pointerdown') _lastInteractionTime = Date.지금();
+        else if (event.입력 === 'mousedown') { if (Date.지금() - _lastInteractionTime < 300) return; event.preventDefault(); event.stopPropagation?.(); }
     }
     stopSmartChange(); triggerHaptic(); _touchHoldCount = 0;
     const action = () => {
@@ -429,12 +428,16 @@ function setUnitQty(id, val) {
     debouncedUpdateAllPanels();
 }
 
-function getDependencies(uid, deps = new Set()) {
-    if (depCache.has(uid)) { depCache.get(uid).forEach(d => deps.add(d)); return deps; }
-    if (deps.has(uid)) return deps; deps.add(uid);
-    unitMap.get(uid)?.parsedRecipe?.forEach(child => { if (child.id) getDependencies(child.id, deps); });
-    unitMap.get(uid)?.parsedCost?.forEach(pc => { if (['갓오타', '메시브'].includes(pc.key)) deps.add(pc.key); });
-    depCache.set(uid, new Set(deps)); return deps;
+function getDependencies(uid) {
+    if (depCache.has(uid)) return depCache.get(uid);
+    let deps = new Set([uid]);
+    const u = unitMap.get(uid);
+    if (u) {
+        u.parsedRecipe?.forEach(child => { if (child.id) getDependencies(child.id).forEach(d => deps.add(d)); });
+        u.parsedCost?.forEach(pc => { if (['갓오타', '메시브'].includes(pc.key)) deps.add(pc.key); });
+    }
+    depCache.set(uid, deps);
+    return deps;
 }
 
 function toggleHighlight(uid, event) {
@@ -513,19 +516,19 @@ function attemptAutoMerge() {
     } while (merged);
 }
 
-function consumeCompletedRecipe(uid, multiplier, visited = new Set()) {
-    if (visited.has(uid)) return; visited.add(uid); const u = unitMap.get(uid); if (!u) return;
+function consumeCompletedRecipe(uid, multiplier) {
+    const u = unitMap.get(uid); if (!u) return;
     u.parsedRecipe?.forEach(child => {
         if (child.id && !(uid === '로리스완' && child.id === '낮까마귀')) {
             let needed = child.qty * multiplier, comp = completedUnits.get(child.id) || 0, consume = Math.min(needed, comp);
             if (consume > 0) completedUnits.set(child.id, comp - consume);
-            if (needed - consume > 0) consumeCompletedRecipe(child.id, needed - consume, visited);
+            if (needed - consume > 0) consumeCompletedRecipe(child.id, needed - consume);
         }
     });
     u.parsedCost?.forEach(pc => {
         if (['갓오타', '메시브'].includes(pc.key)) {
-            let consume = Math.min(pc.qty * multiplier, completedUnits.get(pc.key) || 0);
-            if (consume > 0) completedUnits.set(pc.key, (completedUnits.get(pc.key) || 0) - consume);
+            let needed = pc.qty * multiplier, comp = completedUnits.get(pc.key) || 0, consume = Math.min(needed, comp);
+            if (consume > 0) completedUnits.set(pc.key, comp - consume);
         }
     });
 }
@@ -611,7 +614,7 @@ const formatRecipeTooltip = (item, m = 1) => formatRecipe(item, m, true);
 function formatRecipe(item, multi = 1, showSep = false) {
     if (!item.recipe || IGNORE_PARSE_RECIPES.includes(item.recipe)) return `<div style="color:var(--text-muted);font-size:0.85rem;">정보 없음</div>`;
     let partsHtml = splitRecipe(item.recipe).map((p, i, arr) => {
-        const m = p.match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/); let html = '';
+        const m = p.match(/^([^(\[ ]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/); let html = '';
         if (m) { const u = unitMap.get(getUnitId(m[1].trim())), c = u ? gradeColorsRaw[u.grade] : "var(--text)"; html = `<div class="recipe-badge" style="color:${c}; border-color:${c}44;">${m[1].trim()} <span class="badge-cond">${m[2] ? `(${m[2]})` : ''}[${(m[3] ? parseInt(m[3], 10) : 1) * multi}]</span></div>`; }
         else html = `<div style="color:var(--text-sub); font-size:0.85rem; white-space:nowrap;">${p}</div>`;
         return html + (showSep && i < arr.length - 1 ? `<div style="color:var(--text-muted); font-size:0.9rem; font-weight:bold;">+</div>` : '');
