@@ -1,3 +1,4 @@
+/* style.css */
 :root {
     --void:#020305; --panel:#0a0e14;
     --g:#00e5ff; --g-dim:#008c9e; --g-faint:rgba(0,229,255,0.08); --g-border:rgba(0,229,255,0.35); --g-glow:rgba(0,229,255,0.6);
@@ -52,6 +53,7 @@ body:has(.main-layout.view-jewel) { overflow: hidden !important; }
 @keyframes introFadeIn { from { opacity: 0; } to { opacity: 1; } }
 .loader-bar { width: 100%; height: 2px; background: rgba(255,255,255,0.1); margin-top: 15px; position: relative; overflow: hidden; opacity: 0; animation: introFadeIn 0.5s 0.6s forwards; }
 .loader-fill { height: 100%; background: var(--g); width: 0%; box-shadow: 0 0 15px var(--g); transition: width 0.05s linear; }
+
 @media(min-width:1200px) and (orientation:landscape){
     html,body{overflow:hidden;height:100%;margin:0;padding:0;}
     .main-layout{ display:grid; grid-template-columns:var(--col-codex) var(--col-dash) var(--col-deduct) var(--col-jewel) var(--col-gen); grid-template-rows:minmax(0,1fr); gap:16px;padding:16px 24px;height:100vh;overflow:hidden; max-width:100%;margin:0 auto;width:100%; transition:max-width 0.5s cubic-bezier(0.4,0,0.2,1),grid-template-columns 0.5s cubic-bezier(0.4,0,0.2,1); }
@@ -64,6 +66,7 @@ body:has(.main-layout.view-jewel) { overflow: hidden !important; }
     .main-layout.view-deduct .col-right{opacity:1;transform:translateX(0);pointer-events:auto;visibility:visible;}
     .col-jewel { grid-column: 2 / span 2; grid-row: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; z-index: 20; animation: fadeIn 0.3s ease; }
 }
+
 @media(max-width:1199px),(orientation:portrait){
     html,body{height:auto !important;overflow-y:auto !important;overflow-x:hidden !important;}
     .main-layout{display:flex;flex-direction:column;gap:14px;padding:12px;min-height:100vh;overflow:visible !important;width:100%;max-width:100%;}
@@ -73,8 +76,12 @@ body:has(.main-layout.view-jewel) { overflow: hidden !important; }
     .main-layout.view-deduct .panel-codex{display:none !important;}
     .main-layout.view-deduct .col-right{display:flex !important;}
     .main-layout.view-jewel { height: 100dvh !important; max-height: 100dvh !important; min-height: 0 !important; overflow: hidden !important; }
-    .col-jewel { order: 2; display: none !important; width: 100%; height: 100%; min-height: 0; flex: 1; animation: fadeIn 0.3s ease; }
+    
+    /* [오류 해결] 모바일에서 display: none !important가 toggle을 막지 않도록 수정 */
+    .col-jewel { order: 2; display: none; width: 100%; height: 100%; min-height: 0; flex: 1; animation: fadeIn 0.3s ease; }
+    .main-layout.view-jewel .col-jewel { display: flex !important; }
 }
+
 .btn-text-link{background:none;border:none;color:var(--text-sub);font-size:0.78rem;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:4px;transition:color 0.2s;white-space:nowrap;}
 .btn-text-link:hover{color:var(--g);}
 .btn-hdr-sm{ padding:0 20px;height:36px; background:linear-gradient(to bottom, rgba(30,40,55,0.8), rgba(10,15,25,0.9)); border:1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); color:var(--text-sub);font-size:0.86rem;font-weight:800;cursor:pointer; border-radius:8px;transition:all 0.2s cubic-bezier(0.4,0,0.2,1);white-space:nowrap !important;word-break:keep-all; flex-shrink:0;font-family:var(--font-body);display:flex;align-items:center;justify-content:center; letter-spacing:0.3px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
@@ -234,7 +241,6 @@ body:has(.main-layout.view-jewel) { overflow: hidden !important; }
     .cost-val{font-size:1.2rem;line-height:1;}
     .cost-name{font-size:0.6rem;margin-top:3px;letter-spacing:-0.5px;line-height:1.2;text-align:center;word-break:keep-all;white-space:normal;}
 
-    /* [개선] 모바일 유닛 카드 레이아웃에서 썸네일 영역 제외 */
     .uc-wrap{ display:flex !important; flex-direction:column; align-items:flex-start; gap:8px; padding:12px; }
     .uc-identity{display:flex; flex-direction:column; justify-content:center; align-items:flex-start; min-width:0; width:100%;}
     .uc-name-row{font-size:0.95rem; display:flex; flex-wrap:wrap; gap:6px;}
@@ -258,8 +264,8 @@ body:has(.main-layout.view-jewel) { overflow: hidden !important; }
 .nexus-main-title { transition: opacity 0.35s ease, transform 0.35s ease; }
 
 .jewel-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-@media(min-width:720px) and (max-width:1199px){ .jewel-mini-grid { grid-template-columns: repeat(3,1fr); gap:12px; } }
-.jwm-item { background: linear-gradient(160deg, rgba(15,22,35,0.9), rgba(5,8,12,0.98)); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.3s cubic-bezier(0.2,0.8,0.2,1); cursor: default; }
+@media(min-width:720px) 및 (max-width:1199px){ .jewel-mini-grid { grid-template-columns: repeat(3,1fr); gap:12px; } }
+.jwm-item { background: linear-gradient(160deg, rgba(15,22,35,0.9), rgba(5,8,12,0.98)); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.3s cubic-bezier(0.2,0.8,0.2,1); cursor: 기본; }
 .jwm-item::before { content:""; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, transparent, var(--jw-color, #fff), transparent); opacity: 0.7; }
 .jwm-item:hover { border-color: var(--jw-color, rgba(255,255,255,0.3)); box-shadow: 0 8px 25px rgba(0,0,0,0.8), 0 0 15px var(--jw-color-a, rgba(255,255,255,0.1)); transform: translateY(-3px); }
 .jwm-img-wrap { width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--jw-color-a, rgba(255,255,255,0.1)); background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0,0,0,0.7); }
@@ -268,7 +274,7 @@ body:has(.main-layout.view-jewel) { overflow: hidden !important; }
 .jwm-stat { width: 100%; border-radius: 6px; padding: 8px; font-size: 0.8rem; line-height: 1.4; font-weight: 700; word-break: keep-all; text-align: center; border: 1px solid; }
 .jwm-stat.legend { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.2); color: rgba(226,232,240,0.85); }
 .jwm-stat.mythic { background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.25); color: #fbbf24; }
-@media(min-width:720px) and (max-width:1199px){
+@media(min-width:720px) 및 (max-width:1199px){
     .magic-grid{grid-template-columns:repeat(5,1fr) !important;gap:8px;}
     .cost-val{font-size:clamp(1.2rem,3vh,2.2rem);}
     .cost-name{font-size:0.75rem;}
@@ -290,7 +296,7 @@ body:has(.main-layout.view-jewel) { overflow: hidden !important; }
 .contact-box { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin-top: 15px; display: flex; flex-direction: column; gap: 10px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
 .contact-box .c-icon { margin-right: 8px; font-size: 1.1rem; }
 
-.guide-blocker { position: fixed; inset: 0; z-index: 14999; cursor: default; }
+.guide-blocker { position: fixed; inset: 0; z-index: 14999; cursor: 기본; }
 .guide-highlight { position: absolute; border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.75), inset 0 0 15px var(--g); border: 2px solid var(--g); z-index: 15000; pointer-events: none; transition: all 0.4s cubic-bezier(0.2,0.8,0.2,1); }
 .guide-click-catcher { position: absolute; z-index: 15001; cursor: pointer; border-radius: 8px; background: transparent; }
 .guide-tooltip { position: absolute; z-index: 15002; background: linear-gradient(160deg, rgba(20,30,45,0.98), rgba(10,15,20,0.98)); border: 1px solid var(--g); border-radius: 12px; padding: 16px; width: max-content; max-width: 320px; box-shadow: 0 15px 40px rgba(0,0,0,0.9), 0 0 20px rgba(0,229,255,0.2); transition: all 0.4s cubic-bezier(0.2,0.8,0.2,1); opacity: 0; }
