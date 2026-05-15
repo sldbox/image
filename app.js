@@ -1,6 +1,7 @@
 const unitMap = new Map();
 const activeUnits = new Map();
 const completedUnits = new Map();
+const depCache = new Map();
 
 const getEl = (id) => document.getElementById(id);
 const clean = (s) => s ? s.replace(/\s+/g, '').toLowerCase() : '';
@@ -12,22 +13,58 @@ const dashboardAtoms = [
     "암흑집정관", "암흑불멸자", "원시히드라리스크", "땅거미지뢰", "자동포탑",
     "우르사돈암", "우르사돈수", "갓오타/메시브"
 ];
-const CLEANED_DASHBOARD_ATOMS = dashboardAtoms.map(a => ({ raw: a, clean: clean(a) }));
-const SPECIAL_UNIT_IDS = ['갓오타', '메시브', '자동포탑'];
 
-const EMPTY_SVG = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2;"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><line x1="3" y1="21" x2="21" y2="3"></line></svg>`;
+const CLEANED_DASHBOARD_ATOMS = dashboardAtoms.map(a => ({ raw: a, clean: clean(a) }));
+const ATOM_HASH = Object.fromEntries(CLEANED_DASHBOARD_ATOMS.map(a => [a.clean, a.raw]));
+
+const ALIAS_MAP = {
+    "타커": "타이커스", "타이": "타이커스", "닥템": "암흑기사", "닼템": "암흑기사", "다칸": "암흑집정관",
+    "스투": "스투코프", "디젯": "디제스터", "메십": "메시브", "마랩": "마스터랩", "히페": "히페리온",
+    "고전순": "고르곤전투순양함", "특레": "특공대레이너", "드레천": "드라켄레이저천공기",
+    "공허": "공허포격기", "분수": "분노수호자", "원히": "원시히드라리스크"
+};
+Object.assign(ALIAS_MAP, typeof CUSTOM_ALIASES !== 'undefined' ? CUSTOM_ALIASES : {});
+
+// [개선] 단위 변환 (Alias) 해시맵 초기화 최적화
+const CLEAN_ALIAS_MAP = {};
+Object.keys(ALIAS_MAP).forEach(k => {
+    CLEAN_ALIAS_MAP[clean(k)] = clean(ALIAS_MAP[k]);
+});
+
+const SPECIAL_UNIT_IDS = ['갓오타', '메시브', '자동포탑'];
+const EMPTY_SVG = `<svg class="empty-icon"><use href="#icon-empty"></use></svg>`;
+
+const MAX_LOOP_QUEUE = 1000;
+const MAX_LOOP_MERGE = 30;
+// [개선] 하드코딩된 유닛 최대 수량 상수화
+const MAX_UNIT_CAPACITY = 16;
+const CONFIG_SORT_ORDER = { "아몬": 100, "어두운목소리": 99, "나루드": 97, "유물": 96 };
 
 const isOneTime = (u) => u && (u.grade === "슈퍼히든" || ["데하카", "데하카고치", "데하카의오른팔", "유물"].includes(u.name));
-const isTargetGrade = (u) => ["슈퍼히든", "히든", "레전드"].includes(u.grade);
+const isTargetGrade = (u) => ["슈퍼히든", "히든", "레전드", "헬", "유니크", "에픽", "레어", "매직"].includes(u.grade);
 
-function getUnitId(rawName) {
-    return clean(rawName);
-}
+function getUnitId(rawName) { return clean(rawName); }
 
-// [개선] 실시간 정규식 파싱 제거 및 캐싱 엔진 최적화
 function calculateTotalCostScore(u) {
     if (!u || !u.parsedCost) return 0;
     return u.parsedCost.reduce((sum, pc) => sum + (pc.qty || 0), 0);
+}
+
+function splitRecipe(recipeStr) {
+    let parts = [], current = '', depth = 0;
+    for (let char of recipeStr) {
+        if (char === '(' || char === '[') depth++;
+        else if (char === ')' || char === ']') depth--;
+
+        if (char === '+' && depth === 0) {
+            if (current.trim()) parts.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    if (current.trim()) parts.push(current.trim());
+    return parts;
 }
 
 function initializeCacheEngine() {
@@ -49,7 +86,7 @@ function initializeCacheEngine() {
                 else if (cName.includes('잠복')) { key = '잠복'; }
                 else {
                     const uid = getUnitId(cName);
-                    key = dashboardAtoms.find(a => clean(a) === uid) || uid;
+                    key = ATOM_HASH[uid] || uid;
                 }
                 u.parsedCost.push({ type, key, qty, name: u.name });
             });
@@ -57,8 +94,8 @@ function initializeCacheEngine() {
 
         u.parsedRecipe = [];
         if (u.recipe && !IGNORE_PARSE_RECIPES.includes(u.recipe)) {
-            u.recipe.split(/\+(?![^()]*\))/).forEach(p => {
-                const m = p.trim().match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
+            splitRecipe(u.recipe).forEach(p => {
+                const m = p.match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
                 if (m) {
                     const childId = getUnitId(m[1]);
                     u.parsedRecipe.push({ id: childId, qty: m[3] ? parseFloat(m[3]) : 1, cond: m[2] || '' });
@@ -106,12 +143,13 @@ function updateEssence() {
     let finalHybrid = Math.max(0, targetE.혼종 - compE.혼종);
 
     const setVal = (id, totalVal, baseVal, hybridVal) => {
-        const el = getEl(`val-${id}`);
-        const subEl = getEl(`sub-${id}`);
-        const parent = getEl(`slot-${id}`);
+        const el = getEl(`val-essence-${id}`);
+        const subEl = getEl(`sub-essence-${id}`);
+        const parent = getEl(`slot-essence-${id}`);
 
         if (el) {
-            if (el.innerText !== String(totalVal)) el.innerText = totalVal;
+            let safeTotal = Number(totalVal) || 0;
+            if (el.innerText !== String(safeTotal)) el.innerText = safeTotal;
             if (subEl) {
                 if (hybridVal > 0) {
                     subEl.innerHTML = `<span style="opacity:0.6;">${baseVal}</span><span style="color:var(--g); font-weight:bold;"> +${hybridVal}</span>`;
@@ -119,7 +157,7 @@ function updateEssence() {
                     subEl.innerHTML = '';
                 }
             }
-            if (parent) parent.classList.toggle('active', totalVal > 0);
+            if (parent) parent.classList.toggle('active', safeTotal > 0);
         }
     };
 
@@ -129,7 +167,7 @@ function updateEssence() {
 
     const totalEl = getEl('essence-total-val');
     if (totalEl) {
-        let totalEssence = finalCoral + finalAiur + finalZerus + finalHybrid * 3;
+        let totalEssence = Number(finalCoral + finalAiur + finalZerus + finalHybrid * 3) || 0;
         totalEl.innerText = totalEssence;
         const parent = getEl('slot-total-essence');
         if (parent) parent.classList.toggle('active', totalEssence > 0);
@@ -143,7 +181,7 @@ function updateMagicDashboard() {
     let finalTotalCost = Math.max(0, activeScore - compScore);
 
     const magicTotalEl = getEl('magic-total-val');
-    if (magicTotalEl) magicTotalEl.innerText = Math.ceil(finalTotalCost);
+    if (magicTotalEl) magicTotalEl.innerText = Math.ceil(finalTotalCost) || 0;
     getEl('slot-total-magic')?.classList.toggle('active', finalTotalCost > 0);
 
     const totalMap = {}, compMap = {};
@@ -156,7 +194,10 @@ function updateMagicDashboard() {
         const u = unitMap.get(k);
         if (u?.parsedCost) {
             u.parsedCost.forEach(pc => {
-                if (pc.type === 'special') totalMap['갓오타/메시브'][pc.key] += pc.qty * c;
+                if (pc.type === 'special') {
+                    const safeKey = (pc.key === '갓오타' || pc.key === '메시브') ? pc.key : '갓오타';
+                    totalMap['갓오타/메시브'][safeKey] = (totalMap['갓오타/메시브'][safeKey] || 0) + pc.qty * c;
+                }
                 else totalMap[pc.key] = (totalMap[pc.key] || 0) + pc.qty * c;
             });
         }
@@ -173,7 +214,10 @@ function updateMagicDashboard() {
             const u = unitMap.get(k);
             if (u?.parsedCost) {
                 u.parsedCost.forEach(pc => {
-                    if (pc.type === 'special') compMap['갓오타/메시브'][pc.key] += pc.qty * c;
+                    if (pc.type === 'special') {
+                        const safeKey = (pc.key === '갓오타' || pc.key === '메시브') ? pc.key : '갓오타';
+                        compMap['갓오타/메시브'][safeKey] = (compMap['갓오타/메시브'][safeKey] || 0) + pc.qty * c;
+                    }
                     else compMap[pc.key] = (compMap[pc.key] || 0) + pc.qty * c;
                 });
             }
@@ -282,17 +326,18 @@ function setupInitialView() {
 
 const _cycleTitles = ['개복디 넥서스', '제작자 | 회장', 'ID : 3-S2-1-2461127'];
 let _cycleTitleIdx = 0;
+let _titleInterval = null;
+
 function startTitleCycle() {
     const el = getEl('nexusCycleTitle');
     if (!el) return;
-    setInterval(() => {
+    if (_titleInterval) clearInterval(_titleInterval);
+    _titleInterval = setInterval(() => {
         _cycleTitleIdx = (_cycleTitleIdx + 1) % _cycleTitles.length;
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(-8px)';
+        el.classList.add('cycle-fade-out');
         setTimeout(() => {
             el.textContent = _cycleTitles[_cycleTitleIdx];
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
+            el.classList.remove('cycle-fade-out');
         }, 350);
     }, 3000);
 }
@@ -300,10 +345,12 @@ function startTitleCycle() {
 let _jewelPanelOpen = false;
 window.toggleJewelPanel = function() {
     const layout = getEl('mainLayout');
+    const btn = getEl('btnJewelToggle');
     if (layout && layout.classList.contains('view-jewel')) {
         closeJewelPanel();
     } else if (layout) {
         layout.classList.add('view-jewel');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
         _jewelPanelOpen = true;
         renderJewelMiniGrid();
     }
@@ -311,7 +358,9 @@ window.toggleJewelPanel = function() {
 
 window.closeJewelPanel = function() {
     const layout = getEl('mainLayout');
+    const btn = getEl('btnJewelToggle');
     if (layout) layout.classList.remove('view-jewel');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
     _jewelPanelOpen = false;
 };
 
@@ -327,10 +376,12 @@ function switchLayout(mode) {
     if (mode === 'deduct') {
         layout.classList.add('view-deduct');
         btnToggle.classList.remove('active');
-        btnToggle.innerHTML = '<span class="toggle-icon">◧</span> 도감 모드 전환';
+        btnToggle.setAttribute('aria-expanded', 'false');
+        btnToggle.innerHTML = '<span class="toggle-icon" aria-hidden="true">◧</span> 도감 모드 전환';
     } else if (mode === 'codex') {
         btnToggle.classList.add('active');
-        btnToggle.innerHTML = '<span class="toggle-icon">◨</span> 체크리스트 전환';
+        btnToggle.setAttribute('aria-expanded', 'true');
+        btnToggle.innerHTML = '<span class="toggle-icon" aria-hidden="true">◨</span> 체크리스트 전환';
     }
 }
 
@@ -339,12 +390,6 @@ function toggleViewMode() {
 }
 
 let searchTimeout = null;
-const ALIAS_MAP = {
-    "타커": "타이커스", "타이": "타이커스", "닥템": "암흑기사", "닼템": "암흑기사", "다칸": "암흑집정관",
-    "스투": "스투코프", "디젯": "디제스터", "메십": "메시브", "마랩": "마스터랩", "히페": "히페리온",
-    "고전순": "고르곤전투순양함", "특레": "특공대레이너", "드레천": "드라켄레이저천공기",
-    "공허": "공허포격기", "분수": "분노수호자", "원히": "원시히드라리스크"
-};
 
 function setupSearchEngine() {
     const inputEl = getEl('unitSearchInput');
@@ -352,10 +397,14 @@ function setupSearchEngine() {
 
     inputEl.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => performSearch(e.target.value), 150);
+        searchTimeout = setTimeout(() => performSearch(e.target.value), 250);
     });
     inputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); processCommand(e.target.value); }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(searchTimeout);
+            processCommand(e.target.value);
+        }
     });
     document.addEventListener('click', (e) => {
         const sr = getEl('searchResults');
@@ -363,20 +412,20 @@ function setupSearchEngine() {
     });
 }
 
+// [개선] 유닛 탐색 이중 루프 병합 최적화
 function findUnitFlexible(rawName) {
     let qClean = clean(rawName);
     if (!qClean) return null;
 
-    let aliased = ALIAS_MAP[rawName] || ALIAS_MAP[qClean];
-    if (aliased) qClean = clean(aliased);
+    let aliased = CLEAN_ALIAS_MAP[qClean];
+    let searchTarget = aliased ? aliased : qClean;
 
+    let partialMatch = null;
     for (let [id, u] of unitMap) {
-        if (id === qClean) return u;
+        if (id === searchTarget) return u;
+        if (!partialMatch && id.includes(searchTarget)) partialMatch = u;
     }
-    for (let [id, u] of unitMap) {
-        if (id.includes(qClean)) return u;
-    }
-    return null;
+    return partialMatch;
 }
 
 function performSearch(query) {
@@ -388,28 +437,32 @@ function performSearch(query) {
 
     if (!currentQuery) { sr.classList.remove('active'); return; }
 
-    const searchName = currentQuery.split('*')[0].trim();
+    // [오류] 검색창 Split 체이닝 예외 방어
+    const searchName = currentQuery.split('*')[0]?.trim() || '';
+    if (!searchName) { sr.classList.remove('active'); return; }
+
     const qClean = clean(searchName);
-    const aliasClean = ALIAS_MAP[searchName] ? clean(ALIAS_MAP[searchName]) : null;
+    const aliasClean = CLEAN_ALIAS_MAP[qClean];
+    const searchTarget = aliasClean ? aliasClean : qClean;
 
     let exactMatches = [], partialMatches = [];
 
     unitMap.forEach(u => {
         if (isTargetGrade(u)) {
-            if (u.id === qClean || (aliasClean && u.id === aliasClean)) exactMatches.push(u);
-            else if (u.id.includes(qClean) || (aliasClean && u.id.includes(aliasClean))) partialMatches.push(u);
+            if (u.id === searchTarget) exactMatches.push(u);
+            else if (u.id.includes(searchTarget)) partialMatches.push(u);
         }
     });
 
     const sortByGrade = (a, b) => getGradeIndex(b.grade) - getGradeIndex(a.grade);
 
-    let sortedExact = [...exactMatches].sort(sortByGrade);
-    let sortedPartial = [...partialMatches].sort(sortByGrade);
-    let combined = [...sortedExact, ...sortedPartial].slice(0, 10);
+    exactMatches.sort(sortByGrade);
+    partialMatches.sort(sortByGrade);
+    let combined = [...exactMatches, ...partialMatches].slice(0, 10);
 
     if (combined.length > 0) {
-        sr.innerHTML = combined.map(u => `
-            <div class="sr-item" onclick="applySearchAutocomplete('${u.name}')">
+        sr.innerHTML = combined.map((u, idx) => `
+            <div class="sr-item" id="sr-item-${idx}" role="option" aria-selected="false" onclick="applySearchAutocomplete('${u.name}')">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span style="color:${gradeColorsRaw[u.grade]}; font-size:0.8rem; font-weight:900;">[${u.grade}]</span>
                     <span class="sr-name" style="color:var(--text);">${u.name}</span>
@@ -428,11 +481,14 @@ function applySearchAutocomplete(unitName) {
     if (!inputEl) return;
 
     let parts = inputEl.value.split('/');
-    let multiplierMatch = parts[parts.length - 1].match(/\*\d+/);
+    let multiplierMatch = parts[parts.length - 1].match(/\*.*$/);
 
     parts[parts.length - 1] = unitName + (multiplierMatch ? multiplierMatch[0] : '');
     inputEl.value = parts.join('/');
-    inputEl.focus();
+    
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile) inputEl.focus();
+    
     getEl('searchResults')?.classList.remove('active');
 }
 
@@ -440,17 +496,19 @@ function processCommand(val) {
     if (!val.trim()) return;
     let successCount = 0;
 
-    val.split('/').forEach(cmd => {
+    val.split('/').filter(c => c.trim()).forEach(cmd => {
         let parts = cmd.split('*');
         let targetName = parts[0].trim();
         if (!targetName) return;
 
-        let qty = parts.length > 1 ? parseInt(parts[1]) || 1 : 1;
+        // [오류] parseInt 기수(10진수) 추가
+        let qtyRaw = parts.length > 1 ? parseInt(parts[1], 10) : 1;
+        let qty = (isNaN(qtyRaw) || qtyRaw < 1) ? 1 : qtyRaw;
 
         const match = findUnitFlexible(targetName);
         if (match) {
             let newQty = (activeUnits.get(match.id) || 0) + qty;
-            newQty = isOneTime(match) ? 1 : Math.min(newQty, 16);
+            newQty = isOneTime(match) ? 1 : Math.min(newQty, MAX_UNIT_CAPACITY);
             activeUnits.set(match.id, newQty);
             successCount++;
         }
@@ -458,13 +516,13 @@ function processCommand(val) {
 
     if (successCount > 0) {
         debouncedUpdateAllPanels();
-        showToast(`<span class="t-icon">⚡</span> ${successCount}건 커맨드 등록 완료`);
+        showToast(`<span class="t-icon" aria-hidden="true">⚡</span> ${successCount}건 커맨드 등록 완료`);
         const inputEl = getEl('unitSearchInput');
         if (inputEl) inputEl.value = '';
         getEl('searchResults')?.classList.remove('active');
         if (_currentViewMode === 'deduct') switchLayout('codex');
     } else {
-        showToast(`<span class="t-icon">⚠</span> 유효한 유닛을 찾을 수 없습니다.`, true);
+        showToast(`<span class="t-icon" aria-hidden="true">⚠</span> 유효한 유닛을 찾을 수 없습니다.`, true);
     }
 }
 
@@ -472,29 +530,52 @@ function showToast(msg, isError = false) {
     const container = getEl('toastContainer');
     if (!container) return;
 
+    if (container.children.length >= 4) {
+        const first = container.firstChild;
+        first.classList.add('hiding');
+        // [오류] 토스트 생명주기 싱크 (350ms)
+        setTimeout(() => { if (first.parentNode) first.remove(); }, 350);
+    }
+
     const t = document.createElement('div');
     t.className = 'toast' + (isError ? ' error' : '');
     t.innerHTML = msg;
     container.appendChild(t);
-    setTimeout(() => t.remove(), 2100);
+    setTimeout(() => {
+        t.classList.add('hiding');
+        setTimeout(() => { if (t.parentNode) t.remove(); }, 350);
+    }, 2100);
 }
 
 window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+        if (getEl('noticeModal')?.style.display === 'flex') {
+            closeNoticeModal();
+            return;
+        }
+
         hideRecipeTooltip();
         const layout = getEl('mainLayout');
         if (layout?.classList.contains('view-jewel')) closeJewelPanel();
 
-        closeNoticeModal();
+        const sr = getEl('searchResults');
+        if (sr && sr.classList.contains('active')) {
+            sr.classList.remove('active');
+            const searchEl = getEl('unitSearchInput');
+            if (searchEl) searchEl.value = '';
+        }
 
         const searchEl = getEl('unitSearchInput');
         if (document.activeElement === searchEl) {
-            searchEl.value = '';
-            getEl('searchResults')?.classList.remove('active');
             searchEl.blur();
         }
     }
 });
+
+window.addEventListener('scroll', () => {
+    getEl('searchResults')?.classList.remove('active');
+}, { passive: true });
+window.addEventListener('orientationchange', hideRecipeTooltip);
 
 document.addEventListener('click', (e) => {
     if (_currentHighlight && !e.target.closest('.deduct-slot') && !e.target.closest('.d-reason-tag') && !e.target.closest('#recipeTooltip')) {
@@ -505,14 +586,29 @@ document.addEventListener('click', (e) => {
     }
 });
 
+let _previousFocus = null;
 window.openNoticeModal = function() {
+    _previousFocus = document.activeElement;
     const modal = getEl('noticeModal');
-    if(modal) modal.style.display = 'flex';
+    if(modal) {
+        modal.style.display = 'flex';
+        modal.focus();
+        modal.addEventListener('keydown', trapModalFocus);
+    }
 };
+
 window.closeNoticeModal = function() {
     const modal = getEl('noticeModal');
-    if(modal) modal.style.display = 'none';
+    if(modal) {
+        modal.style.display = 'none';
+        modal.removeEventListener('keydown', trapModalFocus);
+    }
+    if(_previousFocus) _previousFocus.focus();
 };
+
+function trapModalFocus(e) {
+    if (e.key === 'Escape') closeNoticeModal();
+}
 
 let _guideStepIdx = 0;
 let _resizeTimer = null;
@@ -655,6 +751,11 @@ window.startGuideTour = function() {
 window.endGuideTour = function() {
     clearTimeout(_autoGuideTimer);
     clearTimeout(_autoActionTimer);
+    // [개선] 가이드 투어 리사이즈 이벤트 누수 방어
+    clearTimeout(_resizeTimer);
+    
+    _autoGuideTimer = null;
+    _autoActionTimer = null;
 
     getEl('guideBlocker').style.display = 'none';
     getEl('guideHighlight').style.display = 'none';
@@ -820,36 +921,57 @@ function handleGuideResize() {
 }
 
 let repeatTimer = null, repeatDelayTimer = null, _lastInteractionTime = 0;
+let _currentAccelInterval = 80;
+let _touchHoldCount = 0;
 
 function startSmartChange(id, delta, type, event) {
-    if (event) {
-        if (event.type === 'touchstart') _lastInteractionTime = Date.now();
-        else if (event.type === 'mousedown' && Date.now() - _lastInteractionTime < 300) return;
-        event.preventDefault();
-        event.stopPropagation();
+    if (event && typeof event === 'object' && event.cancelable) {
+        if (event.type === 'touchstart' || event.type === 'pointerdown') {
+            _lastInteractionTime = Date.now();
+        } else if (event.type === 'mousedown') {
+            if (Date.now() - _lastInteractionTime < 300) return;
+            event.preventDefault();
+            if (event.stopPropagation) event.stopPropagation();
+        }
     }
     stopSmartChange();
     triggerHaptic();
+    _touchHoldCount = 0;
 
-    let finalDelta = delta * (event?.shiftKey ? 5 : 1);
     const action = () => {
+        _touchHoldCount++;
+        let accelDelta = delta * (event?.shiftKey ? 5 : (Math.floor(_touchHoldCount / 6) + 1));
+        
         let current = activeUnits.get(id) || 0;
-        if (current === 0 && finalDelta > 0) toggleUnitSelection(id, finalDelta);
-        else setUnitQty(id, current + finalDelta);
+        if (current === 0 && accelDelta > 0) toggleUnitSelection(id, accelDelta);
+        else setUnitQty(id, current + accelDelta);
     };
 
     action();
-    repeatDelayTimer = setTimeout(() => {
-        repeatTimer = setInterval(() => { triggerHaptic(); action(); }, 80);
-    }, 400);
+    _currentAccelInterval = 80;
+
+    const loop = () => {
+        triggerHaptic();
+        action();
+        _currentAccelInterval = Math.max(20, _currentAccelInterval - 5);
+        repeatTimer = setTimeout(loop, _currentAccelInterval);
+    };
+
+    repeatDelayTimer = setTimeout(loop, 400);
 }
 
 function stopSmartChange() {
-    clearTimeout(repeatDelayTimer); clearInterval(repeatTimer);
+    clearTimeout(repeatDelayTimer);
+    clearTimeout(repeatTimer);
+    _touchHoldCount = 0;
 }
-document.addEventListener('mouseup', stopSmartChange);
+document.addEventListener('pointerup', stopSmartChange);
+document.addEventListener('pointercancel', stopSmartChange);
 document.addEventListener('touchend', stopSmartChange);
+document.addEventListener('touchcancel', stopSmartChange);
+document.addEventListener('mouseup', stopSmartChange);
 window.addEventListener('mouseleave', stopSmartChange);
+window.addEventListener('contextmenu', stopSmartChange);
 
 function showRecipeTooltip(id, event, isDeduction = false) {
     if (event) event.stopPropagation();
@@ -872,16 +994,25 @@ function showRecipeTooltip(id, event, isDeduction = false) {
         </div>
         <div class="tooltip-body">${formatRecipeTooltip(u, multi)}</div>
         <div class="tooltip-footer">화면을 터치하거나 외부 클릭 시 닫힙니다.</div>`;
+
+    const viewWidth = document.documentElement.clientWidth;
+    tt.style.maxWidth = (viewWidth - 20) + "px";
     tt.classList.add('active');
 
-    let x = event.pageX || event.touches?.[0]?.pageX || window.innerWidth/2;
-    let y = event.pageY || event.touches?.[0]?.pageY || window.innerHeight/2;
+    let x = (event?.clientX || event?.touches?.[0]?.clientX || viewWidth/2) + window.scrollX;
+    let y = (event?.clientY || event?.touches?.[0]?.clientY || window.innerHeight/2) + window.scrollY;
 
-    if (x + 280 > window.innerWidth) x = window.innerWidth - 290;
-    if (y + 150 > window.innerHeight) y = window.innerHeight - 160;
+    const ttRect = tt.getBoundingClientRect();
+    const ttWidth = ttRect.width || 300;
+    const ttHeight = ttRect.height || 150;
 
-    tt.style.left = `${Math.max(10, x + 15)}px`;
-    tt.style.top = `${Math.max(10, y + 15)}px`;
+    if (x + ttWidth > viewWidth + window.scrollX - 10) x = viewWidth + window.scrollX - ttWidth - 15;
+    if (y + ttHeight > window.innerHeight + window.scrollY - 10) y = window.innerHeight + window.scrollY - ttHeight - 15;
+    if (x < window.scrollX + 10) x = window.scrollX + 10;
+    if (y < window.scrollY + 10) y = window.scrollY + 10;
+
+    tt.style.left = `${x}px`;
+    tt.style.top = `${y}px`;
 }
 
 function hideRecipeTooltip() {
@@ -897,18 +1028,22 @@ function toggleUnitSelection(id, forceQty) {
 }
 
 function setUnitQty(id, val) {
-    let q = parseInt(val);
+    let q = parseInt(val, 10);
     if (q === 0 || isNaN(q) || q < 1) {
         activeUnits.delete(id);
     } else {
         const u = unitMap.get(id);
         if (!u || isOneTime(u)) return;
-        activeUnits.set(id, Math.min(q, 16));
+        activeUnits.set(id, Math.min(q, MAX_UNIT_CAPACITY));
     }
     debouncedUpdateAllPanels();
 }
 
 function getDependencies(uid, deps = new Set()) {
+    if (depCache.has(uid)) {
+        depCache.get(uid).forEach(d => deps.add(d));
+        return deps;
+    }
     if (deps.has(uid)) return deps;
     deps.add(uid);
 
@@ -916,6 +1051,7 @@ function getDependencies(uid, deps = new Set()) {
     u?.parsedRecipe?.forEach(child => { if (child.id) getDependencies(child.id, deps); });
     u?.parsedCost?.forEach(pc => { if (['갓오타', '메시브'].includes(pc.key)) deps.add(pc.key); });
 
+    depCache.set(uid, new Set(deps));
     return deps;
 }
 
@@ -940,6 +1076,7 @@ function toggleHighlight(uid, event) {
     });
 }
 
+// [최적화] `calculateDeductedRequirements` 큐 서치 로직 O(1) 변경
 function calculateDeductedRequirements() {
     let reqMap = new Map(), baseMap = new Map(), reasonMap = new Map();
     let specialReq = { 갓오타: 0, 메시브: 0 }, baseSpecialReq = { 갓오타: 0, 메시브: 0 };
@@ -952,11 +1089,20 @@ function calculateDeductedRequirements() {
         rootTracking.set(uid, new Map([[uid, { id: uid, text: '목표 유닛', cond: '' }]]));
     });
 
-    const processQueueLoop = (queue, deficitsMap, updateRoots = false) => {
+    const processQueueLoop = (queueArr, deficitsMap, updateRoots = false) => {
+        let queue = [...queueArr];
+        let queueSet = new Set(queue);
         let guard = 0;
-        while (queue.length > 0 && guard++ < 1000) {
+
+        while (queue.length > 0) {
+            if (guard++ >= MAX_LOOP_QUEUE) {
+                console.warn('calculateDeductedRequirements: 데이터 의존성 무한루프 방지 발동.');
+                break;
+            }
             let currentLevel = [...queue];
             queue = [];
+            queueSet.clear();
+
             currentLevel.forEach(uid => {
                 const u = unitMap.get(uid);
                 let needed = deficitsMap.get(uid) || 0;
@@ -971,7 +1117,10 @@ function calculateDeductedRequirements() {
                     let toolNeeded = needed > 0 ? 1 : 0;
                     if (toolNeeded > (deficitsMap.get('낮까마귀') || 0)) {
                         deficitsMap.set('낮까마귀', toolNeeded);
-                        if (!queue.includes('낮까마귀')) queue.push('낮까마귀');
+                        if (!queueSet.has('낮까마귀')) {
+                            queue.push('낮까마귀');
+                            queueSet.add('낮까마귀');
+                        }
                     }
                 }
 
@@ -993,7 +1142,10 @@ function calculateDeductedRequirements() {
 
                         if (!isTool) {
                             deficitsMap.set(child.id, (deficitsMap.get(child.id) || 0) + needed * child.qty);
-                            if (!queue.includes(child.id)) queue.push(child.id);
+                            if (!queueSet.has(child.id)) {
+                                queue.push(child.id);
+                                queueSet.add(child.id);
+                            }
                         }
                     });
                 }
@@ -1042,13 +1194,21 @@ function attemptAutoMerge() {
 
     do {
         merged = false;
+        if (loopCount++ >= MAX_LOOP_MERGE) {
+            console.warn('attemptAutoMerge: 재료 병합 무한루프 방지 발동.');
+            break;
+        }
+
         let { reqMap } = calculateDeductedRequirements();
 
         unitMap.forEach((u, uid) => {
             if (activeUnits.has(uid) || !u.parsedRecipe?.length || (reqMap.get(uid) || 0) <= 0) return;
 
-            let maxCraftable = 999;
+            let maxCraftable = Number.MAX_SAFE_INTEGER;
+            let hasValidRecipe = false;
+
             let checkCraftable = (id, qty, isTool) => {
+                hasValidRecipe = true;
                 let comp = completedUnits.get(id) || 0;
                 if (isTool) { if (comp < 1) maxCraftable = 0; }
                 else {
@@ -1059,6 +1219,8 @@ function attemptAutoMerge() {
 
             u.parsedRecipe.forEach(child => child.id && checkCraftable(child.id, child.qty, uid === '로리스완' && child.id === '낮까마귀'));
             u.parsedCost?.forEach(pc => ['갓오타', '메시브'].includes(pc.key) && checkCraftable(pc.key, pc.qty, false));
+
+            if (!hasValidRecipe) maxCraftable = 0;
 
             let mergeAmount = Math.min(maxCraftable, reqMap.get(uid));
             if (mergeAmount > 0) {
@@ -1076,10 +1238,12 @@ function attemptAutoMerge() {
                 merged = true;
             }
         });
-    } while (merged && loopCount++ < 30);
+    } while (merged);
 }
 
-function consumeCompletedRecipe(uid, multiplier) {
+function consumeCompletedRecipe(uid, multiplier, visited = new Set()) {
+    if (visited.has(uid)) return;
+    visited.add(uid);
     const u = unitMap.get(uid);
     if (!u) return;
 
@@ -1090,7 +1254,7 @@ function consumeCompletedRecipe(uid, multiplier) {
             let consume = Math.min(needed, comp);
 
             if (consume > 0) completedUnits.set(child.id, comp - consume);
-            if (needed - consume > 0) consumeCompletedRecipe(child.id, needed - consume);
+            if (needed - consume > 0) consumeCompletedRecipe(child.id, needed - consume, visited);
         }
     });
 
@@ -1103,7 +1267,11 @@ function consumeCompletedRecipe(uid, multiplier) {
     });
 }
 
+let _completeLock = new Set();
 window.completeUnit = function(uid) {
+    if (_completeLock.has(uid)) return;
+    _completeLock.add(uid);
+
     const reqVal = parseInt(getEl(`d-req-${uid}`)?.innerText || 0);
     if (reqVal > 0) {
         consumeCompletedRecipe(uid, reqVal);
@@ -1113,9 +1281,10 @@ window.completeUnit = function(uid) {
         triggerHaptic();
         debouncedUpdateAllPanels();
     }
+
+    setTimeout(() => { _completeLock.delete(uid); }, 250);
 }
 
-// [개선] 로스터 썸네일 코드 완전 제거
 function renderActiveRoster() {
     const roster = getEl('activeRoster');
     if (!roster) return;
@@ -1135,6 +1304,7 @@ function renderActiveRoster() {
     roster.innerHTML = html || '<span style="color:var(--text-muted); font-size:0.85rem;">선택된 유닛 대기열 (검색 후 엔터)</span>';
 }
 
+// [개선] `debouncedUpdateAllPanels` 타이머 이중 래핑 로직 단일화
 let updateTimer = null;
 function debouncedUpdateAllPanels() {
     if (updateTimer) cancelAnimationFrame(updateTimer);
@@ -1200,6 +1370,7 @@ function updateDeductionBoard() {
 
     const { reqMap, baseMap, reasonMap, specialReq, baseSpecialReq, specialReason } = calculateDeductedRequirements();
     const directMaterials = new Set();
+    const fragmentMap = new Map();
 
     activeUnits.forEach((_, uid) => unitMap.get(uid)?.parsedRecipe?.forEach(pr => pr.id && directMaterials.add(pr.id)));
 
@@ -1260,8 +1431,11 @@ function updateDeductionBoard() {
                 if (craftWrap) craftWrap.innerHTML = `<span style="font-size:0.85rem; color:var(--g-dim); font-weight:bold; padding-right:4px;">✨ 완료됨</span>`;
             }
 
-            const targetParent = (directMaterials.has(id) || isTarget) ? getEl('grid-special') : getEl(wrapEl.dataset.origParent);
-            if (targetParent && wrapEl.parentElement !== targetParent) targetParent.appendChild(wrapEl);
+            const targetParent = (directMaterials.has(id) || isTarget) ? getEl('grid-special') : (getEl(wrapEl.dataset.origParent) || getEl('grid-hidden'));
+            if (targetParent && wrapEl.parentElement !== targetParent) {
+                if (!fragmentMap.has(targetParent)) fragmentMap.set(targetParent, document.createDocumentFragment());
+                fragmentMap.get(targetParent).appendChild(wrapEl);
+            }
         } else {
             wrapEl.style.display = 'none';
             wrapEl.classList.remove('is-visible');
@@ -1277,6 +1451,8 @@ function updateDeductionBoard() {
             updateSlot(u.id, reqMap.get(u.id) || 0, baseMap.get(u.id) || 0, reasonMap.get(u.id));
         }
     });
+
+    fragmentMap.forEach((frag, parent) => parent.appendChild(frag));
 
     let hasVisible = false;
     document.querySelectorAll('.deduct-group').forEach(group => {
@@ -1297,8 +1473,8 @@ function renderTabs() {
     const tabs = getEl('codexTabs');
     if (tabs) {
         tabs.innerHTML = TAB_CATEGORIES.map((cat, idx) => `
-            <button id="tab-btn-${idx}" class="tab-btn" onclick="selectTab(${idx})">
-                <span class="tab-sym" style="font-size:1.1rem; padding:2px 5px; border-radius:3px; background:rgba(0,0,0,0.3); border:1px solid var(--border-light); color:var(--text-sub);">${cat.sym}</span>
+            <button id="tab-btn-${idx}" role="tab" aria-selected="${idx === _activeTabIdx}" class="tab-btn" onclick="selectTab(${idx})">
+                <span class="tab-sym" aria-hidden="true" style="font-size:1.1rem; padding:2px 5px; border-radius:3px; background:rgba(0,0,0,0.3); border:1px solid var(--border-light); color:var(--text-sub);">${cat.sym}</span>
                 <span>${cat.name}</span>
             </button>`).join('');
         updateTabsUI();
@@ -1306,29 +1482,28 @@ function renderTabs() {
 }
 
 function updateTabsUI() {
+    const activeCategories = new Set();
+    activeUnits.forEach((_, id) => {
+        const u = unitMap.get(id);
+        if (u && u.category) activeCategories.add(u.category);
+    });
+
     TAB_CATEGORIES.forEach((cat, idx) => {
-        let hasSelected = Array.from(activeUnits.keys()).some(id => unitMap.get(id)?.category === cat.key);
+        let hasSelected = activeCategories.has(cat.key);
         const btn = getEl(`tab-btn-${idx}`);
         if (!btn) return;
 
         btn.classList.toggle('active', idx === _activeTabIdx);
+        btn.setAttribute('aria-selected', idx === _activeTabIdx ? 'true' : 'false');
         btn.classList.toggle('has-active', hasSelected);
-
-        const sym = btn.querySelector('.tab-sym');
-        if (sym) {
-            sym.style.color = hasSelected ? 'var(--g)' : 'var(--text-sub)';
-            sym.style.borderColor = hasSelected ? 'var(--g-border)' : 'var(--border-light)';
-            sym.style.boxShadow = hasSelected ? '0 0 5px var(--g-faint)' : 'none';
-            sym.style.textShadow = hasSelected ? '0 0 5px var(--g-glow)' : 'none';
-        }
     });
 }
 
 function formatRecipe(item, multiplier = 1, showSep = false) {
     if (!item.recipe || IGNORE_PARSE_RECIPES.includes(item.recipe)) return `<div style="color:var(--text-muted);font-size:0.85rem;">정보 없음</div>`;
 
-    let partsHtml = item.recipe.split(/\+(?![^()]*\))/).map((part, i, arr) => {
-        const m = part.trim().match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
+    let partsHtml = splitRecipe(item.recipe).map((part, i, arr) => {
+        const m = part.match(/^([^(\[]+)(?:\(([^)]+)\))?(?:\[(\d+)\])?/);
         let html = '';
         if (m) {
             const raw = m[1].trim(), u = unitMap.get(getUnitId(raw)), color = u ? gradeColorsRaw[u.grade] : "var(--text)";
@@ -1354,7 +1529,6 @@ function selectTab(idx) {
 
 let _isTabContentInitialized = false;
 
-// [개선] 탭 콘텐츠 내 썸네일 노드 (uc-thumb-box) 완전 제거
 function initAllTabContents() {
     const tc = getEl('tabContent');
     if (!tc) return;
@@ -1364,23 +1538,22 @@ function initAllTabContents() {
         let items = Array.from(unitMap.values()).filter(u => isTargetGrade(u) && u.category === cat.key);
 
         items.sort((a, b) => {
-            const specialOrders = { "아몬": 100, "어두운목소리": 99, "나루드": 97, "유물": 96 };
-            if (specialOrders[a.name] || specialOrders[b.name]) return (specialOrders[b.name] || 0) - (specialOrders[a.name] || 0);
+            if (CONFIG_SORT_ORDER[a.name] || CONFIG_SORT_ORDER[b.name]) return (CONFIG_SORT_ORDER[b.name] || 0) - (CONFIG_SORT_ORDER[a.name] || 0);
             if (isOneTime(a) !== isOneTime(b)) return isOneTime(a) ? -1 : 1;
             if (a.grade !== b.grade) return getGradeIndex(b.grade) - getGradeIndex(a.grade);
             return calculateTotalCostScore(b) - calculateTotalCostScore(a);
         });
 
-        html += `<div id="cat-group-${cat.key}" class="cat-group" style="display:none; flex-direction:column; gap:4px;">`;
+        html += `<div id="cat-group-${cat.key}" class="cat-group" role="tabpanel" style="display:none; flex-direction:column; gap:4px;">`;
         if (items.length === 0) {
             html += `<div style="text-align:center; padding:30px; color:var(--text-sub); font-weight:bold; font-size:1.05rem;">해당 분류에 유닛이 없습니다.</div>`;
         } else {
             html += items.map((item, idx) => {
                 const stepper = isOneTime(item) ? '' : `
                     <div class="smart-stepper active-stepper">
-                        <button id="btn-minus-${item.id}" onmousedown="startSmartChange('${item.id}', -1, 'active', event)" ontouchstart="startSmartChange('${item.id}', -1, 'active', event)">-</button>
-                        <div class="ss-val" id="val-${item.id}">-</div>
-                        <button id="btn-plus-${item.id}" onmousedown="startSmartChange('${item.id}', 1, 'active', event)" ontouchstart="startSmartChange('${item.id}', 1, 'active', event)">+</button>
+                        <button id="btn-minus-${item.id}" aria-label="${item.name} 감소" onmousedown="startSmartChange('${item.id}', -1, 'active', event)" ontouchstart="startSmartChange('${item.id}', -1, 'active', event)">-</button>
+                        <div class="ss-val" id="val-unit-${item.id}" aria-live="polite">-</div>
+                        <button id="btn-plus-${item.id}" aria-label="${item.name} 추가" onmousedown="startSmartChange('${item.id}', 1, 'active', event)" ontouchstart="startSmartChange('${item.id}', 1, 'active', event)">+</button>
                     </div>`;
 
                 return `
@@ -1424,7 +1597,7 @@ function updateTabContentUI() {
         card.classList.toggle('active', isActive);
 
         if (!isOneTime(item)) {
-            const valEl = getEl(`val-${item.id}`);
+            const valEl = getEl(`val-unit-${item.id}`);
             if (valEl) valEl.innerText = isActive ? activeUnits.get(item.id) : '-';
             ['minus', 'plus'].forEach(t => {
                 const btn = getEl(`btn-${t}-${item.id}`);
@@ -1449,9 +1622,9 @@ function renderDashboardAtoms() {
         </div>
         ${['coral|#FF6B6B|코랄', 'aiur|var(--grade-rare)|아이어', 'zerus|var(--grade-legend)|제루스'].map(d => {
             let [id, color, name] = d.split('|');
-            return `<div class="cost-slot" id="slot-${id}">
-                        <div class="cost-val" id="val-${id}" style="color:${color};">0</div>
-                        <div class="cost-sub" id="sub-${id}" style="font-size:0.8rem; margin:-2px 0 2px; height:14px; font-family:var(--font-mono); line-height:1; display:flex; gap:4px; align-items:center; justify-content:center;"></div>
+            return `<div class="cost-slot" id="slot-essence-${id}">
+                        <div class="cost-val" id="val-essence-${id}" style="color:${color};">0</div>
+                        <div class="cost-sub" id="sub-essence-${id}" style="font-size:0.8rem; margin:-2px 0 2px; height:14px; font-family:var(--font-mono); line-height:1; display:flex; gap:4px; align-items:center; justify-content:center;"></div>
                         <div class="cost-name">${name}</div>
                     </div>`;
         }).join('')}
@@ -1462,23 +1635,30 @@ function renderDashboardAtoms() {
             </div>`).join('')}`;
 }
 
-// [개선] 쥬얼 도감 썸네일은 유지하고 loading="lazy" 적용
 function renderJewelMiniGrid() {
     const g = getEl('jewelMiniGrid');
-    if (!g || g.dataset.rendered || typeof JEWEL_DATABASE === 'undefined') return;
+    if (!g || g.dataset.rendered) return;
+
+    if (typeof JEWEL_DATABASE === 'undefined' || !Array.isArray(JEWEL_DATABASE)) {
+        g.innerHTML = `<div style="text-align:center; width:100%; grid-column:1/-1; padding:20px; color:var(--text-sub);">쥬얼 데이터가 로드되지 않았습니다.</div>`;
+        return;
+    }
 
     g.dataset.rendered = '1';
     g.innerHTML = JEWEL_DATABASE.map(arr => {
         const kr = arr[0], c = (typeof JEWEL_COLORS !== 'undefined' ? JEWEL_COLORS[kr] : null) || "#ffffff";
         return `
         <div class="jwm-item" style="--jw-color:${c};--jw-color-a:${c}22;">
-            <div class="jwm-img-wrap"><img src="https://sldbox.github.io/site/image/jw/${arr[3] || kr}.png" loading="lazy" onerror="this.style.opacity='0'"></div>
+            <div class="jwm-img-wrap"><img src="https://sldbox.github.io/site/image/jw/${arr[3] || kr}.png" alt="${kr} 이미지" loading="lazy" onerror="this.style.opacity='0'"></div>
             <div class="jwm-name">${kr}</div>
             <div class="jwm-stat legend"><span>${arr[1]}</span></div>
             ${arr[2]?.trim() ? `<div class="jwm-stat mythic"><span>✦ ${arr[2]}</span></div>` : ''}
         </div>`;
     }).join('');
 }
+
+// [오류] 터치/스와이프 다중 트리거 락킹 (Lock)
+let _isSwiping = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -1499,10 +1679,13 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 const timer = setInterval(() => {
                     progress += step + (Math.random() * 2.5);
+                    // [오류] 인트로 시네마틱 퍼센트 초과 방어
+                    let curProgress = Math.min(100, Math.floor(progress));
+                    
                     if (progress >= 100) {
-                        progress = 100;
                         clearInterval(timer);
                         counterEl.innerText = "100%";
+                        counterEl.setAttribute('aria-valuenow', '100');
                         fillEl.style.width = "100%";
 
                         setTimeout(() => {
@@ -1513,14 +1696,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             }, 400);
                         }, 500);
                     } else {
-                        counterEl.innerText = Math.floor(progress) + "%";
-                        fillEl.style.width = progress + "%";
+                        counterEl.innerText = curProgress + "%";
+                        counterEl.setAttribute('aria-valuenow', curProgress);
+                        fillEl.style.width = curProgress + "%";
                     }
                 }, interval);
             }, 600);
         }
 
-        if (typeof UNIT_DATABASE === 'undefined') { console.error("[오류] 데이터베이스 로드 실패"); return; }
+        if (typeof UNIT_DATABASE === 'undefined' || !Array.isArray(UNIT_DATABASE)) {
+            console.error("[오류] 데이터베이스 배열 로드 실패");
+            return;
+        }
 
         UNIT_DATABASE.forEach(kArr => unitMap.set(clean(kArr[0]), {
             id: clean(kArr[0]), name: kArr[0], grade: kArr[1] || "매직",
@@ -1534,11 +1721,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const swipeArea = getEl('tabContent');
         if (swipeArea) {
-            let startX = 0;
-            swipeArea.addEventListener('touchstart', e => startX = e.changedTouches[0].screenX, { passive: true });
+            let startX = 0, startY = 0;
+            swipeArea.addEventListener('touchstart', e => { 
+                startX = e.changedTouches[0].screenX; 
+                startY = e.changedTouches[0].screenY; 
+            }, { passive: true });
+
             swipeArea.addEventListener('touchend', e => {
-                const diff = e.changedTouches[0].screenX - startX;
-                if (Math.abs(diff) > 70) selectTab(_activeTabIdx + (diff > 0 ? ( _activeTabIdx > 0 ? -1 : 0) : ( _activeTabIdx < TAB_CATEGORIES.length - 1 ? 1 : 0)));
+                if (_isSwiping) return;
+                
+                const diffX = e.changedTouches[0].screenX - startX;
+                const diffY = e.changedTouches[0].screenY - startY;
+                
+                if (Math.abs(diffX) > 70 && Math.abs(diffY) < 50) {
+                    _isSwiping = true;
+                    if (diffX > 0 && _activeTabIdx > 0) {
+                        selectTab(_activeTabIdx - 1);
+                    } else if (diffX < 0 && _activeTabIdx < TAB_CATEGORIES.length - 1) {
+                        selectTab(_activeTabIdx + 1);
+                    }
+                    setTimeout(() => { _isSwiping = false; }, 300);
+                }
             }, { passive: true });
         }
     } catch (err) { console.error("[오류] 넥서스 초기화 중 에러 발생:", err); }
