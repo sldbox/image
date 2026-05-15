@@ -38,11 +38,10 @@ body{
 }
 body:has(.main-layout.view-jewel) { overflow: hidden !important; }
 
-html, body, .panel-body, .search-results, .codex-tabs, .recipe-tooltip, #deductionBoard { scrollbar-width:thin; scrollbar-color:var(--text-muted) rgba(0,0,0,0.3); }
+html, body, .panel-body, .codex-tabs, .recipe-tooltip, #deductionBoard { scrollbar-width:thin; scrollbar-color:var(--text-muted) rgba(0,0,0,0.3); }
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:rgba(0,0,0,0.3)}
 ::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:6px;border:1px solid var(--void);}
-/* [최적화] 스크롤바 hover 그림자 최소화 */
 @media(hover:hover) and (pointer:fine){::-webkit-scrollbar-thumb:hover{background:var(--g);}}
 
 .main-layout.view-jewel .col-center { display: none !important; }
@@ -65,7 +64,6 @@ html, body, .panel-body, .search-results, .codex-tabs, .recipe-tooltip, #deducti
 .loader-bar { width: 100%; height: 2px; background: rgba(255,255,255,0.1); margin-top: 15px; position: relative; overflow: hidden; opacity: 0; animation: introFadeIn 0.5s 0.6s forwards; }
 .loader-fill { height: 100%; background: var(--g); width: 0%; box-shadow: 0 0 15px var(--g); transition: width 0.05s linear; }
 
-/* [개선] Grid Transition 호환성 완화 (Jank 방지) */
 @media(min-width:1200px) and (orientation:landscape){
     html,body{overflow:hidden;height:100%;margin:0;padding:0;}
     .main-layout{ display:grid; grid-template-columns:var(--col-codex) var(--col-dash) var(--col-deduct) var(--col-jewel) var(--col-gen); grid-template-rows:minmax(0,1fr); gap:16px;padding:16px 24px;height:100vh;overflow:hidden; max-width:100%;margin:0 auto;width:100%; transition:max-width 0.5s cubic-bezier(0.4,0,0.2,1); }
@@ -109,6 +107,7 @@ html, body, .panel-body, .search-results, .codex-tabs, .recipe-tooltip, #deducti
 .hud-panel .corner-tl { position: absolute; top: 0; left: 0; width: 20px; height: 20px; border-top: 2px solid var(--g); border-left: 2px solid var(--g); border-top-left-radius: var(--radius-lg); pointer-events: none; z-index: 15; box-shadow: inset 2px 2px 10px rgba(0,229,255,0.2), -2px -2px 10px var(--g-glow); opacity: 0.8; }
 .hud-panel .corner-br { position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; border-bottom: 2px solid var(--g); border-right: 2px solid var(--g); border-bottom-right-radius: var(--radius-lg); pointer-events: none; z-index: 15; box-shadow: inset -2px -2px 10px rgba(0,229,255,0.2), 2px 2px 10px var(--g-glow); opacity: 0.8; }
 .panel-header{ padding:clamp(6px,1.2vh,10px) 20px; min-height:clamp(48px,6.5vh,56px); align-items:stretch; background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent); border-bottom:1px solid rgba(0,0,0,0.8); display:flex;gap:12px;flex-shrink:0;position:relative; border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg); box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+.panel-codex .panel-header { gap: 0 !important; }
 .header-scanline{ position:absolute;top:0;left:-100%;width:50%;height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent); animation:headerScan 4s cubic-bezier(0.4,0,0.2,1) infinite;pointer-events:none; }
 @keyframes headerScan{from{transform:translateX(0);}to{transform:translateX(600%);}}
 
@@ -123,18 +122,9 @@ html, body, .panel-body, .search-results, .codex-tabs, .recipe-tooltip, #deducti
 .search-wrap{position:relative;background:transparent;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);z-index:20;display:flex;flex-direction:column;gap:10px;}
 
 .search-input{ width:100%; background:rgba(0,0,0,0.6); border:1px solid var(--border-light); color:var(--text); border-radius:10px; font-family:var(--font-body); outline:none; font-size:16px; transition:all 0.3s cubic-bezier(0.4,0,0.2,1); box-shadow: inset 0 2px 8px rgba(0,0,0,0.8); }
-/* [접근성] Placeholder 색상 대비 개선 */
 .search-input::placeholder{color:#cbd5e1;font-weight:normal;opacity:0.8;}
 .search-input:focus{ border-color:var(--g); box-shadow:0 0 25px var(--g-faint), inset 0 2px 10px rgba(0,0,0,0.9), inset 0 0 0 1px rgba(0,229,255,0.2); background:rgba(5,10,18,0.9);color:#ffffff; }
 
-.search-results{ position:absolute;top:54px;left:0;right:0; background:linear-gradient(180deg, rgba(10,15,25,0.98) 0%, rgba(5,8,14,0.98) 100%); border:1px solid var(--g-border);border-radius:12px; max-height:400px;overflow-y:auto; box-shadow:0 25px 60px rgba(0,0,0,0.95), 0 0 30px rgba(0,229,255,0.1); display:none;z-index:30; }
-.search-results.active{display:block;animation:slideDown 0.2s cubic-bezier(0.2,0.8,0.2,1);}
-@keyframes slideDown{from{opacity:0;transform:translateY(-10px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
-.sr-item{padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:0.2s;}
-.sr-item:last-child{border-bottom:none;}
-.sr-item:hover{background:linear-gradient(90deg, var(--g-faint), transparent); padding-left:26px; border-left: 2px solid var(--g);}
-.sr-name{font-weight:bold;font-size:1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.8);}
-.sr-cmd{font-family:var(--font-mono);font-size:0.78rem;color:var(--g-dim);}
 .active-roster{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:34px;width:100%;}
 .roster-tag{ background:linear-gradient(145deg, rgba(20,30,40,0.9), rgba(5,10,15,0.95)); border:1px solid; border-radius:24px; padding:6px 14px 6px 12px; display:inline-flex; align-items:center; gap:8px; font-size:0.88rem; cursor:pointer; transition:all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1); }
 .roster-tag:hover{filter:brightness(1.3); transform:translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.8);}
@@ -161,7 +151,6 @@ html, body, .panel-body, .search-results, .codex-tabs, .recipe-tooltip, #deducti
 .tab-btn.has-active{color:#fff;}
 .codex-tabs .tab-btn.has-active .tab-sym{ color:var(--g); border-color:var(--g-border); box-shadow:0 0 8px var(--g-faint), inset 0 0 5px rgba(0,229,255,0.2); }
 
-/* [최적화] will-change 속성 과용 방지 */
 .unit-card{ background:var(--card-bg); border:1px solid rgba(255,255,255,0.05); border-radius:12px; margin-bottom:8px;cursor:pointer; transition:transform 0.3s cubic-bezier(0.2,0.8,0.2,1),box-shadow 0.3s,background 0.3s,border-color 0.3s; display:flex;flex-direction:column;overflow:hidden;position:relative; box-shadow: 0 4px 15px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03); }
 .unit-card::after { content:""; position:absolute; top:0; left:-100%; width:50%; height:100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); transform: skewX(-20deg); pointer-events: none; z-index: 5; }
 .unit-card::before{ content:"";position:absolute;top:0;left:0;bottom:0;width:4px; background:var(--uc-grade-color, transparent); opacity:0.7;transition:opacity 0.3s;z-index:1; box-shadow: 2px 0 10px var(--uc-grade-color, transparent); }
@@ -173,7 +162,7 @@ html, body, .panel-body, .search-results, .codex-tabs, .recipe-tooltip, #deducti
 .unit-card.active .uc-name-row { color: #fff; text-shadow: 0 0 12px var(--g-glow), 0 2px 4px rgba(0,0,0,0.8); }
 
 .uc-wrap{display:flex;align-items:center;gap:14px;width:100%;padding:10px 14px 10px 14px;position:relative;z-index:2;}
-.uc-identity{display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;min-width:max-content;}
+.uc-identity{display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;width:195px;}
 .uc-recipe-col{display:flex;align-items:center;justify-content:flex-start;flex:1;min-width:0;padding:0 4px;}
 .uc-grade{display:flex;align-items:center;gap:8px;}
 .uc-name-row{font-size:1.05rem;font-weight:900;white-space:nowrap;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,0.8);}
@@ -203,7 +192,6 @@ html, body, .panel-body, .search-results, .codex-tabs, .recipe-tooltip, #deducti
 .unit-card.active .smart-stepper .ss-val{ color:#fff;text-shadow:0 0 12px var(--g-glow), 0 2px 5px rgba(0,0,0,0.8); background:transparent; }
 .magic-grid{display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:minmax(0,1fr);gap:clamp(6px,1.5vh,12px);height:100%;flex:1;}
 
-/* [최적화] will-change 속성 과용 방지 */
 .cost-slot{ background: #040609; border:1px solid rgba(255,255,255,0.04);border-radius:12px; display:flex;flex-direction:column;align-items:center;justify-content:center; padding:clamp(4px,1vh,8px);width:100%;height:100%; transition:all 0.4s cubic-bezier(0.4,0,0.2,1); position:relative;overflow:hidden; box-shadow: inset 0 3px 15px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.04);min-height:0; }
 .cost-slot.active { will-change: transform, background, border-color; }
 .cost-slot::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g),transparent);opacity:0;transition:opacity 0.4s; box-shadow: 0 0 10px var(--g);}
@@ -329,7 +317,6 @@ html, body, .panel-body, .search-results, .codex-tabs, .recipe-tooltip, #deducti
 .contact-box .c-icon { margin-right: 8px; font-size: 1.1rem; }
 
 .guide-blocker { position: fixed; inset: 0; z-index: var(--z-guide); cursor: default; }
-/* [개선] 가이드 하이라이트 그림자 영역 확장 */
 .guide-highlight { position: absolute; border-radius: 8px; box-shadow: 0 0 0 100vmax rgba(0,0,0,0.75), inset 0 0 15px var(--g); border: 2px solid var(--g); z-index: var(--z-guide-highlight); pointer-events: none; transition: all 0.4s cubic-bezier(0.2,0.8,0.2,1); }
 .guide-click-catcher { position: absolute; z-index: var(--z-guide-catcher); cursor: pointer; border-radius: 8px; background: transparent; }
 .guide-tooltip { position: absolute; z-index: var(--z-guide-tt); background: linear-gradient(160deg, rgba(20,30,45,0.98), rgba(10,15,20,0.98)); border: 1px solid var(--g); border-radius: 12px; padding: 16px; width: max-content; max-width: 320px; box-shadow: 0 15px 40px rgba(0,0,0,0.9), 0 0 20px rgba(0,229,255,0.2); transition: all 0.4s cubic-bezier(0.2,0.8,0.2,1); opacity: 0; }
