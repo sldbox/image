@@ -1,3 +1,4 @@
+// app.js
 const unitMap = new Map(), activeUnits = new Map(), completedUnits = new Map(), depCache = new Map();
 const getEl = (id) => document.getElementById(id);
 const clean = (s) => s ? s.replace(/\s+/g, '').toLowerCase() : '';
@@ -55,14 +56,14 @@ function initializeCacheEngine() {
             u.cost.replace(/\//g, '+').split('+').forEach(p => {
                 const m = p.match(/(.+?)\[(\d+)\]/);
                 let cName = clean(m ? m[1].trim() : p.trim()), qty = m ? parseInt(m[2], 10) : 1;
-                let 입력 = 'atom', key = cName;
+                let type = 'atom', key = cName;
 
-                if (cName.includes('메시브') || cName.includes('디제스터')) { 입력 = 'special'; key = '메시브'; }
-                else if (cName.includes('갓오타') || cName.includes('갓오브타임')) { 입력 = 'special'; key = '갓오타'; }
+                if (cName.includes('메시브') || cName.includes('디제스터')) { type = 'special'; key = '메시브'; }
+                else if (cName.includes('갓오타') || cName.includes('갓오브타임')) { type = 'special'; key = '갓오타'; }
                 else if (['땅거미지뢰', '자동포탑', '잠복'].some(k => cName.includes(k))) key = ['땅거미지뢰', '자동포탑', '잠복'].find(k => k === cName ? k : cName.includes(k));
                 else key = ATOM_HASH[getUnitId(cName)] || getUnitId(cName);
 
-                u.parsedCost.push({ 입력, key, qty, name: u.name });
+                u.parsedCost.push({ type, key, qty, name: u.name });
             });
         }
         u.parsedRecipe = [];
@@ -92,8 +93,11 @@ function saveNexusState() {
     } catch(e) { console.warn("[오류] 데이터 저장 실패", e); }
 }
 
+// [개선/기획의도] 정수 계산 시 동일 재료의 중복 합산을 방지하기 위한 visited 활용 (정규 로직)
 function calcEssenceRecursiveFast(uid, counts, visited) {
-    if (visited.has(uid)) return; visited.add(uid);
+    if (visited.has(uid)) return; 
+    visited.add(uid);
+    
     const u = unitMap.get(uid); if (!u) return;
 
     if (["히든", "슈퍼히든"].includes(u.grade)) {
@@ -150,7 +154,7 @@ function updateMagicDashboard() {
 
     const applyToMap = (map, uid, multi) => {
         unitMap.get(uid)?.parsedCost?.forEach(pc => {
-            if (pc.입력 === 'special') map['갓오타/메시브'][['갓오타','메시브'].includes(pc.key)?pc.key:'갓오타'] += pc.qty * multi;
+            if (pc.type === 'special') map['갓오타/메시브'][['갓오타','메시브'].includes(pc.key)?pc.key:'갓오타'] += pc.qty * multi;
             else map[pc.key] = (map[pc.key] || 0) + pc.qty * multi;
         });
     };
@@ -245,8 +249,14 @@ function setupSearchEngine() {
 function findUnitFlexible(rawName) {
     let searchTarget = CLEAN_ALIAS_MAP[clean(rawName)] || clean(rawName), exactMatch = null, prefixMatch = null;
     if(!searchTarget) return null;
+    
     for (let [id, u] of unitMap) {
-        if (!["슈퍼히든", "히든", "레전드"].includes(u.grade) || ['데하카고치', '데하카의오른팔'].includes(id)) continue;
+        // [개선/기획의도] 레전드 미만 하위 등급 유닛 및 특수 유닛은 보드에 직접 추가하지 못하도록 검색 대상에서 명시적으로 제외
+        const isTargetGrade = ["슈퍼히든", "히든", "레전드"].includes(u.grade);
+        const isExcludedUnit = ['데하카고치', '데하카의오른팔'].includes(id);
+        
+        if (!isTargetGrade || isExcludedUnit) continue;
+        
         if (id === searchTarget) { exactMatch = u; break; }
         if (!prefixMatch && id.startsWith(searchTarget) && !(searchTarget === '아몬' && id === '아몬의젤나가피조물')) prefixMatch = u;
     }
@@ -384,10 +394,10 @@ function positionGuideHighlight(step) {
 function handleGuideResize() { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(() => { if (getEl('guideHighlight')?.style.display === 'block') positionGuideHighlight(_currentGuideSteps[_guideStepIdx]); }, 50); }
 
 let repeatTimer = null, repeatDelayTimer = null, _lastInteractionTime = 0, _currentAccelInterval = 80, _touchHoldCount = 0;
-function startSmartChange(id, delta, 입력, event) {
+function startSmartChange(id, delta, type, event) {
     if (event?.cancelable) {
-        if (event.입력 === 'touchstart' || event.입력 === 'pointerdown') _lastInteractionTime = Date.지금();
-        else if (event.입력 === 'mousedown') { if (Date.지금() - _lastInteractionTime < 300) return; event.preventDefault(); event.stopPropagation?.(); }
+        if (event.type === 'touchstart' || event.type === 'pointerdown') _lastInteractionTime = Date.now();
+        else if (event.type === 'mousedown') { if (Date.now() - _lastInteractionTime < 300) return; event.preventDefault(); event.stopPropagation?.(); }
     }
     stopSmartChange(); triggerHaptic(); _touchHoldCount = 0;
     const action = () => {
