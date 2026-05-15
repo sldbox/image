@@ -55,14 +55,14 @@ function initializeCacheEngine() {
             u.cost.replace(/\//g, '+').split('+').forEach(p => {
                 const m = p.match(/(.+?)\[(\d+)\]/);
                 let cName = clean(m ? m[1].trim() : p.trim()), qty = m ? parseInt(m[2], 10) : 1;
-                let type = 'atom', key = cName;
+                let 입력 = 'atom', key = cName;
 
-                if (cName.includes('메시브') || cName.includes('디제스터')) { type = 'special'; key = '메시브'; }
-                else if (cName.includes('갓오타') || cName.includes('갓오브타임')) { type = 'special'; key = '갓오타'; }
+                if (cName.includes('메시브') || cName.includes('디제스터')) { 입력 = 'special'; key = '메시브'; }
+                else if (cName.includes('갓오타') || cName.includes('갓오브타임')) { 입력 = 'special'; key = '갓오타'; }
                 else if (['땅거미지뢰', '자동포탑', '잠복'].some(k => cName.includes(k))) key = ['땅거미지뢰', '자동포탑', '잠복'].find(k => k === cName ? k : cName.includes(k));
                 else key = ATOM_HASH[getUnitId(cName)] || getUnitId(cName);
 
-                u.parsedCost.push({ type, key, qty, name: u.name });
+                u.parsedCost.push({ 입력, key, qty, name: u.name });
             });
         }
         u.parsedRecipe = [];
@@ -92,7 +92,6 @@ function saveNexusState() {
     } catch(e) { console.warn("[오류] 데이터 저장 실패", e); }
 }
 
-// [개선/기획의도] 정수 계산 시 동일 재료의 중복 합산을 방지하기 위한 visited 활용 (정규 로직)
 function calcEssenceRecursiveFast(uid, counts, visited) {
     if (visited.has(uid)) return; 
     visited.add(uid);
@@ -153,7 +152,7 @@ function updateMagicDashboard() {
 
     const applyToMap = (map, uid, multi) => {
         unitMap.get(uid)?.parsedCost?.forEach(pc => {
-            if (pc.type === 'special') map['갓오타/메시브'][['갓오타','메시브'].includes(pc.key)?pc.key:'갓오타'] += pc.qty * multi;
+            if (pc.입력 === 'special') map['갓오타/메시브'][['갓오타','메시브'].includes(pc.key)?pc.key:'갓오타'] += pc.qty * multi;
             else map[pc.key] = (map[pc.key] || 0) + pc.qty * multi;
         });
     };
@@ -250,7 +249,6 @@ function findUnitFlexible(rawName) {
     if(!searchTarget) return null;
     
     for (let [id, u] of unitMap) {
-        // [개선/기획의도] 레전드 미만 하위 등급 유닛 및 특수 유닛은 보드에 직접 추가하지 못하도록 검색 대상에서 명시적으로 제외
         const isTargetGrade = ["슈퍼히든", "히든", "레전드"].includes(u.grade);
         const isExcludedUnit = ['데하카고치', '데하카의오른팔'].includes(id);
         
@@ -311,7 +309,6 @@ window.openNoticeModal = () => { _previousFocus = document.activeElement; const 
 window.closeNoticeModal = () => { const m = getEl('noticeModal'); if(m) { m.style.display = 'none'; m.removeEventListener('keydown', trapModalFocus); } if(_previousFocus) _previousFocus.focus(); };
 function trapModalFocus(e) { if (e.key === 'Escape') closeNoticeModal(); }
 
-/* (Guide Logic Preserved for Compatibility) */
 let _guideStepIdx = 0, _resizeTimer = null, _guideBackupActive = new Map(), _guideBackupCompleted = new Map();
 let _currentGuideSteps = [], _guideDemoUnitId = '비밀작전노바', _guideDemoChildId = '자동포탑', _autoGuideTimer = null, _autoActionTimer = null;
 
@@ -393,10 +390,10 @@ function positionGuideHighlight(step) {
 function handleGuideResize() { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(() => { if (getEl('guideHighlight')?.style.display === 'block') positionGuideHighlight(_currentGuideSteps[_guideStepIdx]); }, 50); }
 
 let repeatTimer = null, repeatDelayTimer = null, _lastInteractionTime = 0, _currentAccelInterval = 80, _touchHoldCount = 0;
-function startSmartChange(id, delta, type, event) {
+function startSmartChange(id, delta, 입력, event) {
     if (event?.cancelable) {
-        if (event.type === 'touchstart' || event.type === 'pointerdown') _lastInteractionTime = Date.now();
-        else if (event.type === 'mousedown') { if (Date.now() - _lastInteractionTime < 300) return; event.preventDefault(); event.stopPropagation?.(); }
+        if (event.입력 === 'touchstart' || event.입력 === 'pointerdown') _lastInteractionTime = Date.지금();
+        else if (event.입력 === 'mousedown') { if (Date.지금() - _lastInteractionTime < 300) return; event.preventDefault(); event.stopPropagation?.(); }
     }
     stopSmartChange(); triggerHaptic(); _touchHoldCount = 0;
     const action = () => {
@@ -466,15 +463,33 @@ function calculateDeductedRequirements() {
 
     const processQueueLoop = (queueArr, defMap, updateRoots) => {
         let queue = [...queueArr], queueSet = new Set(queue), guard = 0;
+        let processedMap = new Map();
+        
         while (queue.length > 0) {
             if (guard++ >= MAX_LOOP_QUEUE) break;
             let currentLevel = [...queue]; queue = []; queueSet.clear();
             currentLevel.forEach(uid => {
-                let needed = defMap.get(uid) || 0;
-                if (!unitMap.has(uid) || needed <= 0) return;
-                if (updateRoots) needed -= Math.min(completedUnits.get(uid) || 0, needed);
-                if (uid === '로리스완') { let toolNeed = needed > 0 ? 1 : 0; if (toolNeed > (defMap.get('낮까마귀') || 0)) { defMap.set('낮까마귀', toolNeed); if (!queueSet.has('낮까마귀')) { queue.push('낮까마귀'); queueSet.add('낮까마귀'); } } }
-                if (needed > 0 && unitMap.get(uid).parsedRecipe) {
+                let totalNeeded = defMap.get(uid) || 0;
+                if (!unitMap.has(uid) || totalNeeded <= 0) return;
+                
+                let effectiveNeeded = totalNeeded;
+                if (updateRoots) effectiveNeeded -= Math.min(completedUnits.get(uid) || 0, totalNeeded);
+                
+                let alreadyProcessed = processedMap.get(uid) || 0;
+                let delta = effectiveNeeded - alreadyProcessed;
+                
+                if (delta <= 0) return;
+                processedMap.set(uid, effectiveNeeded); 
+                
+                if (uid === '로리스완') { 
+                    let toolNeed = effectiveNeeded > 0 ? 1 : 0; 
+                    if (toolNeed > (defMap.get('낮까마귀') || 0)) { 
+                        defMap.set('낮까마귀', toolNeed); 
+                        if (!queueSet.has('낮까마귀')) { queue.push('낮까마귀'); queueSet.add('낮까마귀'); } 
+                    } 
+                }
+                
+                if (unitMap.get(uid).parsedRecipe) {
                     unitMap.get(uid).parsedRecipe.forEach(child => {
                         if (!child.id || !unitMap.has(child.id)) return;
                         let isTool = (uid === '로리스완' && child.id === '낮까마귀');
@@ -482,7 +497,10 @@ function calculateDeductedRequirements() {
                             let cRoots = rootTracking.get(child.id) || new Map(); rootTracking.set(child.id, cRoots);
                             rootTracking.get(uid)?.forEach((_, rId) => cRoots.set(rId, { id: rId, text: isTool ? `${unitMap.get(rId)?.name || rId} <span style="margin-left:4px; font-size:0.75rem; color:#10b981; font-weight:900;">[도구]</span>` : `${unitMap.get(rId)?.name || rId} 재료`, cond: child.cond }));
                         }
-                        if (!isTool) { defMap.set(child.id, (defMap.get(child.id) || 0) + needed * child.qty); if (!queueSet.has(child.id)) { queue.push(child.id); queueSet.add(child.id); } }
+                        if (!isTool) { 
+                            defMap.set(child.id, (defMap.get(child.id) || 0) + (delta * child.qty)); 
+                            if (!queueSet.has(child.id)) { queue.push(child.id); queueSet.add(child.id); } 
+                        }
                     });
                 }
             });
