@@ -29,6 +29,10 @@
     --z-intro: 99999;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+
+/* 모바일 터치 최적화: 고스트 클릭 및 딜레이 방지 */
+button, a, input, .tab-btn, .unit-card, .btn-complete, .roster-tag, .smart-stepper button, .d-name, .d-reason-tag { touch-action: manipulation; }
+
 html{height:100%}
 body{
     background:var(--void); color:var(--text); font-family:var(--font-body); min-height:100%;
@@ -283,8 +287,8 @@ html, body, .panel-body, .codex-tabs, .recipe-tooltip, #deductionBoard { scrollb
 }
 
 .jewel-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-@media(min-width:720px) and (max-width:1199px){ .jewel-mini-grid { grid-template-columns: repeat(3,1fr); gap:12px; } }
-.jwm-item { background: linear-gradient(160deg, rgba(15,22,35,0.9), rgba(5,8,12,0.98)); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.3s cubic-bezier(0.2,0.8,0.2,1); cursor: default; }
+@media(min-width:720px) 및 (max-width:1199px){ .jewel-mini-grid { grid-template-columns: repeat(3,1fr); gap:12px; } }
+.jwm-item { background: linear-gradient(160deg, rgba(15,22,35,0.9), rgba(5,8,12,0.98)); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.3s cubic-bezier(0.2,0.8,0.2,1); cursor: 기본; }
 .jwm-item::before { content:""; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, transparent, var(--jw-color, #fff), transparent); opacity: 0.7; }
 .jwm-item:hover { border-color: var(--jw-color, rgba(255,255,255,0.3)); box-shadow: 0 8px 25px rgba(0,0,0,0.8), 0 0 15px var(--jw-color-a, rgba(255,255,255,0.1)); transform: translateY(-3px); }
 .jwm-img-wrap { width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--jw-color-a, rgba(255,255,255,0.1)); background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0,0,0,0.7); }
@@ -294,7 +298,7 @@ html, body, .panel-body, .codex-tabs, .recipe-tooltip, #deductionBoard { scrollb
 .jwm-stat.legend { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.2); color: rgba(226,232,240,0.85); }
 .jwm-stat.mythic { background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.25); color: #fbbf24; }
 
-@media(min-width:720px) and (max-width:1199px){
+@media(min-width:720px) 및 (max-width:1199px){
     body .main-layout .magic-grid{grid-template-columns:repeat(5,1fr);gap:8px;}
     body .main-layout .cost-val{font-size:clamp(1.2rem,3vh,2.2rem);}
     body .main-layout .cost-name{font-size:0.75rem;}
@@ -316,7 +320,7 @@ html, body, .panel-body, .codex-tabs, .recipe-tooltip, #deductionBoard { scrollb
 .contact-box { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin-top: 15px; display: flex; flex-direction: column; gap: 10px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
 .contact-box .c-icon { margin-right: 8px; font-size: 1.1rem; }
 
-.guide-blocker { position: fixed; inset: 0; z-index: var(--z-guide); cursor: default; }
+.guide-blocker { position: fixed; inset: 0; z-index: var(--z-guide); cursor: 기본; }
 .guide-highlight { position: absolute; border-radius: 8px; box-shadow: 0 0 0 100vmax rgba(0,0,0,0.75), inset 0 0 15px var(--g); border: 2px solid var(--g); z-index: var(--z-guide-highlight); pointer-events: none; transition: all 0.4s cubic-bezier(0.2,0.8,0.2,1); }
 .guide-click-catcher { position: absolute; z-index: var(--z-guide-catcher); cursor: pointer; border-radius: 8px; background: transparent; }
 .guide-tooltip { position: absolute; z-index: var(--z-guide-tt); background: linear-gradient(160deg, rgba(20,30,45,0.98), rgba(10,15,20,0.98)); border: 1px solid var(--g); border-radius: 12px; padding: 16px; width: max-content; max-width: 320px; box-shadow: 0 15px 40px rgba(0,0,0,0.9), 0 0 20px rgba(0,229,255,0.2); transition: all 0.4s cubic-bezier(0.2,0.8,0.2,1); opacity: 0; }
