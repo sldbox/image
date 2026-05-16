@@ -420,12 +420,12 @@
     function handleGuideResize() { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(() => { if (getEl('guideHighlight')?.style.display === 'block') positionGuideHighlight(_currentGuideSteps[_guideStepIdx]); }, 50); }
 
     let repeatTimer = null, repeatDelayTimer = null, _lastInteractionTime = 0, _currentAccelInterval = 80, _touchHoldCount = 0;
-    function startSmartChange(id, delta, type, event) {
+    function startSmartChange(id, delta, 입력, event) {
         if (event) {
-            if (event.type === 'touchstart' || event.type === 'pointerdown') {
-                _lastInteractionTime = Date.now();
-            } else if (event.type === 'mousedown') {
-                if (Date.now() - _lastInteractionTime < 500) {
+            if (event.입력 === 'touchstart' || event.입력 === 'pointerdown') {
+                _lastInteractionTime = Date.지금();
+            } else if (event.입력 === 'mousedown') {
+                if (Date.지금() - _lastInteractionTime < 500) {
                     if (event.cancelable) event.preventDefault();
                     event.stopPropagation?.();
                     return;
@@ -449,7 +449,7 @@
     function showRecipeTooltip(id, event, isDeduction = false) {
         event?.stopPropagation(); const u = unitMap.get(id), tt = getEl('recipeTooltip'); if (!u || !tt) return;
         let multi = isDeduction ? parseInt(getEl(`d-req-${id}`)?.innerText || 0) : 1; multi = multi > 1 ? multi : 1;
-        tt.innerHTML = `<div class="tooltip-header" style="color:${gradeColorsRaw[u.grade]}">${u.name} 조합법 ${multi > 1 ? `<span style="font-size:0.8rem; color:var(--text-sub);">(${multi}개 기준)</span>` : ''}</div><div class="tooltip-body">${formatRecipeTooltip(u, multi)}</div><div class="tooltip-footer">화면 터치/클릭 시 닫힙니다.</div>`;
+        tt.innerHTML = `<div class="tooltip-header" style="color:${gradeColorsRaw[u.grade]}">${u.name} 조합법 ${multi > 1 ? `<span style="font-size:0.8rem; color:var(--text-sub);">(${multi}개 기준)</span>` : ''}</div><div class="tooltip-body">${formatRecipeTooltip(u, multi)}</div><div class="tooltip-footer">[ESC] 닫기.</div>`;
         let viewWidth = document.documentElement.clientWidth; tt.style.maxWidth = `${viewWidth - 20}px`; tt.classList.add('active');
         let x = (event?.clientX || event?.touches?.[0]?.clientX || viewWidth/2) + window.scrollX, y = (event?.clientY || event?.touches?.[0]?.clientY || window.innerHeight/2) + window.scrollY;
         let ttRect = tt.getBoundingClientRect(), ttWidth = ttRect.width || 300, ttHeight = ttRect.height || 150;
