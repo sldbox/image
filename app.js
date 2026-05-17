@@ -11,7 +11,7 @@
             strictMatchTerms: ['아몬', '데하카']
         },
         essence: {
-            excludedIds: ['미니성큰'],
+            excludedIds: [], // 미니성큰 삭제에 따른 데드코드 제거로 무결성 확보
             mapping: {
                 "테바": "코랄", "테메": "코랄",
                 "토바": "아이어", "토메": "아이어",
@@ -71,9 +71,12 @@
         aliases: {
             "타이커스":"타이커스핀들레이", "타커":"타이커스핀들레이", "타이":"타이커스핀들레이",
             "닥템":"암흑기사", "닼템":"암흑기사", "다칸":"암흑집정관",
-            "스투":"스투코프", "디젯":"메시브", "메십":"메시브", "히페":"히페리온",
+            "스투코프":"스투코프", "디젯":"메시브", "메십":"메시브", "히페":"히페리온",
             "고전순":"고르곤전투순양함", "특레":"특공대레이너", "드레천":"드라켄레이저천공기",
             "공허":"공허포격기", "분수":"분노수호자", "원히":"원시히드라리스크", "젤나가":"아몬의젤나가피조물"
+        },
+        commandKeywords: {
+            불새: "불새케리건"
         },
         parseKeywords: {
             massive: ['메시브', '디제스터'],
@@ -130,7 +133,7 @@
 
                     if (SYSTEM_CONFIG.parseKeywords.massive.some(k => cName.includes(k))) { type = 'special'; key = '메시브'; }
                     else if (SYSTEM_CONFIG.parseKeywords.godota.some(k => cName.includes(k))) { type = 'special'; key = '갓오타'; }
-                    else if (SYSTEM_CONFIG.parseKeywords.specials.some(k => cName.includes(k))) key = SYSTEM_CONFIG.parseKeywords.specials.find(k => k === cName ? k : cName.includes(k));
+                    else if (SYSTEM_CONFIG.parseKeywords.specials.some(k => k === cName ? k : cName.includes(k))) key = SYSTEM_CONFIG.parseKeywords.specials.find(k => k === cName ? k : cName.includes(k));
                     else key = ATOM_HASH[getUnitId(cName)] || getUnitId(cName);
 
                     u.parsedCost.push({ type, key, qty, name: u.name });
@@ -182,7 +185,8 @@
 
     function getEssenceCount(sourceMap) {
         let counts = { 코랄: 0, 아이어: 0, 제루스: 0, 혼종: 0 };
-        sourceMap.forEach((qty, uid) => { for(let i=0; i<qty; i++) calcEssenceRecursiveFast(uid, counts, new Set()); });
+        let visited = new Set();
+        sourceMap.forEach((qty, uid) => { calcEssenceRecursiveFast(uid, counts, visited); });
         return counts;
     }
 
@@ -356,10 +360,12 @@
     }
 
     function findUnitFlexible(rawName) {
-        let searchTarget = CLEAN_ALIAS_MAP[clean(rawName)] || clean(rawName), exactMatch = null, prefixMatch = null;
+        let cleaned = clean(rawName);
+        let searchTarget = SYSTEM_CONFIG.commandKeywords[cleaned] || CLEAN_ALIAS_MAP[cleaned] || cleaned;
         if(!searchTarget) return null;
 
         let isStrictTerm = SYSTEM_CONFIG.search.strictMatchTerms.includes(searchTarget);
+        let exactMatch = null, prefixMatch = null;
 
         for (let [id, u] of unitMap) {
             const isTargetGrade = ["슈퍼히든", "히든", "레전드"].includes(u.grade);
@@ -407,8 +413,26 @@
     function openNoticeModal() { _previousFocus = document.activeElement; const m = getEl('noticeModal'); if(m) { m.style.display = 'flex'; m.focus(); m.addEventListener('keydown', trapModalFocus); } }
     function closeNoticeModal() { const m = getEl('noticeModal'); if(m) { m.style.display = 'none'; m.removeEventListener('keydown', trapModalFocus); } if(_previousFocus) _previousFocus.focus(); }
 
-    function openStaticGuide() { _previousFocus = document.activeElement; const m = getEl('staticGuideModalOverlay'); if(m) { m.style.display = 'flex'; m.focus(); m.addEventListener('keydown', trapModalFocus); } }
+    function openStaticGuide() {
+        _previousFocus = document.activeElement;
+        const m = getEl('staticGuideModalOverlay');
+        if(m) {
+            m.style.display = 'flex';
+            m.focus();
+            m.addEventListener('keydown', trapModalFocus);
+            selectGuideTab('g-search');
+        }
+    }
     function closeStaticGuide() { const m = getEl('staticGuideModalOverlay'); if(m) { m.style.display = 'none'; m.removeEventListener('keydown', trapModalFocus); } if(_previousFocus) _previousFocus.focus(); }
+
+    function selectGuideTab(gtid) {
+        document.querySelectorAll('.guide-tab-btn').forEach(b => {
+            let isAct = b.dataset.gtid === gtid;
+            b.classList.toggle('active', isAct);
+            b.setAttribute('aria-selected', isAct ? 'true' : 'false');
+        });
+        document.querySelectorAll('.guide-panel').forEach(p => p.style.display = p.id === `g-panel-${gtid}` ? 'block' : 'none');
+    }
 
     function trapModalFocus(e) {
         if (e.key === 'Escape') {
@@ -585,13 +609,13 @@
         } while (merged);
     }
 
-    function consumeCompletedRecipe(uid, multiplier) {
+    function deleteCompletedRecipe(uid, multiplier) {
         const u = unitMap.get(uid); if (!u) return;
         u.parsedRecipe?.forEach(child => {
             if (child.id && !isToolRequirement(uid, child.id)) {
                 let needed = child.qty * multiplier, comp = completedUnits.get(child.id) || 0, consume = Math.min(needed, comp);
                 if (consume > 0) completedUnits.set(child.id, comp - consume);
-                if (needed - consume > 0) consumeCompletedRecipe(child.id, needed - consume);
+                if (needed - consume > 0) deleteCompletedRecipe(child.id, needed - consume);
             }
         });
         u.parsedCost?.forEach(pc => {
@@ -610,7 +634,7 @@
         const processQty = amount !== undefined ? amount : reqVal;
 
         if (processQty > 0 && reqVal >= processQty) {
-            consumeCompletedRecipe(uid, processQty);
+            deleteCompletedRecipe(uid, processQty);
             completedUnits.set(uid, (completedUnits.get(uid) || 0) + processQty);
             toggleHighlight(null); attemptAutoMerge(); triggerHaptic(); debouncedUpdateAllPanels();
         }
@@ -650,7 +674,7 @@
         const getGrp = (id, t, items, pid, exClass='', resetLevel=0) => `
         <div class="deduct-group ${exClass}" id="${id}">
             <div class="deduct-group-title" style="justify-content:space-between;">
-                <div style="display:flex; align-items:center; gap:10px;">${t}</div>
+                <div style="display:flex; align-items:center; gap:10px;"><span class="grp-icon grp-icon-super">✨</span> ${t}</div>
                 ${resetLevel > 0 ? `<button class="btn-text-link" data-action="resetGroup" data-level="${resetLevel}" style="color:#f87171; text-decoration:none; padding:4px 8px; background:rgba(239,68,68,0.1); border-radius:6px; border:1px solid rgba(239,68,68,0.3);">⟲ 하위 통합 초기화</button>` : ''}
             </div>
             <div class="deduct-grid" id="${pid}">${items.map(u => renderSlot(u.id, u.name, u.grade, pid)).join('')}</div>
@@ -660,9 +684,9 @@
         const specialUnits = SYSTEM_CONFIG.specialRenderIds.map(id => unitMap.get(id) || { id, name: id, grade: '레어' });
 
         getEl('deductionBoard').innerHTML = `<div id="deduct-empty-msg" class="empty-msg"><div class="empty-icon-text">✨</div> 목표 유닛을 선택하면<br>필요한 재료 목록이 이곳에 생성됩니다.</div>`
-        + getGrp('group-special', `<span class="grp-icon grp-icon-super">✦</span> 목표 유닛 및 직속 재료`, specialUnits, 'grid-special', 'grp-special', 3)
-        + getGrp('group-hidden', `<span class="grp-icon grp-icon-hidden">♦</span> 히든 등급 재료`, allUnits.filter(u => u.grade === "히든" && !isSpecialRender(u.id)), 'grid-hidden', '', 2)
-        + getGrp('group-top', `<span class="grp-icon grp-icon-legend">▲</span> 레어 - 레전드 재료`, allUnits.filter(u => ["슈퍼히든", "레전드", "헬", "유니크", "에픽", "레어"].includes(u.grade) && !isSpecialRender(u.id)).sort((a,b)=>getGradeIndex(b.grade)-getGradeIndex(a.grade)), 'grid-top', 'grp-top', 1);
+        + getGrp('group-special', `목표 유닛 및 직속 재료`, specialUnits, 'grid-special', 'grp-special', 3)
+        + getGrp('group-hidden', `히든 등급 재료`, allUnits.filter(u => u.grade === "히든" && !isSpecialRender(u.id)), 'grid-hidden', '', 2)
+        + getGrp('group-top', `레어 - 레전드 재료`, allUnits.filter(u => ["슈퍼히든", "레전드", "헬", "유니크", "에픽", "레어"].includes(u.grade) && !isSpecialRender(u.id)).sort((a,b)=>getGradeIndex(b.grade)-getGradeIndex(a.grade)), 'grid-top', 'grp-top', 1);
     }
 
     function updateDeductionBoard() {
@@ -777,6 +801,55 @@
                 cartBtn.classList.remove('active');
             }
         }
+
+        // 전체 선택 버튼 상태 및 텍스트 동적 동기화 시스템
+        const selectAllBtn = getEl('btnSelectAllTab');
+        if (selectAllBtn) {
+            if (_isCartMode) {
+                selectAllBtn.disabled = true;
+                selectAllBtn.innerHTML = `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">✔ 전체 선택</span>`;
+            } else {
+                selectAllBtn.disabled = false;
+                const currentTab = SYSTEM_CONFIG.tabs[_activeTabIdx];
+                if (currentTab) {
+                    const catItems = Array.from(unitMap.values()).filter(u => u.category === currentTab.key && getGradeIndex(u.grade) >= getGradeIndex("레전드"));
+                    const allSelected = catItems.length > 0 && catItems.every(item => activeUnits.has(item.id));
+
+                    if (allSelected) {
+                        selectAllBtn.innerHTML = `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; color:var(--grade-unique);">✖ ${currentTab.name} 전체 해제</span>`;
+                    } else {
+                        selectAllBtn.innerHTML = `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">✔ ${currentTab.name} 전체 선택</span>`;
+                    }
+                }
+            }
+        }
+    }
+
+    function toggleSelectAllTab() {
+        if (_isCartMode) return;
+        const currentTab = SYSTEM_CONFIG.tabs[_activeTabIdx];
+        if (!currentTab) return;
+
+        const catItems = Array.from(unitMap.values()).filter(u => u.category === currentTab.key && getGradeIndex(u.grade) >= getGradeIndex("레전드"));
+        if (!catItems.length) return;
+
+        const allSelected = catItems.every(item => activeUnits.has(item.id));
+
+        if (allSelected) {
+            // 전체 해제 처리
+            catItems.forEach(item => activeUnits.delete(item.id));
+            showToast(`✖ ${currentTab.name} 분류 전체 선택 해제`);
+        } else {
+            // 전체 선택 처리
+            catItems.forEach(item => {
+                if (!activeUnits.has(item.id)) {
+                    activeUnits.set(item.id, 1);
+                }
+            });
+            showToast(`✔ ${currentTab.name} 분류 전체 선택 완료`);
+        }
+        triggerHaptic();
+        debouncedUpdateAllPanels();
     }
 
     const formatRecipeHorizontal = (item, m = 1) => formatRecipe(item, m, false);
@@ -889,6 +962,7 @@
         switch (action) {
             case 'openStaticGuide': openStaticGuide(); break;
             case 'closeStaticGuide': closeStaticGuide(); break;
+            case 'selectGuideTab': selectGuideTab(actionEl.dataset.gtid); break;
             case 'openNoticeModal': openNoticeModal(); break;
             case 'closeNoticeModal': closeNoticeModal(); break;
             case 'toggleJewelPanel': toggleJewelPanel(); break;
@@ -898,6 +972,7 @@
             case 'toggleViewMode': toggleViewMode(); break;
             case 'selectTab': selectTab(parseInt(actionEl.dataset.tabIdx, 10)); break;
             case 'toggleCartMode': toggleCartMode(); break;
+            case 'toggleSelectAllTab': toggleSelectAllTab(); break;
             case 'toggleUnit': toggleUnitSelection(uid, 1); break;
             case 'toggleHighlight': toggleHighlight(uid, e); break;
             case 'addComplete':
@@ -944,16 +1019,6 @@
     document.addEventListener('DOMContentLoaded', () => {
         try {
             document.documentElement.lang = 'ko'; document.documentElement.setAttribute('data-theme', 'dark');
-            const intro = getEl('introCinematic'), main = getEl('mainLayout'), cEl = getEl('introCounter'), fEl = document.querySelector('.loader-fill');
-            if (intro && main && cEl && fEl) {
-                let progress = 0; setTimeout(() => {
-                    let timer = setInterval(() => {
-                        progress += (100/(2000/30)) + (Math.random()*2.5); let cur = Math.min(100, Math.floor(progress));
-                        if (progress >= 100) { clearInterval(timer); cEl.innerText="100%"; cEl.setAttribute('aria-valuenow','100'); fEl.style.width="100%"; setTimeout(() => { intro.classList.add('hidden'); setTimeout(() => { main.style.opacity='1'; main.style.transform='scale(1)'; setTimeout(() => { main.style.transform='none'; }, 1000); }, 400); }, 500); }
-                        else { cEl.innerText=cur+"%"; cEl.setAttribute('aria-valuenow', cur); fEl.style.width=cur+"%"; }
-                    }, 30);
-                }, 600);
-            }
 
             if (typeof UNIT_DATABASE === 'undefined' || !Array.isArray(UNIT_DATABASE)) return console.error("[오류] 데이터베이스 배열 로드 실패");
             UNIT_DATABASE.forEach(kArr => unitMap.set(clean(kArr[0]), { id: clean(kArr[0]), name: kArr[0], grade: kArr[1] || "매직", category: kArr[2] || "테바", recipe: kArr[3], cost: kArr[4] }));
